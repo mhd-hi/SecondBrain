@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { fetchFocusTasks } from '@/hooks/task/use-task';
 import { useTaskStore } from '@/lib/stores/task-store';
+import { CommonErrorMessages } from '@/lib/utils/errors/error';
 import { StatusTask } from '@/types/status-task';
 
 const GroupSection = ({
@@ -183,8 +184,8 @@ export const TodaysFocusTile = () => {
     try {
       await updateTaskStatus(taskId, newStatus);
     } catch (error) {
-      console.error('Failed to update task status:', error);
-      toast.error('Failed to update task status');
+      console.error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED, error);
+      toast.error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
 
       // Rollback optimistic update on error
       if (shouldRemoveTask(newStatus)) {

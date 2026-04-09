@@ -3,7 +3,7 @@ import type { Task } from '@/types/task';
 
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CourseProgressTile } from '@/components/Boards/Progress/TaskCompletionProgressTile';
 import CourseCustomLinks from '@/components/CustomLinks/CourseCustomLinks';
@@ -29,7 +29,7 @@ import { useCustomLinkStore } from '@/lib/stores/custom-link-store';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { getWeekNumberFromDueDate } from '@/lib/utils/date-util';
 import { handleConfirm } from '@/lib/utils/dialog-util';
-import { ErrorHandlers } from '@/lib/utils/errors/error';
+import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 import { getOverdueTasks } from '@/lib/utils/task/task-util';
 import { StatusTask } from '@/types/status-task';
 
@@ -38,6 +38,33 @@ type CoursePageProps = {
     course: string;
   }>;
 };
+
+type CourseTasksAction =
+  | { type: 'sync'; tasks: Task[] }
+  | { type: 'update-status'; taskId: string; status: StatusTask }
+  | { type: 'delete'; taskId: string }
+  | { type: 'batch-update-status'; taskIds: string[]; status: StatusTask };
+
+function courseTasksReducer(state: Task[], action: CourseTasksAction): Task[] {
+  switch (action.type) {
+    case 'sync':
+      return action.tasks;
+    case 'update-status':
+      return state.map(task =>
+        task.id === action.taskId ? { ...task, status: action.status } : task,
+      );
+    case 'delete':
+      return state.filter(task => task.id !== action.taskId);
+    case 'batch-update-status': {
+      const updatedTaskIds = new Set(action.taskIds);
+      return state.map(task =>
+        updatedTaskIds.has(task.id) ? { ...task, status: action.status } : task,
+      );
+    }
+    default:
+      return state;
+  }
+}
 
 export default function CoursePage({ params }: CoursePageProps) {
   const router = useRouter();
@@ -52,7 +79,8 @@ export default function CoursePage({ params }: CoursePageProps) {
   const addTaskButtonRef = useRef<HTMLDivElement>(null);
 
   // Get tasks directly from the store for automatic reactivity
-  const tasks = useCourseTasksStore(courseId);
+  const storeTasks = useCourseTasksStore(courseId);
+  const [courseTasks, dispatchCourseTasks] = useReducer(courseTasksReducer, storeTasks);
   const isLoading = useTaskStore(state => state.isLoading);
 
   // Get custom links directly from the store for automatic reactivity
@@ -60,6 +88,7 @@ export default function CoursePage({ params }: CoursePageProps) {
 
   // Get store methods for operations
   const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
+  const updateTask = useTaskStore(state => state.updateTask);
   const removeTask = useTaskStore(state => state.removeTask);
   const deleteCourseFromStore = useCourseStore(state => state.removeCourse);
   const updateCourseField = useCourseStore(state => state.updateCourseField);
@@ -73,7 +102,7 @@ export default function CoursePage({ params }: CoursePageProps) {
 
     if (courseId && uuidRegex.test(courseId)) {
       fetchTasksByCourse(courseId).catch((error: unknown) => {
-        console.error('Failed to fetch tasks:', error);
+        console.error(CommonErrorMessages.TASKS_FETCH_FAILED, error);
       });
       fetchCustomLinksByCourse(courseId).catch((error: unknown) => {
         console.error('Failed to fetch custom links:', error);
@@ -84,6 +113,10 @@ export default function CoursePage({ params }: CoursePageProps) {
       router.push(ROUTES.DASHBOARD);
     }
   }, [courseId, fetchTasksByCourse, fetchCustomLinksByCourse, router]);
+
+  useEffect(() => {
+    dispatchCourseTasks({ type: 'sync', tasks: storeTasks });
+  }, [storeTasks]);
 
   // Track when Add Task button scrolls out of view
   useEffect(() => {
@@ -102,11 +135,11 @@ export default function CoursePage({ params }: CoursePageProps) {
   // Filter tasks based on search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
-      return tasks;
+      return courseTasks;
     }
 
     const query = searchQuery.toLowerCase();
-    return tasks.filter((task) => {
+    return courseTasks.filter((task) => {
       // Search in task title
       if (task.title.toLowerCase().includes(query)) {
         return true;
@@ -134,20 +167,34 @@ export default function CoursePage({ params }: CoursePageProps) {
 
       return false;
     });
-  }, [tasks, searchQuery]);
+  }, [courseTasks, searchQuery]);
 
   const handleUpdateStatusTask = async (taskId: string, newStatus: StatusTask) => {
+    const previousStatus = courseTasks.find(task => task.id === taskId)?.status;
+
+    dispatchCourseTasks({ type: 'update-status', taskId, status: newStatus });
+
     try {
-      await updateTaskStatus(taskId, newStatus);
-      // Store handles updates automatically, no need to refresh
+      const didUpdate = await updateTaskStatus(taskId, newStatus);
+
+      if (!didUpdate && previousStatus) {
+        dispatchCourseTasks({ type: 'update-status', taskId, status: previousStatus });
+      }
     } catch (error) {
-      ErrorHandlers.api(error, 'Failed to update task status');
+      if (previousStatus) {
+        dispatchCourseTasks({ type: 'update-status', taskId, status: previousStatus });
+      }
+
+      ErrorHandlers.api(error, CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    await removeTask(taskId);
-    // Store handles updates automatically, no need to refresh
+    const didRemove = await removeTask(taskId);
+
+    if (didRemove) {
+      dispatchCourseTasks({ type: 'delete', taskId });
+    }
   };
 
   const handleDeleteCourse = async () => {
@@ -188,7 +235,7 @@ export default function CoursePage({ params }: CoursePageProps) {
 
   const handleCompleteOverdueTasks = async () => {
     try {
-      const currentOverdueTasks = getOverdueTasks(tasks, [StatusTask.IN_PROGRESS, StatusTask.COMPLETED]);
+      const currentOverdueTasks = getOverdueTasks(courseTasks, [StatusTask.IN_PROGRESS, StatusTask.COMPLETED]);
 
       if (currentOverdueTasks.length === 0) {
         toast.success('No overdue tasks found');
@@ -199,10 +246,15 @@ export default function CoursePage({ params }: CoursePageProps) {
 
       await batchUpdateStatusTask(taskIds, StatusTask.COMPLETED);
 
+      dispatchCourseTasks({ type: 'batch-update-status', taskIds, status: StatusTask.COMPLETED });
+
+      for (const taskId of taskIds) {
+        updateTask(taskId, { status: StatusTask.COMPLETED });
+      }
+
       toast.success('Overdue tasks completed', {
         description: `${currentOverdueTasks.length} overdue tasks have been marked as completed`,
       });
-      // Store handles updates automatically
     } catch (error) {
       ErrorHandlers.api(error, 'Failed to complete overdue tasks');
     }
@@ -311,7 +363,7 @@ export default function CoursePage({ params }: CoursePageProps) {
           />
         </section>
         <section>
-          <CourseProgressTile tasks={tasks} />
+          <CourseProgressTile tasks={courseTasks} />
         </section>
         <div ref={addTaskButtonRef} className="flex items-center gap-4 mb-2">
           <SearchBar

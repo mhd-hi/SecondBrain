@@ -17,12 +17,12 @@ export default function CalendarPage() {
   const setStoreEvents = useCalendarViewStore(state => state.setEvents);
   const view = useCalendarViewStore(state => state.view);
   const setView = useCalendarViewStore(state => state.setView);
-  const isInitialized = useRef(false);
+  const isInitializedRef = useRef(false);
 
   // Initialize view from URL parameter on mount
   useEffect(() => {
-    if (!isInitialized.current) {
-      isInitialized.current = true;
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
       const viewParam = searchParams.get('view');
       if (viewParam && VALID_VIEWS.includes(viewParam as TCalendarView)) {
         setView(viewParam as TCalendarView);

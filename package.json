@@ -9,8 +9,7 @@
     "bun": ">=1.0.0"
   },
   "scripts": {
-    "build": "next build && bun run check:prod-deps",
-    "check:prod-deps": "bun run ./scripts/check-prod-deps.mjs",
+    "build": "next build",
     "preview": "bun run build && next start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

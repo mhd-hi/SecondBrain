@@ -1,8 +1,8 @@
-# SecondBrain ETS - Your Course Management Assistant
+# SecondBrain - Your Course Management Assistant
 
 [![CI](https://github.com/mhd-hi/SecondBrain-ETS/actions/workflows/ci.yml/badge.svg)](https://github.com/mhd-hi/second-brain/actions/workflows/ci.yml)
   
-SecondBrain ETS uses AI to parse ETS course plans and break them down into manageable tasks, helping students stay organized and on track with their studies.
+SecondBrain uses AI to parse ETS course plans and break them down into manageable tasks, helping students stay organized and on track with their studies.
 
 <img width="900" height="900" alt="image" src="https://github.com/user-attachments/assets/76c97796-fc4f-43cf-a9df-e49b66c0a0aa" />
 

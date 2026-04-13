@@ -1,0 +1,88 @@
+import type { Task } from '@/types/task';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTaskStore } from '@/lib/stores/task-store';
+import { CommonErrorMessages } from '@/lib/utils/errors/error';
+import { StatusTask } from '@/types/status-task';
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
+
+const createTask = (overrides: Partial<Task> = {}): Task => ({
+  id: 'task-1',
+  courseId: 'course-1',
+  title: 'Review lecture notes',
+  notes: 'Chapter 4',
+  type: 'theorie',
+  status: StatusTask.TODO,
+  estimatedEffort: 2,
+  actualEffort: 0,
+  subtasks: [],
+  createdAt: new Date('2026-04-07T09:00:00.000Z'),
+  updatedAt: new Date('2026-04-07T09:00:00.000Z'),
+  dueDate: new Date('2026-04-10T09:00:00.000Z'),
+  course: {
+    id: 'course-1',
+    code: 'LOG530',
+    name: 'Reengineering',
+    daypart: 'PM',
+    color: 'blue',
+  },
+  ...overrides,
+});
+
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void;
+
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+
+  return { promise, resolve };
+};
+
+describe('useTaskStore.updateTaskStatus', () => {
+  beforeEach(() => {
+    useTaskStore.getState().reset();
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => { });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    useTaskStore.getState().reset();
+  });
+
+  it('updates the store immediately without flipping loading state', async () => {
+    useTaskStore.getState().setTasks([createTask()]);
+
+    const deferred = createDeferred<Response>();
+    vi.stubGlobal('fetch', vi.fn(() => deferred.promise));
+
+    const updatePromise = useTaskStore.getState().updateTaskStatus('task-1', StatusTask.IN_PROGRESS);
+
+    expect(useTaskStore.getState().getTask('task-1')?.status).toBe(StatusTask.IN_PROGRESS);
+    expect(useTaskStore.getState().isLoading).toBe(false);
+
+    deferred.resolve({ ok: true } as Response);
+
+    await expect(updatePromise).resolves.toBe(true);
+  });
+
+  it('rolls back the optimistic status when the request fails', async () => {
+    useTaskStore.getState().setTasks([createTask()]);
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response));
+
+    await expect(
+      useTaskStore.getState().updateTaskStatus('task-1', StatusTask.COMPLETED),
+    ).resolves.toBe(false);
+
+    expect(useTaskStore.getState().getTask('task-1')?.status).toBe(StatusTask.TODO);
+    expect(useTaskStore.getState().error).toBe(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
+  });
+});

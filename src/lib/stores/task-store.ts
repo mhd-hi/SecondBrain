@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
-import { ErrorHandlers } from '@/lib/utils/errors/error';
+import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 
 type TaskStore = {
   tasks: Map<string, Task>;
@@ -155,14 +155,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     try {
       const response = await fetch(API_ENDPOINTS.TASKS.DETAIL(taskId));
       if (!response.ok) {
-        throw new Error('Failed to fetch task');
+        throw new Error(CommonErrorMessages.TASK_FETCH_FAILED);
       }
       const task = await response.json() as Task;
       get().addTask(task);
       set({ isLoading: false });
       return task;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch task';
+      const errorMessage = error instanceof Error ? error.message : CommonErrorMessages.TASK_FETCH_FAILED;
       set({ isLoading: false, error: errorMessage });
       ErrorHandlers.api(error, errorMessage);
       return null;
@@ -174,14 +174,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     try {
       const response = await fetch(API_ENDPOINTS.TASKS.LIST_BY_COURSE(courseId));
       if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
+        throw new Error(CommonErrorMessages.TASKS_FETCH_FAILED);
       }
       const tasks = await response.json() as Task[];
       get().setTasks(tasks);
       set({ isLoading: false });
       return tasks;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tasks';
+      const errorMessage = error instanceof Error ? error.message : CommonErrorMessages.TASKS_FETCH_FAILED;
       set({ isLoading: false, error: errorMessage });
       ErrorHandlers.api(error, errorMessage);
       return [];
@@ -243,7 +243,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   updateTaskStatus: async (taskId, status) => {
-    set({ isLoading: true, error: null });
+    const originalTask = get().getTask(taskId);
+    set({ error: null });
+
+    if (originalTask) {
+      get().updateTask(taskId, { status });
+    }
+
     try {
       const response = await fetch(API_ENDPOINTS.TASKS.STATUS(taskId), {
         method: 'PATCH',
@@ -252,17 +258,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update task status');
+        throw new Error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
       }
 
-      // Optimistically update the store
-      get().updateTask(taskId, { status });
-
-      set({ isLoading: false });
       return true;
     } catch (error) {
-      const errorMessage = 'Failed to update task status';
-      set({ isLoading: false, error: errorMessage });
+      const errorMessage = CommonErrorMessages.TASK_STATUS_UPDATE_FAILED;
+
+      if (originalTask) {
+        const currentTask = get().getTask(taskId);
+        if (currentTask?.status === status) {
+          get().updateTask(taskId, { status: originalTask.status });
+        }
+      }
+
+      set({ error: errorMessage });
       ErrorHandlers.api(error, errorMessage);
       return false;
     }
@@ -280,7 +290,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update task due date');
+        throw new Error(CommonErrorMessages.TASK_DUE_DATE_UPDATE_FAILED);
       }
 
       // Optimistically update the store
@@ -289,7 +299,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       set({ isLoading: false });
       return true;
     } catch (error) {
-      const errorMessage = 'Failed to update task due date';
+      const errorMessage = CommonErrorMessages.TASK_DUE_DATE_UPDATE_FAILED;
       set({ isLoading: false, error: errorMessage });
       ErrorHandlers.api(error, errorMessage);
       return false;

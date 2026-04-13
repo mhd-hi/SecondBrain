@@ -36,13 +36,13 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.cjs",
-    "**/*.js",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.js",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
     ".next/types/**/*.ts",
-    "types/**/*.d.ts",
-    "src/components/WeeklyRoadmap/WeeklyRoadmap.tsx.old"
+    "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

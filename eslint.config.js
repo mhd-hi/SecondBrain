@@ -36,19 +36,11 @@ export default antfu(
     ],
   },
   jsxA11y.flatConfigs.recommended,
+  nextPlugin.flatConfig.coreWebVitals,
   {
-    plugins: {
-      '@next/next': nextPlugin,
-    },
     rules: {
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs['core-web-vitals'].rules,
       '@typescript-eslint/no-explicit-any': 'warn',
       '@stylistic/indent': ['warn', 2],
-    },
-    settings: {
-      // Configure ESLint to fail on 2+ warnings during build
-      'import/max-dependencies': [1, { max: 2 }],
     },
   },
   {

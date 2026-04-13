@@ -6,7 +6,7 @@ export const ROUTES = {
   CALENDAR: '/calendar',
   ROADMAP: '/roadmap',
   PREFERENCES: '/preferences',
-  SIGNIN: '/api/auth/signin',
+  SIGNIN: '/auth/signin',
 } as const;
 
 // Route builder helpers

@@ -7,7 +7,7 @@
   ],
   "buildCommand": "bun run db:migrate && bun run build",
   "devCommand": "bun run dev",
-  "installCommand": "bun install --production",
+  "installCommand": "bun install --frozen-lockfile",
   "env": {
     "NODE_OPTIONS": "--no-warnings=ExperimentalWarning"
   }

@@ -27,6 +27,12 @@ export const CommonErrorMessages = {
   // Course-specific
   COURSE_DELETE_FAILED: 'Failed to delete course. Please try again.',
 
+  // Task-specific
+  TASK_FETCH_FAILED: 'Failed to fetch task',
+  TASK_STATUS_UPDATE_FAILED: 'Failed to update task status',
+  TASK_DUE_DATE_UPDATE_FAILED: 'Failed to update task due date',
+  TASKS_FETCH_FAILED: 'Failed to fetch tasks',
+
   // General
   UNKNOWN_ERROR: 'Something went wrong. Please try again.',
 

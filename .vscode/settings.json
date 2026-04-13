@@ -21,6 +21,9 @@
     "postcss",
     "github-actions-workflow"
   ],
+  "files.associations": {
+    "bun.lock": "plaintext"
+  },
   "search.exclude": {
     "yarn.lock": true
   },

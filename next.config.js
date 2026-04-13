@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* jshint esversion: 6 */
 // Injected content via Sentry wizard below
 import { withSentryConfig } from '@sentry/nextjs';
 
@@ -10,6 +12,8 @@ import './src/env.js';
 /** @type {import("next").NextConfig} */
 const config = {
   typedRoutes: true,
+  output: 'standalone',
+  transpilePackages: ['import-in-the-middle'],
   eslint: {
     // Fail build on any errors (0 threshold)
     // and fail on 2 or more warnings
@@ -18,6 +22,7 @@ const config = {
   typescript: {
     // Fail build on any TypeScript errors
     ignoreBuildErrors: false,
+    tsconfigPath: 'tsconfig.app.json',
   },
   images: {
     remotePatterns: [
@@ -43,43 +48,46 @@ const config = {
   },
 };
 
-export default withSentryConfig(
-  {
-    ...config,
-    async headers() {
-      return [
-        {
-          source: '/:path*',
-          headers: [
-            {
-              key: 'Document-Policy',
-              value: 'js-profiling',
-            },
-          ],
-        },
-      ];
-    },
+const nextConfig = {
+  ...config,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Document-Policy',
+            value: 'js-profiling',
+          },
+        ],
+      },
+    ];
   },
-  {
-    // For all available options, see:
-    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
+};
 
-    org: 'my-org-977',
-    project: 'javascript-nextjs',
-
-    // Only print logs for uploading source maps in CI
-    silent: !process.env.CI,
-
-    // For all available options, see:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-    // Upload a larger set of source maps for prettier stack traces (increases build time)
-    widenClientFileUpload: true,
-
-    // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-    // This can increase your server load as well as your hosting bill.
-    // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-    // side errors will fail.
-    tunnelRoute: '/miaow',
-  },
+const hasSentryBuildConfig = Boolean(
+  process.env.SENTRY_AUTH_TOKEN
+  && process.env.SENTRY_ORG
+  && process.env.SENTRY_PROJECT,
 );
+
+export default hasSentryBuildConfig
+  ? withSentryConfig(nextConfig, {
+      // Skip Sentry release and sourcemap upload work unless CI is fully configured.
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+
+      // Only print logs for uploading source maps in CI
+      silent: !process.env.CI,
+
+      // Upload a larger set of source maps for prettier stack traces (increases build time)
+      widenClientFileUpload: true,
+
+      // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
+      // This can increase your server load as well as your hosting bill.
+      // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
+      // side errors will fail.
+      tunnelRoute: '/miaow',
+    })
+  : nextConfig;

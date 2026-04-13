@@ -1,38 +1,20 @@
-'use client';
-
+import { redirect } from 'next/navigation';
 import * as React from 'react';
-import Navbar from '@/components/shared/Navigation/Navbar/Navbar';
-import { AppSidebar } from '@/components/shared/Navigation/Sidebar/sidebar';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { useCourseOperations } from '@/hooks/course/use-course-store';
+import { ROUTES } from '@/lib/page-routes';
+import { auth } from '@/server/auth';
+import DashboardLayoutContent from './layout-content';
 
-function DashboardLayoutContent({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { coursesListItems, isLoading, refreshCourses } = useCourseOperations();
+  const session = await auth();
 
-  return (
-    <SidebarProvider>
-      <div className="flex w-full">
-        <AppSidebar courses={coursesListItems} isLoading={isLoading} onCourseAdded={refreshCourses} />
-        <SidebarInset className="flex flex-col flex-1">
-          <Navbar />
-          <main className="flex-1 container max-w-full">
-            {children}
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
-  );
-}
+  if (!session?.user?.id) {
+    redirect(ROUTES.SIGNIN);
+  }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
   return (
     <DashboardLayoutContent>
       {children}

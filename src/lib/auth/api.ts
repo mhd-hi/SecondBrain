@@ -1,6 +1,5 @@
 import type { NextRequest } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
-import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { auth } from '@/server/auth';
 
@@ -10,21 +9,9 @@ export type AuthenticatedUser = {
   name?: string;
 };
 
-//  Get authenticated user from middleware headers (fast path) or session (fallback)
+// Get the authenticated user from the server-side session.
 async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   try {
-    // Try to get user from middleware headers first (faster)
-    const headersList = await headers();
-    const userId = headersList.get('x-user-id');
-    if (userId) {
-      return {
-        id: userId,
-        email: headersList.get('x-user-email') ?? undefined,
-        name: headersList.get('x-user-name') ?? undefined,
-      };
-    }
-
-    // Fallback to session auth (for routes not covered by middleware)
     const session = await auth();
     if (session?.user?.id) {
       return {

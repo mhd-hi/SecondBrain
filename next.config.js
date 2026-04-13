@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* jshint esversion: 6 */
 // Injected content via Sentry wizard below
 import { withSentryConfig } from '@sentry/nextjs';
 
@@ -10,6 +12,8 @@ import './src/env.js';
 /** @type {import("next").NextConfig} */
 const config = {
   typedRoutes: true,
+  output: 'standalone',
+  transpilePackages: ['import-in-the-middle'],
   eslint: {
     // Fail build on any errors (0 threshold)
     // and fail on 2 or more warnings
@@ -18,6 +22,7 @@ const config = {
   typescript: {
     // Fail build on any TypeScript errors
     ignoreBuildErrors: false,
+    tsconfigPath: 'tsconfig.app.json',
   },
   images: {
     remotePatterns: [

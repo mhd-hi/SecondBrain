@@ -8,11 +8,12 @@ import {
 } from '../../src/lib/utils/date-util';
 import { STANDARD_WEEKS_PER_TERM } from '../../src/lib/utils/term-util';
 
+const createLocalDate = (year: number, month: number, day: number) => new Date(year, month - 1, day, 12);
+
 describe('date-util', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // Freeze system time to a known date (2026-02-14)
-    vi.setSystemTime(new Date('2026-02-14T12:00:00Z'));
+    vi.setSystemTime(createLocalDate(2026, 2, 14));
   });
 
   afterEach(() => {
@@ -24,14 +25,14 @@ describe('date-util', () => {
   it('formatWeekRange handles empty and returns a short range', () => {
     expect(formatWeekRange([])).toBe('');
 
-    const dates = [new Date('2026-02-14'), new Date('2026-02-16')];
+    const dates = [createLocalDate(2026, 2, 14), createLocalDate(2026, 2, 16)];
     const r = formatWeekRange(dates);
 
     expect(r).toContain(' - ');
   });
 
   it('formatBadgeDate returns weekday, month and day (en-US)', () => {
-    const res = formatBadgeDate(new Date('2026-02-14'));
+    const res = formatBadgeDate(createLocalDate(2026, 2, 14));
 
     expect(res).toContain('Sat');
     expect(res).toContain('Feb');
@@ -39,7 +40,7 @@ describe('date-util', () => {
   });
 
   it('formatWeekRange formats a start-end range', () => {
-    const dates = [new Date('2026-02-14'), new Date('2026-02-20')];
+    const dates = [createLocalDate(2026, 2, 14), createLocalDate(2026, 2, 20)];
     const res = formatWeekRange(dates);
 
     expect(res).toMatch(/\d{1,2}/);
@@ -47,16 +48,16 @@ describe('date-util', () => {
   });
 
   it('formatDueDate handles today, tomorrow, future, overdue and invalid', () => {
-    expect(formatDueDate(new Date('2026-02-14'))).toBe('Due today');
-    expect(formatDueDate(new Date('2026-02-15'))).toBe('Due tomorrow');
-    expect(formatDueDate(new Date('2026-02-17'))).toBe('Due in 3 days');
-    expect(formatDueDate(new Date('2026-02-13'))).toBe('Overdue by 1 day');
-    expect(formatDueDate(new Date('2026-02-11'))).toBe('Overdue by 3 days');
+    expect(formatDueDate(createLocalDate(2026, 2, 14))).toBe('Due today');
+    expect(formatDueDate(createLocalDate(2026, 2, 15))).toBe('Due tomorrow');
+    expect(formatDueDate(createLocalDate(2026, 2, 17))).toBe('Due in 3 days');
+    expect(formatDueDate(createLocalDate(2026, 2, 13))).toBe('Overdue by 1 day');
+    expect(formatDueDate(createLocalDate(2026, 2, 11))).toBe('Overdue by 3 days');
     expect(formatDueDate('invalid-date')).toBe('Invalid date');
   });
 
   it('getWeekNumberFromDueDate returns a valid week number within range', () => {
-    const week = getWeekNumberFromDueDate(new Date('2026-02-14'));
+    const week = getWeekNumberFromDueDate(createLocalDate(2026, 2, 14));
 
     expect(typeof week).toBe('number');
     expect(week).toBeGreaterThanOrEqual(1);
@@ -83,8 +84,12 @@ describe('date-util', () => {
       expect(e).toBeInstanceOf(Date);
       expect((ev as any).startDateObj).toBe(s);
       expect((ev as any).endDateObj).toBe(e);
-      expect(s.getTime()).toBe(new Date('2026-02-14').getTime());
-      expect(e.getTime()).toBe(new Date('2026-02-15').getTime());
+      expect(s.getFullYear()).toBe(2026);
+      expect(s.getMonth()).toBe(1);
+      expect(s.getDate()).toBe(14);
+      expect(e.getFullYear()).toBe(2026);
+      expect(e.getMonth()).toBe(1);
+      expect(e.getDate()).toBe(15);
     });
 
     it('returns existing startDateObj/endDateObj when present', async () => {
@@ -108,9 +113,8 @@ describe('date-util', () => {
     });
 
     it('falls back to `new Date` when parseISO throws', async () => {
-      // Mock date-fns.parseISO in an ESM-safe way before importing the module under test
-      // Provide a minimal ESM-safe mock that only overrides `parseISO`
-      vi.mock('date-fns', () => ({
+      vi.resetModules();
+      vi.doMock('date-fns', () => ({
         parseISO: () => {
           throw new Error('boom');
         },
@@ -132,7 +136,8 @@ describe('date-util', () => {
       expect(d).toBeInstanceOf(Date);
       expect(ev.startDateObj).toBe(d);
 
-      // mocked module cleanup not required in this environment
+      vi.doUnmock('date-fns');
+      vi.resetModules();
     });
   });
 });

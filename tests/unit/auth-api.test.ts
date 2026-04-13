@@ -1,76 +1,99 @@
 /* eslint-disable ts/no-explicit-any */
-import type { Mock } from 'vitest';
-import { headers } from 'next/headers';
-
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthorizationError, withAuth, withAuthSimple } from '@/lib/auth/api';
 import { auth } from '@/server/auth';
-import { withAuthSimple } from '../../src/lib/auth/api';
 
-// Mock next/headers and the server auth helper before importing the module under test
-vi.mock('next/headers', () => ({ headers: vi.fn() }));
 vi.mock('@/server/auth', () => ({ auth: vi.fn() }));
+vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
+
+const request = new Request('http://localhost/api/test') as any;
 
 beforeEach(() => {
   vi.resetAllMocks();
 });
 
-describe('withAuthSimple wrapper', () => {
-  it('returns 401 when user is missing', async () => {
-    const mockedHeaders = headers as unknown as Mock;
-    const mockedAuth = auth as unknown as Mock;
-    mockedHeaders.mockImplementation(() => ({ get: () => null }));
-    mockedAuth.mockResolvedValue(null);
+describe('auth API wrappers', () => {
+  it('returns 401 and does not call the handler when the session is missing', async () => {
+    vi.mocked(auth).mockResolvedValue(null as any);
+    const handlerSpy = vi.fn(async () => NextResponse.json({ ok: true }));
+    const handler = withAuthSimple(handlerSpy);
 
-    const handler = withAuthSimple(async () => NextResponse.json({ ok: true }));
-    const res = await handler(new Request('http://localhost/api/test') as any, { params: Promise.resolve({}) } as any);
+    const res = await handler(request, { params: Promise.resolve({}) } as any);
+    const body = await (res as Response).json();
 
     expect(res.status).toBe(401);
-
-    const body = await (res as Response).json();
-
-    expect(body.code).toBe('UNAUTHENTICATED');
+    expect(body).toMatchObject({ code: 'UNAUTHENTICATED', error: 'Authentication required' });
+    expect(handlerSpy).not.toHaveBeenCalled();
   });
 
-  it('injects user from middleware headers when present', async () => {
-    const mockedHeaders = headers as unknown as Mock;
-    const mockedAuth = auth as unknown as Mock;
-    mockedHeaders.mockImplementation(() => ({
-      get: (name: string) => {
-        if (name === 'x-user-id') {
-          return 'user-123';
-        }
-        if (name === 'x-user-email') {
-          return 'user@example.com';
-        }
-        return null;
+  it('injects the authenticated user into withAuthSimple handlers', async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: {
+        id: 'user-123',
+        email: 'user@example.com',
+        name: 'Test User',
       },
-    }));
-    mockedAuth.mockResolvedValue(null);
+    } as any);
 
-    const handler = withAuthSimple(async (_req, user) => NextResponse.json({ userId: user.id }));
-    const res = await handler(new Request('http://localhost/api/test') as any, { params: Promise.resolve({}) } as any);
-
-    expect(res.status).toBe(200);
-
+    const handler = withAuthSimple(async (_req, user) => NextResponse.json(user));
+    const res = await handler(request, { params: Promise.resolve({}) } as any);
     const body = await (res as Response).json();
 
-    expect(body.userId).toBe('user-123');
+    expect(res.status).toBe(200);
+    expect(body).toEqual({
+      id: 'user-123',
+      email: 'user@example.com',
+      name: 'Test User',
+    });
   });
 
-  it('injects user from session fallback when headers absent', async () => {
-    const mockedHeaders = headers as unknown as Mock;
-    const mockedAuth = auth as unknown as Mock;
-    mockedHeaders.mockImplementation(() => ({ get: () => null }));
-    mockedAuth.mockResolvedValue({ user: { id: 'session-user', email: 's@e.com' } });
+  it('passes route params through withAuth handlers', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as any);
 
-    const handler = withAuthSimple(async (_req, user) => NextResponse.json({ userId: user.id }));
-    const res = await handler(new Request('http://localhost/api/test') as any, { params: Promise.resolve({}) } as any);
+    const handler = withAuth<{ taskId: string }>(async (_req, { params, user }) => {
+      const resolvedParams = await params;
+      return NextResponse.json({ taskId: resolvedParams.taskId, userId: user.id });
+    });
 
-    expect(res.status).toBe(200);
-
+    const res = await handler(request, { params: Promise.resolve({ taskId: 'task-456' }) } as any);
     const body = await (res as Response).json();
 
-    expect(body.userId).toBe('session-user');
+    expect(res.status).toBe(200);
+    expect(body).toEqual({
+      taskId: 'task-456',
+      userId: 'user-123',
+    });
+  });
+
+  it('maps AuthorizationError to a 403 response', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as any);
+
+    const handler = withAuth(async () => {
+      throw new AuthorizationError('Access denied to resource');
+    });
+
+    const res = await handler(request, { params: Promise.resolve({}) } as any);
+    const body = await (res as Response).json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({
+      code: 'UNAUTHORIZED',
+      error: 'Access denied to resource',
+    });
+    expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 401 when session lookup throws and records the failure', async () => {
+    vi.mocked(auth).mockRejectedValue(new Error('connect ETIMEDOUT'));
+    const handler = withAuthSimple(async () => NextResponse.json({ ok: true }));
+
+    const res = await handler(request, { params: Promise.resolve({}) } as any);
+    const body = await (res as Response).json();
+
+    expect(res.status).toBe(401);
+    expect(body).toMatchObject({ code: 'UNAUTHENTICATED', error: 'Authentication required' });
+    expect(vi.mocked(Sentry.captureException)).toHaveBeenCalled();
   });
 });

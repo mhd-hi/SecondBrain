@@ -53,9 +53,4 @@ export const API_ENDPOINTS = {
   PARSE_COURSE: {
     BASE: '/api/parse-course',
   },
-
-  // Cron jobs
-  CRON: {
-    CLEANUP_COURSES: '/api/cron/cleanup-courses',
-  },
 } as const;

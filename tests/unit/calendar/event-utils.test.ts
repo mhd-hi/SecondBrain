@@ -1,7 +1,7 @@
 import type { Task } from '@/types/task';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StatusTask } from '@/types/status-task';
-import { taskToEvent } from './event-utils';
+import { taskToEvent } from '../../../src/calendar/event-utils';
 
 vi.mock('@/lib/utils', () => ({
   getStatusBgClass: vi.fn(() => 'mock-secondary'),

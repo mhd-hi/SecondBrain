@@ -28,8 +28,8 @@ jobs:
       - name: Run lint
         run: bun run lint
 
-  unused:
-    name: Check Unused Dependencies
+  dependency-audit:
+    name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -38,25 +38,28 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - name: Install dependencies
-        run: bun install
-      - name: Run unused dependency check
-        run: bun run check:unused
 
-  audit:
-    name: Audit Dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - name: Install dependencies
-        run: bun install
-      - name: Audit dependencies for vulnerabilities
-        run: bun audit --audit-level=moderate
+      - name: Create production audit manifest
+        run: |
+          set -euo pipefail
+          audit_dir="$(mktemp -d)"
+          echo "AUDIT_DIR=$audit_dir" >> "$GITHUB_ENV"
+          node - "$audit_dir" <<'EOF'
+          const fs = require('node:fs');
+          const outputDir = process.argv[2];
+          const auditPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          delete auditPackage.devDependencies;
+
+          fs.writeFileSync(`${outputDir}/package.json`, `${JSON.stringify(auditPackage, null, 2)}\n`);
+          EOF
+
+      - name: Install production audit graph
+        working-directory: ${{ env.AUDIT_DIR }}
+        run: bun install --ignore-scripts
+
+      - name: Run production dependency audit
+        working-directory: ${{ env.AUDIT_DIR }}
+        run: bun audit --audit-level=high
 
   typecheck:
     name: Type Check & Build

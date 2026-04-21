@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/cleanup-courses",
       "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/cron/keep-db-active",
+      "schedule": "0 0 */5 * *"
     }
   ],
   "buildCommand": "bun run db:migrate && bun run build",

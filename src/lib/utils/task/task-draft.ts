@@ -55,7 +55,7 @@ export function buildDefaultTaskDraft({
 }
 
 export function buildTaskFromSubtask(
-  subtask: Pick<Subtask, 'title' | 'notes' | 'estimatedEffort'>,
+  subtask: Pick<Subtask, 'title' | 'notes'>,
   {
     dueDate,
     type = TASK_TYPES.THEORIE,
@@ -67,7 +67,7 @@ export function buildTaskFromSubtask(
   } = {},
 ): TaskDraft {
   return {
-    ...buildDefaultTaskDraft({ dueDate, type, status, estimatedEffort: subtask.estimatedEffort ?? 0 }),
+    ...buildDefaultTaskDraft({ dueDate, type, status, estimatedEffort: DEFAULT_TASK_ESTIMATED_EFFORT }),
     title: subtask.title,
     notes: subtask.notes ?? '',
   };

@@ -84,9 +84,7 @@ export const GET = withAuthSimple(
           id: subtasks.id,
           taskId: subtasks.taskId,
           title: subtasks.title,
-          status: subtasks.status,
           notes: subtasks.notes,
-          estimatedEffort: subtasks.estimatedEffort,
         })
         .from(subtasks)
         .where(inArray(subtasks.taskId, taskIds));
@@ -95,9 +93,7 @@ export const GET = withAuthSimple(
         const mapped: Subtask = {
           id: s.id,
           title: s.title,
-          status: parseStatusTask(String(s.status)),
           notes: s.notes ?? undefined,
-          estimatedEffort: s.estimatedEffort,
         };
         const list = subsByTask.get(s.taskId) ?? [];
         list.push(mapped);

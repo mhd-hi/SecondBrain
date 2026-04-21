@@ -100,7 +100,7 @@ export function buildCoursePlanParsePrompt(
 5. **Grouping & Structuring**
    - Group related fragments by week and type into one object with subtasks.
    - Generalize a main topic as 'title', list subtasks under 'subtasks'.
-   - Distribute estimated effort among subtasks.
+   - Keep "estimatedEffort" only on the parent task object, not on subtasks.
    - DO NOT let exam rows interfere with adjacent rows.
 
 6. **JSON Format (STRICT)**
@@ -115,7 +115,6 @@ export function buildCoursePlanParsePrompt(
      "subtasks": [
        {
          "title": "<subtask title>",
-         "estimatedEffort": <hours>,
          "notes": "<French tip>"
        }
      ]

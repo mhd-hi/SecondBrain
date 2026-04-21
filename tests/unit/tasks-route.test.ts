@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
+  withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 
@@ -9,9 +11,15 @@ const getUserCourseTasksMock = vi.fn();
 
 vi.mock('@/lib/auth/db', () => ({
   assertUserOwnsCourse: (...args: unknown[]) => assertUserOwnsCourseMock(...args),
+  createUserCourse: vi.fn(),
   createUserTask: vi.fn(),
+  deleteUserCourse: vi.fn(),
   deleteUserTask: vi.fn(),
+  getUserCourse: vi.fn(),
+  getUserCourseSummaries: vi.fn(),
   getUserCourseTasks: (...args: unknown[]) => getUserCourseTasksMock(...args),
+  getUserCourses: vi.fn(),
+  getUserTask: vi.fn(),
   updateUserTask: vi.fn(),
 }));
 

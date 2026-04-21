@@ -8,6 +8,8 @@ import * as sanitizeUtils from '@/lib/utils/sanitize';
 import * as pipelines from '@/pipelines';
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
+  withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 
@@ -16,6 +18,13 @@ vi.mock('@/lib/utils/course/course', () => ({
 }));
 
 vi.mock('@/lib/utils/course/queries', () => ({
+  findCourseByIdAndUser: vi.fn(),
+  findCourseOwnershipByIdAndUser: vi.fn(),
+  findTasksWithSubtasks: vi.fn(),
+  findUserCourseMetadata: vi.fn(),
+  findUserCourseSummaryCandidateTasks: vi.fn(),
+  findUserCourseSummaryMetrics: vi.fn(),
+  findUserCoursesWithTasks: vi.fn(),
   courseExists: vi.fn(),
 }));
 

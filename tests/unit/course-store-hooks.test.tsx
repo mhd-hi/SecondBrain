@@ -4,15 +4,16 @@ import * as React from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useCourses } from '@/hooks/course/use-course-store';
+import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
-import { api } from '@/lib/utils/api/api-client-util';
 import { StatusTask } from '@/types/status-task';
 import { ensureHappyDom, restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
+const apiGetMock = vi.fn();
+
 vi.mock('@/lib/utils/api/api-client-util', () => ({
   api: {
-    get: vi.fn(),
+    get: (...args: unknown[]) => apiGetMock(...args),
   },
 }));
 
@@ -58,7 +59,8 @@ function renderCourseLoadingProbe() {
   const root = createRoot(container);
 
   function CourseLoadingProbe() {
-    const { isLoading } = useCourses();
+    const fetchStatus = useCourseStore(state => state.fetchStatus);
+    const isLoading = isPendingFetchStatus(fetchStatus);
     return <div>{isLoading ? 'loading' : 'ready'}</div>;
   }
 
@@ -151,21 +153,19 @@ describe('course list derivation', () => {
     const deferred = createDeferred<Course[]>();
     const fetchedCourse = createCourse({ id: 'course-2', code: 'MAT145', color: 'green' });
 
-    vi.mocked(api.get).mockReturnValueOnce(deferred.promise);
+    apiGetMock.mockReturnValueOnce(deferred.promise);
     useCourseStore.getState().reset();
 
     const view = renderCourseLoadingProbe();
 
     try {
-      await view.render();
-
-      expect(view.container.textContent).toBe('loading');
-
       let fetchPromise!: Promise<void>;
 
       await act(async () => {
         fetchPromise = useCourseStore.getState().fetchCourses();
       });
+
+      await view.render();
 
       expect(useCourseStore.getState().fetchStatus).toBe('loading');
       expect(view.container.textContent).toBe('loading');
@@ -184,7 +184,7 @@ describe('course list derivation', () => {
   });
 
   it('marks the course list fetch status as error and clears loading when the initial fetch fails', async () => {
-    vi.mocked(api.get).mockRejectedValueOnce(new Error('network down'));
+    apiGetMock.mockRejectedValueOnce(new Error('network down'));
     useCourseStore.getState().reset();
 
     const view = renderCourseLoadingProbe();

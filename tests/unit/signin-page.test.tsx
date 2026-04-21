@@ -10,6 +10,26 @@ const signInCardMock = vi.fn((_props?: unknown) => null);
 let mockStatus: 'authenticated' | 'loading' | 'unauthenticated' = 'unauthenticated';
 let mockCallbackUrl: string | null = null;
 
+vi.mock('next-auth/react', () => ({
+  useSession: vi.fn(() => ({ status: mockStatus })),
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(() => ({ push: routerPushMock })),
+  useSearchParams: vi.fn(() => ({
+    get: (key: string) => key === 'callbackUrl' ? mockCallbackUrl : null,
+  })),
+}));
+vi.mock('@/components/shared/SignInCard', () => ({
+  SignInCard: (props: unknown) => signInCardMock(props),
+}));
+vi.mock('@/components/shared/CapybaraLoader', () => ({
+  CapybaraLoader: () => null,
+}));
+vi.mock('@/components/ui/card', () => ({
+  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 function renderComponent(ui: React.ReactElement) {
   const container = document.createElement('div');
   const root = createRoot(container);
@@ -34,31 +54,10 @@ describe('sign-in page callback URL handling', () => {
   beforeEach(() => {
     ensureHappyDom();
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-    vi.resetModules();
     vi.clearAllMocks();
     mockStatus = 'unauthenticated';
     mockCallbackUrl = null;
     window.location.href = 'https://app.example.com/auth/signin';
-
-    vi.doMock('next-auth/react', () => ({
-      useSession: vi.fn(() => ({ status: mockStatus })),
-    }));
-    vi.doMock('next/navigation', () => ({
-      useRouter: vi.fn(() => ({ push: routerPushMock })),
-      useSearchParams: vi.fn(() => ({
-        get: (key: string) => key === 'callbackUrl' ? mockCallbackUrl : null,
-      })),
-    }));
-    vi.doMock('@/components/shared/SignInCard', () => ({
-      SignInCard: (props: unknown) => signInCardMock(props),
-    }));
-    vi.doMock('@/components/shared/CapybaraLoader', () => ({
-      CapybaraLoader: () => null,
-    }));
-    vi.doMock('@/components/ui/card', () => ({
-      Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    }));
   });
 
   afterEach(() => {

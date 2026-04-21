@@ -11,7 +11,6 @@ import {
 } from '@/lib/utils/course/queries';
 import { db } from '@/server/db';
 import { courses, subtasks, tasks } from '@/server/db/schema';
-import { StatusTask } from '@/types/status-task';
 import { TASK_TYPES } from '@/types/task';
 
 /**
@@ -163,10 +162,6 @@ export async function updateUserTask(
       const subToUpsert: Partial<typeof subtasks.$inferInsert> = {
         title: s.title ?? '',
         notes: s.notes ?? null,
-        // Narrow status/type into the subtasks insert types
-        status: (s.status as unknown as typeof subtasks.$inferInsert['status']) ?? StatusTask.TODO,
-        estimatedEffort: typeof s.estimatedEffort === 'number' ? s.estimatedEffort : 0,
-        type: (s.type as unknown as typeof subtasks.$inferInsert['type']) ?? 'theorie',
       };
 
       if (!s.id) {
@@ -246,12 +241,9 @@ export async function createUserTask(
   if (Array.isArray(providedSubs) && providedSubs.length > 0) {
     for (const s of providedSubs) {
       const subToInsert: typeof subtasks.$inferInsert = {
+        id: s.id ?? crypto.randomUUID(),
         title: s.title ?? '',
         notes: s.notes ?? null,
-        status: (s.status as unknown as typeof subtasks.$inferInsert['status']) ?? StatusTask.TODO,
-        estimatedEffort: typeof s.estimatedEffort === 'number' ? s.estimatedEffort : 0,
-        type: (s.type as unknown as typeof subtasks.$inferInsert['type']) ?? 'theorie',
-        id: s.id ?? crypto.randomUUID(),
         taskId: createdTask.id,
         createdAt: new Date(),
         updatedAt: new Date(),

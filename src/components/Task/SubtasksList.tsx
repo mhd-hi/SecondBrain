@@ -1,12 +1,10 @@
 'use client';
 import type { Subtask } from '@/types/subtask';
-import { CheckCircle2, ChevronDown, ChevronRight, Circle } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import * as React from 'react';
 import { ActionsDropdown } from '@/components/shared/atoms/actions-dropdown';
-import { Badge } from '@/components/ui/badge';
 import { useSubtaskActions } from '@/hooks/task/use-subtask-actions';
 import { cn } from '@/lib/utils';
-import { StatusTask } from '@/types/status-task';
 import { EditableField } from '../shared/EditableField';
 
 type SubtasksListProps = {
@@ -17,7 +15,6 @@ type SubtasksListProps = {
   taskId?: string;
   courseId?: string | null;
   courseIdDueDate?: Date | string | undefined;
-  readonly?: boolean;
   collapsible?: boolean;
   defaultExpanded?: boolean;
   isExpanded?: boolean;
@@ -32,7 +29,6 @@ const SubtasksList = ({
   taskId,
   courseId,
   courseIdDueDate,
-  readonly = false,
   collapsible = false,
   defaultExpanded = true,
   isExpanded: controlledIsExpanded,
@@ -117,67 +113,46 @@ const SubtasksList = ({
               className={cn(
                 'relative overflow-visible flex items-start justify-between gap-4 p-3 rounded-lg border border-muted',
                 'transition-colors',
-                subtask.status === StatusTask.COMPLETED
-                  ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
-                  : 'bg-muted/30',
+                'bg-muted/30',
               )}
             >
               <div className="grow">
                 <div className="flex items-center gap-2">
-                  {subtask.status === StatusTask.COMPLETED
-                    ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-                    : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
                   <EditableField
                     value={subtask.title}
                     onSave={newTitle => saveSubtaskTitle(subtask.id, newTitle)}
                     inputType="input"
-                    className={cn('text-sm font-medium', subtask.status === StatusTask.COMPLETED && 'text-muted-foreground')}
+                    className="text-sm font-medium"
                     placeholder="Subtask title"
                   />
-                  {subtask.estimatedEffort && (
-                    <Badge variant="outline" className="text-xs">
-                      {`${subtask.estimatedEffort}h`}
-                    </Badge>
-                  )}
                 </div>
                 {typeof subtask.notes === 'string' && (
                   <EditableField
                     value={subtask.notes}
                     onSave={newNotes => saveSubtaskNotes(subtask.id, newNotes)}
                     inputType="textarea"
-                    className="text-xs text-muted-foreground ml-6"
-                    placeholder="Subtask notes"
+                    className="mt-1 text-xs text-muted-foreground"
+                    placeholder="Subtask description"
                   />
                 )}
               </div>
-              {
-                readonly
-                  ? (
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      {subtask.status}
-                    </Badge>
-                  )
-                  : (
-                    // Hover-only actions dropdown
-                    <ActionsDropdown
-                      actions={[
-                        {
-                          label: 'Convert to task',
-                          onClick: () => convertSubtaskToTask(subtask),
-                        },
-                        {
-                          label: 'Delete subtask',
-                          destructive: true,
-                          onClick: () => deleteSubtaskAction(subtask.id),
-                        },
-                      ]}
-                      triggerClassName={cn(
-                        'absolute -top-[10px] -right-[10px] z-50 transition-opacity',
-                        hoveredSubtaskId === subtask.id ? 'opacity-100' : 'opacity-0 pointer-events-none',
-                      )}
-                    />
-                  )
-              }
+              <ActionsDropdown
+                actions={[
+                  {
+                    label: 'Convert to task',
+                    onClick: () => convertSubtaskToTask(subtask),
+                  },
+                  {
+                    label: 'Delete subtask',
+                    destructive: true,
+                    onClick: () => deleteSubtaskAction(subtask.id),
+                  },
+                ]}
+                triggerClassName={cn(
+                  'absolute -top-[10px] -right-[10px] z-50 transition-opacity',
+                  hoveredSubtaskId === subtask.id ? 'opacity-100' : 'opacity-0 pointer-events-none',
+                )}
+              />
             </div>
           ))}
         </div>

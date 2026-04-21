@@ -5,15 +5,15 @@ import {
   DEFAULT_TASK_ESTIMATED_EFFORT,
   getDefaultTaskDueDate,
 } from '@/lib/utils/task/task-draft';
+import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
 describe('task draft utils', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-04-01T10:00:00.000Z'));
+    setSystemDate(new Date('2026-04-01T10:00:00.000Z'));
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    restoreSystemDate();
   });
 
   it('builds the default task draft with shared defaults', () => {
@@ -42,13 +42,12 @@ describe('task draft utils', () => {
     const draft = buildTaskFromSubtask({
       title: 'Review notes',
       notes: 'Summarize chapter 4',
-      estimatedEffort: 1.5,
     });
 
     expect(draft).toMatchObject({
       title: 'Review notes',
       notes: 'Summarize chapter 4',
-      estimatedEffort: 1.5,
+      estimatedEffort: DEFAULT_TASK_ESTIMATED_EFFORT,
       type: 'theorie',
       status: 'TODO',
     });
@@ -65,6 +64,6 @@ describe('task draft utils', () => {
     );
 
     expect(draft.dueDate.toISOString()).toBe('2026-05-20T12:00:00.000Z');
-    expect(draft.estimatedEffort).toBe(0);
+    expect(draft.estimatedEffort).toBe(DEFAULT_TASK_ESTIMATED_EFFORT);
   });
 });

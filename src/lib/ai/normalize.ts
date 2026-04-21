@@ -23,12 +23,7 @@ export function normalizeTasks(
       ? item.subtasks.map(st => ({
         id: crypto.randomUUID(),
         title: String(st.title ?? ''),
-        status: StatusTask.TODO,
         notes: st.notes ? String(st.notes) : undefined,
-        estimatedEffort:
-          typeof st.estimatedEffort === 'number'
-            ? st.estimatedEffort
-            : Number(st.estimatedEffort) || undefined,
       }))
       : undefined;
 

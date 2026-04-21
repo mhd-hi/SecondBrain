@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
+  withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 
@@ -23,9 +25,7 @@ type FocusDbState = {
     id: string;
     taskId: string;
     title: string;
-    status: string;
     notes: string | null;
-    estimatedEffort: number;
   }>;
 };
 
@@ -64,14 +64,15 @@ vi.mock('@/server/db/schema', () => ({
     name: Symbol('courses.name'),
     color: Symbol('courses.color'),
   },
+  customLinks: {
+    __table: 'customLinks',
+  },
   subtasks: {
     __table: 'subtasks',
     id: Symbol('subtasks.id'),
     taskId: Symbol('subtasks.taskId'),
     title: Symbol('subtasks.title'),
-    status: Symbol('subtasks.status'),
     notes: Symbol('subtasks.notes'),
-    estimatedEffort: Symbol('subtasks.estimatedEffort'),
   },
   tasks: {
     __table: 'tasks',

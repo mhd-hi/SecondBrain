@@ -139,12 +139,8 @@ export async function findTasksWithSubtasks(courseId: string, userId: string) {
     .select({
       id: subtasks.id,
       taskId: subtasks.taskId,
-      type: subtasks.type,
       title: subtasks.title,
       notes: subtasks.notes,
-      status: subtasks.status,
-      estimatedEffort: subtasks.estimatedEffort,
-      dueDate: subtasks.dueDate,
     })
     .from(subtasks)
     .where(inArray(subtasks.taskId, taskIds));

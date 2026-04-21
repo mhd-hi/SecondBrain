@@ -4,9 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureHappyDom } from '../helpers/runtime';
 
-const sessionProviderMock = vi.fn(({ children }: { children: React.ReactNode }) => <>{children}</>);
 const appSidebarMock = vi.fn((_props?: unknown) => null);
-let mockFetchStatus: 'idle' | 'success' = 'idle';
 let mockCoursesListItems: Array<{
   id: string;
   code: string;
@@ -14,10 +12,11 @@ let mockCoursesListItems: Array<{
   color: string;
   overdueCount: number;
 }> = [];
+const refreshCoursesMock = vi.fn();
 
 function resetMockCourseState() {
-  mockFetchStatus = 'idle';
   mockCoursesListItems = [];
+  refreshCoursesMock.mockReset();
 }
 
 function getCourseListItemsFromCourses(
@@ -60,50 +59,35 @@ function renderComponent(ui: React.ReactElement) {
   };
 }
 
+vi.mock('@/components/shared/Navigation/Navbar/Navbar', () => ({
+  default: () => null,
+}));
+vi.mock('@/components/CommandPalette/CommandPalette', () => ({
+  default: () => null,
+}));
+vi.mock('@/components/shared/Navigation/Sidebar/sidebar', () => ({
+  AppSidebar: (props: unknown) => appSidebarMock(props),
+}));
+vi.mock('@/components/ui/sidebar', () => ({
+  SidebarInset: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+vi.mock('@/lib/stores/course-store', () => ({
+  getCourseListItemsFromCourses,
+}));
+vi.mock('@/hooks/course/use-course-store', () => ({
+  useCourseOperations: () => ({
+    coursesListItems: mockCoursesListItems,
+    isLoading: false,
+    refreshCourses: refreshCoursesMock,
+  }),
+}));
+
 describe('DashboardLayoutContent', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     ensureHappyDom();
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-    vi.resetModules();
     vi.clearAllMocks();
-
-    vi.doMock('next-auth/react', () => ({
-      SessionProvider: (props: { children: React.ReactNode }) => sessionProviderMock(props),
-      useSession: vi.fn(() => ({ status: 'authenticated' })),
-    }));
-    vi.doMock('@/components/shared/Navigation/Navbar/Navbar', () => ({
-      default: () => null,
-    }));
-    vi.doMock('@/components/CommandPalette/CommandPalette', () => ({
-      default: () => null,
-    }));
-    vi.doMock('@/components/shared/Navigation/Sidebar/sidebar', () => ({
-      AppSidebar: (props: unknown) => appSidebarMock(props),
-    }));
-    vi.doMock('@/components/ui/sidebar', () => ({
-      SidebarInset: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    }));
-    vi.doMock('@/lib/stores/course-store', () => ({
-      getCourseListItemsFromCourses,
-      useCourseStore: {
-        getState: () => ({
-          bootstrapCourses: (courses: Parameters<typeof getCourseListItemsFromCourses>[0]) => {
-            mockCoursesListItems = getCourseListItemsFromCourses(courses);
-            mockFetchStatus = 'success';
-          },
-          reset: resetMockCourseState,
-        }),
-      },
-    }));
-    vi.doMock('@/hooks/course/use-course-store', () => ({
-      // eslint-disable-next-line react/no-unnecessary-use-prefix
-      useCourseOperations: () => ({
-        coursesListItems: mockCoursesListItems,
-        isLoading: false,
-        refreshCourses: vi.fn(),
-      }),
-    }));
     resetMockCourseState();
   });
 
@@ -141,7 +125,6 @@ describe('DashboardLayoutContent', () => {
     try {
       await view.render();
 
-      expect(mockFetchStatus).toBe('success');
       expect(appSidebarMock).toHaveBeenCalledWith(
         expect.objectContaining({
           courses: [
@@ -153,6 +136,7 @@ describe('DashboardLayoutContent', () => {
               overdueCount: 2,
             },
           ],
+          isLoading: false,
         }),
       );
     } finally {

@@ -211,6 +211,7 @@ export const AddTaskDialog = ({
             <div className="flex items-center gap-2">
               <Checkbox
                 id="create-more"
+                className="size-4.5"
                 checked={createMore}
                 onCheckedChange={checked => setCreateMore(checked === true)}
               />

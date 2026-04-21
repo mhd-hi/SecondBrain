@@ -1,0 +1,1 @@
+ALTER TABLE "subtasks" DROP COLUMN "due_date";

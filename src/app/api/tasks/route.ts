@@ -66,7 +66,6 @@ export const POST = withAuthSimple(
           subtasks: task.subtasks?.map(subtask => ({
             ...subtask,
             id: crypto.randomUUID(),
-            status: subtask.status ?? StatusTask.TODO,
           })),
           dueDate: userProvidedDueDate,
         };
@@ -110,7 +109,6 @@ export const PATCH = withAuthSimple(
       subtasks: updates.subtasks?.map(subtask => ({
         ...subtask,
         id: subtask.id ?? crypto.randomUUID(),
-        status: subtask.status ?? StatusTask.TODO,
       })),
       notes: updates.notes,
       ...updates,

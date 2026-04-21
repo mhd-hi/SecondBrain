@@ -125,28 +125,16 @@ export const subtasks = pgTable(
   'subtasks',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    type: text('type', {
-      enum: ['theorie', 'pratique', 'exam', 'homework', 'lab'],
-    })
-      .notNull()
-      .default('theorie'),
     taskId: uuid('task_id')
       .notNull()
       .references(() => tasks.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     notes: text('notes'),
-    status: text('status', { enum: ['IN_PROGRESS', 'TODO', 'COMPLETED'] })
-      .default('TODO')
-      .notNull(),
-    estimatedEffort: real('estimated_effort').notNull().default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
-    dueDate: timestamp('due_date'),
   },
   table => [
-    // Index for subtasks queries: WHERE task_id IN (taskIds)
     index('idx_subtasks_task_id').on(table.taskId),
-    index('idx_subtasks_status').on(table.status),
   ],
 );
 
@@ -184,11 +172,8 @@ export const customLinks = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   table => [
-    // Composite index for the main query: WHERE user_id = ? AND course_id = ?
     index('idx_custom_links_user_course').on(table.userId, table.courseId),
-    // Index for user-specific queries (dashboard custom links where course_id IS NULL)
     index('idx_custom_links_user_id').on(table.userId),
-    // Index for course-specific queries
     index('idx_custom_links_course_id').on(table.courseId),
   ],
 );

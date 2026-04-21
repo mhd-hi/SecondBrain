@@ -1,7 +1,7 @@
 'use client';
 
 import type { CustomLink as LinkType } from '@/types/custom-link';
-import { useState } from 'react';
+import * as React from 'react';
 import { toast } from 'sonner';
 import CustomLinkForm from '@/components/CustomLinks/CustomLinkForm';
 import {
@@ -23,14 +23,14 @@ type AddCustomLinkDialogProps = {
 };
 
 export const AddCustomLinkDialog = ({ courseId, open, onOpenChange, onLinkCreated }: AddCustomLinkDialogProps) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = React.useState<boolean>(false);
   const controlled = typeof open === 'boolean' && typeof onOpenChange === 'function';
-  const dialogOpen = controlled ? open! : isOpen;
-  const setDialogOpen = (v: boolean) => {
+  const dialogOpen = controlled ? open : isOpen;
+  const setDialogOpen = (value: boolean) => {
     if (controlled) {
-      onOpenChange!(v);
+      onOpenChange(value);
     } else {
-      setIsOpen(v);
+      setIsOpen(value);
     }
   };
 

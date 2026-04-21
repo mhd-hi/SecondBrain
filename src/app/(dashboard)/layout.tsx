@@ -3,6 +3,7 @@ import * as React from 'react';
 import { getUserCourseSummaries } from '@/lib/auth/db';
 import { ROUTES } from '@/lib/page-routes';
 import { auth } from '@/server/auth';
+import { DashboardProviders } from './dashboard-providers';
 import DashboardLayoutContent from './layout-content';
 
 export default async function DashboardLayout({
@@ -19,8 +20,10 @@ export default async function DashboardLayout({
   const initialCourses = await getUserCourseSummaries(session.user.id);
 
   return (
-    <DashboardLayoutContent initialCourses={initialCourses} session={session}>
-      {children}
-    </DashboardLayoutContent>
+    <DashboardProviders initialCourses={initialCourses} session={session}>
+      <DashboardLayoutContent initialCourses={initialCourses}>
+        {children}
+      </DashboardLayoutContent>
+    </DashboardProviders>
   );
 }

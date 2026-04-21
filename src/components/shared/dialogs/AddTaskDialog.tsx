@@ -1,9 +1,8 @@
 'use client';
 import type { Course } from '@/types/course';
-
 import type { TaskType } from '@/types/task';
 import { Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import * as React from 'react';
 import { toast } from 'sonner';
 import { DueDateDisplay } from '@/components/shared/atoms/due-date-display';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 import { useTaskStore } from '@/lib/stores/task-store';
-import { StatusTask } from '@/types/status-task';
+import { buildDefaultTaskDraft } from '@/lib/utils/task/task-draft';
 import { TASK_TYPES } from '@/types/task';
 
 type AddTaskDialogProps = {
@@ -35,8 +34,6 @@ type AddTaskDialogProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 };
-
-const DEFAULT_ESTIMATED_EFFORT = 3;
 
 export const AddTaskDialog = ({
   courseId,
@@ -51,41 +48,33 @@ export const AddTaskDialog = ({
   // Get global selectedDate from store if dueDate prop not provided
   const globalSelectedDate = useCalendarViewStore(state => state.selectedDate);
   const effectiveDueDate = dueDate || globalSelectedDate;
-
-  const [internalOpen, setInternalOpen] = useState(false);
-
-  // Use external state if provided, otherwise use internal state
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
   const setIsOpen = (open: boolean) => {
     if (externalOnOpenChange) {
-      // Controlled mode: delegate to external handler
       externalOnOpenChange(open);
     } else {
-      // Uncontrolled mode: update internal state
       setInternalOpen(open);
     }
   };
   const { createTask, isLoading } = useTaskStore();
-  const [newTask, setNewTask] = useState(() => ({
-    title: '',
-    notes: '',
-    estimatedEffort: 3,
-    dueDate: effectiveDueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Today + 1 week
-    type: TASK_TYPES.THEORIE as TaskType,
-    status: StatusTask.TODO,
-  }));
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(courseId ?? null);
-  const [createMore, setCreateMore] = useState(false);
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const createTaskDraft = React.useCallback(
+    () => buildDefaultTaskDraft({ dueDate: effectiveDueDate }),
+    [effectiveDueDate],
+  );
+  const [newTask, setNewTask] = React.useState(createTaskDraft);
+  const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(courseId ?? null);
+  const [createMore, setCreateMore] = React.useState(false);
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
 
   // Sync selectedCourseId with courseId prop
-  useEffect(() => {
+  React.useEffect(() => {
     // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setSelectedCourseId(courseId ?? null);
   }, [courseId]);
 
   // Sync newTask.dueDate with effectiveDueDate when dialog opens
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen && effectiveDueDate) {
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setNewTask(prev => ({
@@ -107,14 +96,7 @@ export const AddTaskDialog = ({
       onTaskAdded();
 
       // Reset form
-      setNewTask({
-        title: '',
-        notes: '',
-        estimatedEffort: DEFAULT_ESTIMATED_EFFORT,
-        dueDate: effectiveDueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Today + 1 week
-        type: TASK_TYPES.THEORIE,
-        status: StatusTask.TODO,
-      });
+      setNewTask(createTaskDraft());
 
       if (!createMore) {
         // Close dialog after successful addition
@@ -206,7 +188,7 @@ export const AddTaskDialog = ({
               <Label>Due Date</Label>
               <DueDateDisplay
                 date={newTask.dueDate}
-                onChange={date => setNewTask({ ...newTask, dueDate: date! })}
+                onChange={date => date && setNewTask({ ...newTask, dueDate: date })}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>

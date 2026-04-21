@@ -1,16 +1,12 @@
 'use client';
 import type { Subtask } from '@/types/subtask';
 import { CheckCircle2, ChevronDown, ChevronRight, Circle } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import * as React from 'react';
 import { ActionsDropdown } from '@/components/shared/atoms/actions-dropdown';
 import { Badge } from '@/components/ui/badge';
-import { deleteSubtask } from '@/hooks/task/use-subtask';
-import { useUpdateField } from '@/hooks/use-update-field';
-import { useTaskStore } from '@/lib/stores/task-store';
+import { useSubtaskActions } from '@/hooks/task/use-subtask-actions';
 import { cn } from '@/lib/utils';
 import { StatusTask } from '@/types/status-task';
-import { TASK_TYPES } from '@/types/task';
 import { EditableField } from '../shared/EditableField';
 
 type SubtasksListProps = {
@@ -42,15 +38,22 @@ const SubtasksList = ({
   isExpanded: controlledIsExpanded,
   onToggleExpanded,
 }: SubtasksListProps) => {
-  const [internalIsExpanded, setInternalIsExpanded] = useState(defaultExpanded);
-  const [hoveredSubtaskId, setHoveredSubtaskId] = useState<string | null>(null);
-
-  const updateField = useUpdateField();
-  const createTask = useTaskStore(state => state.createTask);
-  const deleteSubtaskFromStore = useTaskStore(state => state.deleteSubtask);
-
-  // Use controlled state if provided, otherwise use internal state
+  const [internalIsExpanded, setInternalIsExpanded] = React.useState(defaultExpanded);
+  const [hoveredSubtaskId, setHoveredSubtaskId] = React.useState<string | null>(null);
   const isExpanded = controlledIsExpanded ?? internalIsExpanded;
+  const {
+    convertSubtaskToTask,
+    deleteSubtask: deleteSubtaskAction,
+    saveSubtaskNotes,
+    saveSubtaskTitle,
+  } = useSubtaskActions({
+    courseId,
+    courseIdDueDate,
+    onDeleteSubtask,
+    onEditSubtask,
+    onTaskAdded,
+    taskId,
+  });
 
   if (!subtasks || subtasks.length === 0) {
     return null;
@@ -59,10 +62,8 @@ const SubtasksList = ({
   const toggleExpanded = () => {
     if (collapsible) {
       if (onToggleExpanded) {
-        // Use controlled toggle
         onToggleExpanded();
       } else {
-        // Use internal toggle
         setInternalIsExpanded(!internalIsExpanded);
       }
     }
@@ -128,17 +129,7 @@ const SubtasksList = ({
                     : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
                   <EditableField
                     value={subtask.title}
-                    onSave={async (newTitle) => {
-                      await updateField({
-                        type: 'subtask',
-                        id: subtask.id,
-                        input: 'title',
-                        value: newTitle,
-                      });
-                      if (onEditSubtask) {
-                        onEditSubtask(subtask.id, { title: newTitle });
-                      }
-                    }}
+                    onSave={newTitle => saveSubtaskTitle(subtask.id, newTitle)}
                     inputType="input"
                     className={cn('text-sm font-medium', subtask.status === StatusTask.COMPLETED && 'text-muted-foreground')}
                     placeholder="Subtask title"
@@ -152,17 +143,7 @@ const SubtasksList = ({
                 {typeof subtask.notes === 'string' && (
                   <EditableField
                     value={subtask.notes}
-                    onSave={async (newNotes) => {
-                      await updateField({
-                        type: 'subtask',
-                        id: subtask.id,
-                        input: 'notes',
-                        value: newNotes,
-                      });
-                      if (onEditSubtask) {
-                        onEditSubtask(subtask.id, { notes: newNotes });
-                      }
-                    }}
+                    onSave={newNotes => saveSubtaskNotes(subtask.id, newNotes)}
                     inputType="textarea"
                     className="text-xs text-muted-foreground ml-6"
                     placeholder="Subtask notes"
@@ -182,92 +163,12 @@ const SubtasksList = ({
                       actions={[
                         {
                           label: 'Convert to task',
-                          onClick: async () => {
-                            try {
-                              if (!taskId) {
-                                throw new Error('Missing task id');
-                              }
-
-                              // Require courseId so the server can validate/assign the task to a course.
-                              if (!courseId) {
-                                toast.error('Cannot convert subtask to task: parent task has no course');
-                                console.warn('Convert aborted: courseId is falsy', { taskId, courseId, courseIdDueDate, subtask });
-                                return;
-                              }
-
-                              // Build minimal newTask payload using subtask data and prefer parent's due date
-                              const newDueDate = courseIdDueDate ? (courseIdDueDate instanceof Date ? courseIdDueDate : new Date(courseIdDueDate)) : new Date();
-
-                              const success = await createTask(courseId, {
-                                title: subtask.title,
-                                notes: subtask.notes ?? '',
-                                estimatedEffort: subtask.estimatedEffort ?? 0,
-                                dueDate: newDueDate,
-                                type: TASK_TYPES.THEORIE,
-                                status: StatusTask.TODO,
-                              });
-
-                              if (!success) {
-                                throw new Error('Failed to create task');
-                              }
-
-                              // Optimistic UI: notify parent that a new task exists so it can refetch or insert it
-                              if (onTaskAdded) {
-                                try {
-                                  onTaskAdded();
-                                } catch (e) {
-                                  // ignore parent errors
-                                  console.warn('onTaskAdded callback failed', e);
-                                }
-                              }
-
-                              // Delete the subtask after creating the task (best-effort)
-                              const ok = await deleteSubtask(taskId, subtask.id);
-                              if (!ok) {
-                                // If deletion failed, still consider the conversion successful but inform the user
-                                console.warn('Failed to delete subtask after conversion', { taskId, subtaskId: subtask.id });
-                                toast.success('Subtask converted to task (subtask not removed)');
-                                return;
-                              }
-
-                              // Update the store
-                              deleteSubtaskFromStore(taskId, subtask.id);
-
-                              toast.success('Subtask converted to task');
-                              if (onDeleteSubtask) {
-                                onDeleteSubtask(subtask.id);
-                              }
-                            } catch (err) {
-                              console.error(err);
-                              toast.error('Failed to convert subtask to task');
-                            }
-                          },
+                          onClick: () => convertSubtaskToTask(subtask),
                         },
                         {
                           label: 'Delete subtask',
                           destructive: true,
-                          onClick: async () => {
-                            try {
-                              if (!taskId) {
-                                throw new Error('Missing task id');
-                              }
-                              const ok = await deleteSubtask(taskId, subtask.id);
-                              if (!ok) {
-                                throw new Error('Failed to delete');
-                              }
-
-                              // Update the store
-                              deleteSubtaskFromStore(taskId, subtask.id);
-
-                              toast.success('Subtask deleted');
-                              if (onDeleteSubtask) {
-                                onDeleteSubtask(subtask.id);
-                              }
-                            } catch (err) {
-                              console.error(err);
-                              toast.error('Failed to delete subtask');
-                            }
-                          },
+                          onClick: () => deleteSubtaskAction(subtask.id),
                         },
                       ]}
                       triggerClassName={cn(

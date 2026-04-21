@@ -4,7 +4,7 @@ import type { Task } from '@/types/task';
 import { BarChart3, Clock, Play } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActionsDropdown } from '@/components/shared/atoms/actions-dropdown';
 import { DueDateDisplay } from '@/components/shared/atoms/due-date-display';
 import { AddSubtaskDialog } from '@/components/shared/dialogs/AddSubtaskDialog';
@@ -20,8 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/sonner';
-import { useUpdateField } from '@/hooks/use-update-field';
+import { useTaskCard } from '@/hooks/task/use-task-card';
 import { getCoursePath, getPomodoroPath } from '@/lib/page-routes';
 import { cn, formatEffortTime } from '@/lib/utils';
 import { StatusTask } from '@/types/status-task';
@@ -59,100 +58,33 @@ export function TaskCard({
   const router = useRouter();
   const [internalSubtasksExpanded, setInternalSubtasksExpanded] = useState(false);
   const [isAddSubtaskOpen, setIsAddSubtaskOpen] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(task.title);
-  const [editedDescription, setEditedDescription] = useState(task.notes ?? '');
-  const updateField = useUpdateField();
   const [subtasks, setSubtasks] = useState(task.subtasks ?? []);
-  const [isEditingEffort, setIsEditingEffort] = useState(false);
-  const [editedEffort, setEditedEffort] = useState<number | undefined>(
-    task.estimatedEffort > 0 ? task.estimatedEffort : undefined,
-  );
-  const inputContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // State for type dropdown (Radix handles open/close)
-  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const [editedType, setEditedType] = useState(task.type);
-
-  // Save handler for type
-  const handleSaveType = async (newType: string) => {
-    setEditedType(newType as Task['type']);
-    setIsTypeDropdownOpen(false); // Always close dropdown on select
-    if (newType !== task.type) {
-      await updateField({
-        type: 'task',
-        id: task.id,
-        input: 'type',
-        value: newType,
-      });
-      toast.success('Task type updated');
-    }
-  };
-
-  // Focus the numeric input when entering edit mode
-  useEffect(() => {
-    if (isEditingEffort) {
-      // query the actual input inside the container (avoids changing Input component)
-      const el = inputContainerRef.current?.querySelector('input') as HTMLInputElement | null;
-      if (el) {
-        el.focus();
-        el.select();
-      }
-    }
-  }, [isEditingEffort]);
-
-  // State for editing due date
-  const [editedDueDate, setEditedDueDate] = useState(() => (task.dueDate ? new Date(task.dueDate) : undefined));
-
-  // Handler for saving due date (used by DueDateDisplay onChange)
-  const handleSaveDueDate = async (newDate: Date | undefined | null) => {
-    const dateToStore = newDate instanceof Date && !Number.isNaN(newDate.getTime()) ? newDate : undefined;
-    setEditedDueDate(dateToStore);
-    if (dateToStore) {
-      await updateField({
-        type: 'task',
-        id: task.id,
-        input: 'dueDate',
-        value: dateToStore.toISOString(),
-      });
-      toast.success('Due date updated');
-    } else {
-      // clear due date
-      await updateField({
-        type: 'task',
-        id: task.id,
-        input: 'dueDate',
-        value: '',
-      });
-      toast.success('Due date cleared');
-    }
-  };
-
-  // Use controlled state if provided, otherwise use internal state
   const isSubtasksExpanded = controlledSubtasksExpanded ?? internalSubtasksExpanded;
+  const {
+    editedDescription,
+    editedDueDate,
+    editedEffort,
+    editedTitle,
+    editedType,
+    effortInputContainerRef,
+    handleEffortKeyDown,
+    isEditingEffort,
+    isTypeDropdownOpen,
+    saveDescription,
+    saveDueDate,
+    saveEffort,
+    saveTitle,
+    saveType,
+    setEditedEffort,
+    setIsTypeDropdownOpen,
+    startEffortEditing,
+  } = useTaskCard(task);
+
+  React.useEffect(() => {
+    setSubtasks(task.subtasks ?? []);
+  }, [task.id, task.subtasks]);
 
   const isCompleted = task.status === StatusTask.COMPLETED;
-
-  // Save handler for title
-  const handleSaveTitle = async (newTitle: string) => {
-    setEditedTitle(newTitle);
-    await updateField({
-      type: 'task',
-      id: task.id,
-      input: 'title',
-      value: newTitle,
-    });
-  };
-
-  // Save handler for description
-  const handleSaveDescription = async (newDescription: string) => {
-    setEditedDescription(newDescription);
-    await updateField({
-      type: 'task',
-      id: task.id,
-      input: 'notes',
-      value: newDescription,
-    });
-  };
 
   const handleNavigateToTask = () => {
     if (task.course?.id) {
@@ -211,7 +143,7 @@ export function TaskCard({
           {/* Editable Title */}
           <EditableField
             value={editedTitle}
-            onSave={handleSaveTitle}
+            onSave={saveTitle}
             inputType="input"
             className={cn('font-medium', isCompleted && 'text-muted-foreground')}
             placeholder="Task title"
@@ -220,7 +152,7 @@ export function TaskCard({
           {/* Editable Description */}
           <EditableField
             value={editedDescription}
-            onSave={handleSaveDescription}
+            onSave={saveDescription}
             inputType="textarea"
             className={cn('text-sm text-muted-foreground', isCompleted && 'opacity-70')}
             placeholder="Task description"
@@ -259,7 +191,7 @@ export function TaskCard({
                     // Radix prefers onSelect; it also closes the menu automatically
                     onSelect={(e) => {
                       e.preventDefault();
-                      handleSaveType(opt.value);
+                      saveType(opt.value as Task['type']);
                     }}
                     className={cn(
                       'text-xs cursor-pointer',
@@ -276,7 +208,7 @@ export function TaskCard({
             {((task.estimatedEffort >= 0) || editedEffort) && (
               <div>
                 {isEditingEffort && (
-                  <div ref={inputContainerRef} className="w-16 max-w-18">
+                  <div ref={effortInputContainerRef} className="w-16 max-w-18">
                     {/* Use existing Input component styled for numbers */}
                     <Input
                       type="number"
@@ -284,40 +216,8 @@ export function TaskCard({
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         setEditedEffort(e.target.value === '' ? undefined : Number(e.target.value));
                       }}
-                      onBlur={async () => {
-                        setIsEditingEffort(false);
-                        // ensure value is a number; if negative default to 0.5, otherwise use value (min 0)
-                        const rawVal = editedEffort ?? 0;
-                        const newVal = Number.isFinite(rawVal) ? (rawVal < 0 ? 0.5 : Math.max(0, rawVal)) : 0.5;
-                        const oldVal = typeof task.estimatedEffort === 'number' ? task.estimatedEffort : 0;
-                        // Only persist if value actually changed
-                        if (newVal === oldVal) {
-                          return;
-                        }
-                        // Persist update via hook
-                        try {
-                          await updateField({
-                            type: 'task',
-                            id: task.id,
-                            input: 'estimatedEffort',
-                            value: String(newVal),
-                          });
-                          toast.success('Estimated effort updated');
-                        } catch (err) {
-                          // ignore - keep UI in sync locally
-                          console.error('Failed to save estimated effort', err);
-                          toast.error('Failed to update estimated effort');
-                        }
-                      }}
-                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                        if (e.key === 'Enter') {
-                          (e.target as HTMLInputElement).blur();
-                        }
-                        if (e.key === 'Escape') {
-                          setEditedEffort(task.estimatedEffort > 0 ? task.estimatedEffort : undefined);
-                          setIsEditingEffort(false);
-                        }
-                      }}
+                      onBlur={saveEffort}
+                      onKeyDown={handleEffortKeyDown}
                       className="h-6 px-2 py-0.5 text-xs"
                       min={0}
                     />
@@ -327,11 +227,7 @@ export function TaskCard({
                 {!isEditingEffort && (
                   <Badge
                     variant="muted"
-                    onClick={() => {
-                      // initialize edit value from task and open editor
-                      setEditedEffort(task.estimatedEffort > 0 ? task.estimatedEffort : undefined);
-                      setIsEditingEffort(true);
-                    }}
+                    onClick={startEffortEditing}
                     title="Click to edit estimated effort (hours)"
                   >
                     <span className="text-xs font-medium flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/50">
@@ -358,7 +254,7 @@ export function TaskCard({
                 <span aria-label="Edit due date" className="block w-full min-w-0">
                   <DueDateDisplay
                     date={editedDueDate ?? task.dueDate ?? null}
-                    onChange={d => handleSaveDueDate(d ?? null)}
+                    onChange={d => saveDueDate(d ?? null)}
                   />
                 </span>
               </Badge>

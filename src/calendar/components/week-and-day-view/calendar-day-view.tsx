@@ -1,11 +1,12 @@
 import type { TEvent } from '@/calendar/types';
-import { areIntervalsOverlapping, format, isSameDay, parseISO } from 'date-fns';
+import { areIntervalsOverlapping, format, parseISO } from 'date-fns';
 
 import { Calendar, Clock } from 'lucide-react';
 
 import { CalendarTimeline } from '@/calendar/components/week-and-day-view/calendar-time-line';
 import { EventBlock } from '@/calendar/components/week-and-day-view/event-block';
 import { getCurrentEvents, getEventBlockStyle, getVisibleHours, groupEvents } from '@/calendar/helpers';
+import { eventOverlapsDay, sortEventsByStart } from '@/calendar/selectors';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { SingleCalendar } from '@/components/ui/single-calendar';
@@ -28,10 +29,7 @@ export function CalendarDayView({ events }: IProps) {
     }
   };
 
-  const dayEvents = events.filter((event) => {
-    const eventDate = parseISO(event.startDate);
-    return isSameDay(eventDate, selectedDate);
-  });
+  const dayEvents = sortEventsByStart(events.filter(event => eventOverlapsDay(event, selectedDate)));
 
   const { hours, earliestEventHour, latestEventHour } = getVisibleHours(visibleHours, dayEvents);
   const currentEvents = getCurrentEvents(dayEvents);

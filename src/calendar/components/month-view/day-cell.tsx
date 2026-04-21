@@ -7,6 +7,7 @@ import { DroppableDayCell } from '@/calendar/components/dnd/droppable-day-cell';
 
 import { EventBullet } from '@/calendar/components/month-view/event-bullet';
 import { MonthEventBadge } from '@/calendar/components/month-view/month-event-badge';
+import { eventOverlapsDay, sortEventsByStart } from '@/calendar/selectors';
 import { getCalendarPath } from '@/lib/page-routes';
 
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
@@ -26,10 +27,10 @@ export function DayCell({ cell, events }: IProps) {
 
   const { day, currentMonth, date } = cell;
 
-  const cellEvents = useMemo(() => events.filter((e) => {
-    const eventDate = new Date(e.startDate);
-    return eventDate.toDateString() === date.toDateString();
-  }), [date, events]);
+  const cellEvents = useMemo(
+    () => sortEventsByStart(events.filter(event => eventOverlapsDay(event, date))),
+    [date, events],
+  );
   const isSunday = date.getDay() === 0;
 
   const handleClick = () => {

@@ -63,11 +63,11 @@ const CALENDAR_VIEW_OPTIONS: Array<{
 export function CalendarHeader() {
   const view = useCalendarViewStore(state => state.view);
   const setView = useCalendarViewStore(state => state.setView);
-  const { courses, isLoading } = useCourses();
-  const [addTaskOpen, setAddTaskOpen] = useState(false);
-
   const selectedDate = useCalendarViewStore(state => state.selectedDate);
   const setSelectedDate = useCalendarViewStore(state => state.setSelectedDate);
+
+  const { courses, isLoading } = useCourses();
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   // Compute weekDates based on selectedDate
   const getCurrentWeekDates = () => {

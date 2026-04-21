@@ -13,34 +13,58 @@ export function getCurrentEvents(events: TEvent[]) {
   return events.filter(event => isWithinInterval(now, { start: getEventStart(event), end: getEventEnd(event) })) || null;
 }
 
-export function groupEvents(dayEvents: TEvent[]) {
-  const sortedEvents = dayEvents.sort((a, b) => getEventStart(a).getTime() - getEventStart(b).getTime());
-  const groups: TEvent[][] = [];
+export type EventLayout = {
+  event: TEvent;
+  columnCount: number;
+  columnIndex: number;
+};
+
+function getClusterEventLayouts(clusterEvents: TEvent[]): EventLayout[] {
+  if (clusterEvents.length === 0) {
+    return [];
+  }
+
+  const columnEndTimes: Date[] = [];
+  const layouts: Array<Pick<EventLayout, 'event' | 'columnIndex'>> = [];
+
+  for (const event of clusterEvents) {
+    const eventStart = getEventStart(event);
+    const availableColumnIndex = columnEndTimes.findIndex(endTime => eventStart >= endTime);
+    const columnIndex = availableColumnIndex === -1 ? columnEndTimes.length : availableColumnIndex;
+
+    columnEndTimes[columnIndex] = getEventEnd(event);
+    layouts.push({ event, columnIndex });
+  }
+
+  const columnCount = Math.max(columnEndTimes.length, 1);
+  return layouts.map(layout => ({ ...layout, columnCount }));
+}
+
+export function getEventLayouts(dayEvents: TEvent[]) {
+  const sortedEvents = [...dayEvents].sort((a, b) => getEventStart(a).getTime() - getEventStart(b).getTime());
+  const layouts: EventLayout[] = [];
+  let currentCluster: TEvent[] = [];
+  let currentClusterEnd: Date | null = null;
 
   for (const event of sortedEvents) {
     const eventStart = getEventStart(event);
+    const eventEnd = getEventEnd(event);
 
-    let placed = false;
-    for (const group of groups) {
-      const lastEventInGroup = group[group.length - 1];
-      if (!lastEventInGroup) {
-        continue;
-      }
-      const lastEventEnd = getEventEnd(lastEventInGroup);
-
-      if (eventStart >= lastEventEnd) {
-        group.push(event);
-        placed = true;
-        break;
-      }
+    if (currentClusterEnd && eventStart >= currentClusterEnd) {
+      layouts.push(...getClusterEventLayouts(currentCluster));
+      currentCluster = [];
+      currentClusterEnd = null;
     }
 
-    if (!placed) {
-      groups.push([event]);
+    currentCluster.push(event);
+
+    if (!currentClusterEnd || eventEnd > currentClusterEnd) {
+      currentClusterEnd = eventEnd;
     }
   }
 
-  return groups;
+  layouts.push(...getClusterEventLayouts(currentCluster));
+  return layouts;
 }
 
 export function getEventBlockStyle(

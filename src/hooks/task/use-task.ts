@@ -3,6 +3,7 @@ import type { StatusTask } from '@/types/status-task';
 import type { Task } from '@/types/task';
 import type { FilterType } from '@/types/todays-focus';
 import { useCallback, useState } from 'react';
+import { invalidateCalendarEvents } from '@/lib/stores/calendar-view-store';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { withLoadingState } from '@/lib/utils/api/loading-util';
@@ -23,7 +24,13 @@ export const batchUpdateStatusTask = async (taskIds: string[], status: StatusTas
   status: StatusTask;
   updatedTasks: Task[];
 }> => {
-  return api.patch(API_ENDPOINTS.TASKS.BATCH_STATUS, { taskIds, status }, 'Failed to batch update task status');
+  const response = await api.patch<{
+    updatedCount: number;
+    status: StatusTask;
+    updatedTasks: Task[];
+  }>(API_ENDPOINTS.TASKS.BATCH_STATUS, { taskIds, status }, 'Failed to batch update task status');
+  invalidateCalendarEvents();
+  return response;
 };
 
 export const useCalendarTasks = () => {

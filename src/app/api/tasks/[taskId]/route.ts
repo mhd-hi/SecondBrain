@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/api';
 import { deleteUserTask, getUserTask, updateUserTask } from '@/lib/auth/db';
 import { statusResponse } from '@/lib/utils/api/api-server-util';
-import { StatusTask } from '@/types/status-task';
 
 async function handlePatchTask(
   request: NextRequest,
@@ -29,7 +28,6 @@ async function handlePatchTask(
     processedUpdates.subtasks = updates.subtasks.map(subtask => ({
       ...subtask,
       id: subtask.id || crypto.randomUUID(),
-      status: subtask.status ?? StatusTask.TODO,
     }));
   }
 

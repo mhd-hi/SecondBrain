@@ -18,6 +18,8 @@ type CalendarViewState = {
   setVisibleRange: (range: VisibleRange) => void;
   events: TEvent[];
   setEvents: (events: TEvent[] | ((prev: TEvent[]) => TEvent[])) => void;
+  refreshVersion: number;
+  invalidateEvents: () => void;
   badgeVariant: TBadgeVariant;
   setBadgeVariant: (variant: TBadgeVariant) => void;
 };
@@ -37,6 +39,12 @@ export const useCalendarViewStore = create<CalendarViewState>(set => ({
       events: typeof eventsOrUpdater === 'function' ? eventsOrUpdater(state.events) : eventsOrUpdater,
     };
   }),
+  refreshVersion: 0,
+  invalidateEvents: () => set(state => ({ refreshVersion: state.refreshVersion + 1 })),
   badgeVariant: 'colored',
   setBadgeVariant: variant => set({ badgeVariant: variant }),
 }));
+
+export function invalidateCalendarEvents() {
+  useCalendarViewStore.getState().invalidateEvents();
+}

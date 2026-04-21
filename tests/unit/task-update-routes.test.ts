@@ -3,6 +3,7 @@ import { handleSubtaskUpdatePost } from '@/app/api/subtasks/update/route';
 import { handleTaskUpdatePost } from '@/app/api/tasks/update/route';
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
   withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
@@ -178,20 +179,20 @@ describe('legacy task update route', () => {
   });
 });
 
-describe('legacy subtask update route', () => {
+describe('subtask update route', () => {
   it('updates supported subtask fields successfully', async () => {
     const response = await handleSubtaskUpdatePost(
       createJsonRequest('http://localhost/api/subtasks/update', {
         id: 'subtask-1',
-        input: 'estimatedEffort',
-        value: '-3',
+        input: 'notes',
+        value: 'Updated subtask description',
       }) as never,
       { id: 'user-1' },
     );
 
     expect(response.status).toBe(200);
     expect(dbState.subtaskUpdateSetArg).toMatchObject({
-      estimatedEffort: 0.5,
+      notes: 'Updated subtask description',
     });
     expect(dbState.subtaskUpdateSetArg?.updatedAt).toBeInstanceOf(Date);
 
@@ -200,11 +201,11 @@ describe('legacy subtask update route', () => {
     });
   });
 
-  it('rejects the removed actualEffort field', async () => {
+  it('rejects the removed subtask due date field', async () => {
     const response = await handleSubtaskUpdatePost(
       createJsonRequest('http://localhost/api/subtasks/update', {
         id: 'subtask-1',
-        input: 'actualEffort',
+        input: 'dueDate',
         value: '1.5',
       }) as never,
       { id: 'user-1' },

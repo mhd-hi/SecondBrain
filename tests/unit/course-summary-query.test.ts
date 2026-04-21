@@ -11,15 +11,19 @@ vi.mock('@/lib/auth/api', () => ({
       this.name = 'AuthorizationError';
     }
   },
+  withAuth: vi.fn((handler: unknown) => handler),
+  withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 vi.mock('@/server/db', () => ({ db: {} }));
 vi.mock('@/server/db/schema', () => ({
   courses: {},
+  customLinks: {},
   subtasks: {},
   tasks: {},
 }));
 vi.mock('@/lib/utils/course/queries', () => ({
   findCourseByIdAndUser: vi.fn(),
+  findCourseOwnershipByIdAndUser: vi.fn(),
   findTasksWithSubtasks: vi.fn(),
   findUserCourseMetadata: (...args: unknown[]) => findUserCourseMetadataMock(...args),
   findUserCourseSummaryCandidateTasks: (...args: unknown[]) => findUserCourseSummaryCandidateTasksMock(...args),
@@ -29,7 +33,6 @@ vi.mock('@/lib/utils/course/queries', () => ({
 
 describe('getUserCourseSummaries', () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
   });
 
@@ -39,6 +42,7 @@ describe('getUserCourseSummaries', () => {
     findUserCourseSummaryCandidateTasksMock.mockResolvedValueOnce([]);
 
     const { getUserCourseSummaries } = await import('@/lib/auth/db');
+
     await expect(getUserCourseSummaries('user-1')).resolves.toEqual([]);
   });
 

@@ -9,7 +9,7 @@ export async function handleSubtaskUpdatePost(req: NextRequest, user: { id: stri
   try {
     const { id, input, value } = await req.json();
     // Only allow updating specific fields for subtasks
-    const allowedFields = ['title', 'notes', 'status', 'estimatedEffort', 'dueDate'];
+    const allowedFields = ['title', 'notes'];
     if (!allowedFields.includes(input)) {
       return NextResponse.json({ success: false, error: 'Invalid field' }, { status: 400 });
     }
@@ -26,16 +26,9 @@ export async function handleSubtaskUpdatePost(req: NextRequest, user: { id: stri
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
 
-    // sanitize numeric fields for subtasks
-    let sanitizedValue: unknown = value;
-    if (input === 'estimatedEffort') {
-      const num = Number(value);
-      sanitizedValue = Number.isFinite(num) ? (num < 0 ? 0.5 : Math.max(0, num)) : 0.5;
-    }
-
     // Perform update
     const updated = await db.update(subtasks)
-      .set({ [input]: sanitizedValue, updatedAt: new Date() } as Partial<typeof subtasks.$inferInsert>)
+      .set({ [input]: value, updatedAt: new Date() } as Partial<typeof subtasks.$inferInsert>)
       .where(and(eq(subtasks.id, id), eq(subtasks.taskId, sub0.taskId)))
       .returning();
 

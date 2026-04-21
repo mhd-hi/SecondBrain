@@ -2,7 +2,6 @@ import type { TaskType } from '@/types/task';
 
 type AISubtask = {
   title: string;
-  estimatedEffort?: number;
   notes?: string;
 };
 

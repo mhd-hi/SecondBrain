@@ -2,18 +2,81 @@ import { and, eq } from 'drizzle-orm';
 import { AuthorizationError } from '@/lib/auth/api';
 import {
   findCourseByIdAndUser,
+  findCourseOwnershipByIdAndUser,
   findTasksWithSubtasks,
+  findUserCourseMetadata,
+  findUserCourseSummaryCandidateTasks,
+  findUserCourseSummaryMetrics,
   findUserCoursesWithTasks,
 } from '@/lib/utils/course/queries';
 import { db } from '@/server/db';
 import { courses, subtasks, tasks } from '@/server/db/schema';
-import { StatusTask } from '@/types/status-task';
+import { TASK_TYPES } from '@/types/task';
 
 /**
  * Get courses for authenticated user
  */
 export async function getUserCourses(userId: string) {
   return findUserCoursesWithTasks(userId);
+}
+
+export async function getUserCourseSummaries(userId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dueSoonEnd = new Date(today);
+  dueSoonEnd.setDate(dueSoonEnd.getDate() + 7);
+  dueSoonEnd.setHours(23, 59, 59, 999);
+
+  const [courseMetadata, courseMetrics, candidateTasks] = await Promise.all([
+    findUserCourseMetadata(userId),
+    findUserCourseSummaryMetrics(userId, today, dueSoonEnd),
+    findUserCourseSummaryCandidateTasks(userId),
+  ]);
+
+  const metricsByCourseId = new Map(
+    courseMetrics.map(metric => [metric.courseId, metric] as const),
+  );
+
+  const tasksByCourseId = new Map<string, typeof candidateTasks>();
+  for (const task of candidateTasks) {
+    const existing = tasksByCourseId.get(task.courseId) ?? [];
+    existing.push(task);
+    tasksByCourseId.set(task.courseId, existing);
+  }
+
+  return courseMetadata.map((course) => {
+    const metrics = metricsByCourseId.get(course.id);
+    const courseTasks = tasksByCourseId.get(course.id) ?? [];
+    const nextTask = courseTasks[0]
+      ? {
+        id: courseTasks[0].id,
+        title: courseTasks[0].title,
+        dueDate: courseTasks[0].dueDate,
+      }
+      : null;
+    const upcomingTaskCandidate = courseTasks.find(task =>
+      task.type === TASK_TYPES.EXAM || task.type === TASK_TYPES.HOMEWORK,
+    );
+
+    return {
+      ...course,
+      totalTasks: metrics?.totalTasks ?? 0,
+      completedTasks: metrics?.completedTasks ?? 0,
+      inProgressTasks: metrics?.inProgressTasks ?? 0,
+      todoTasks: metrics?.todoTasks ?? 0,
+      overdueCount: metrics?.overdueCount ?? 0,
+      dueSoonCount: metrics?.dueSoonCount ?? 0,
+      nextTask,
+      upcomingTask: upcomingTaskCandidate
+        ? {
+          id: upcomingTaskCandidate.id,
+          title: upcomingTaskCandidate.title,
+          dueDate: upcomingTaskCandidate.dueDate,
+        }
+        : null,
+    };
+  });
 }
 
 /**
@@ -25,6 +88,13 @@ export async function getUserCourse(courseId: string, userId: string) {
     throw new AuthorizationError('Course not found');
   }
   return course;
+}
+
+export async function assertUserOwnsCourse(courseId: string, userId: string): Promise<void> {
+  const ownedCourse = await findCourseOwnershipByIdAndUser(courseId, userId);
+  if (!ownedCourse) {
+    throw new AuthorizationError('Course not found');
+  }
 }
 
 /**
@@ -92,10 +162,6 @@ export async function updateUserTask(
       const subToUpsert: Partial<typeof subtasks.$inferInsert> = {
         title: s.title ?? '',
         notes: s.notes ?? null,
-        // Narrow status/type into the subtasks insert types
-        status: (s.status as unknown as typeof subtasks.$inferInsert['status']) ?? StatusTask.TODO,
-        estimatedEffort: typeof s.estimatedEffort === 'number' ? s.estimatedEffort : 0,
-        type: (s.type as unknown as typeof subtasks.$inferInsert['type']) ?? 'theorie',
       };
 
       if (!s.id) {
@@ -148,9 +214,11 @@ export async function deleteUserTask(taskId: string, userId: string) {
 export async function createUserTask(
   userId: string,
   taskData: Omit<typeof tasks.$inferInsert, 'userId' | 'id' | 'createdAt' | 'updatedAt'>,
+  options?: { skipCourseOwnershipCheck?: boolean },
 ) {
-  // Verify course ownership first
-  await getUserCourse(taskData.courseId, userId);
+  if (!options?.skipCourseOwnershipCheck) {
+    await assertUserOwnsCourse(taskData.courseId, userId);
+  }
 
   type ProvidedSub = Partial<typeof subtasks.$inferInsert>;
   type CreateTaskWithSubs = Omit<typeof tasks.$inferInsert, 'userId' | 'id' | 'createdAt' | 'updatedAt'> & { subtasks?: ProvidedSub[] };
@@ -173,12 +241,9 @@ export async function createUserTask(
   if (Array.isArray(providedSubs) && providedSubs.length > 0) {
     for (const s of providedSubs) {
       const subToInsert: typeof subtasks.$inferInsert = {
+        id: s.id ?? crypto.randomUUID(),
         title: s.title ?? '',
         notes: s.notes ?? null,
-        status: (s.status as unknown as typeof subtasks.$inferInsert['status']) ?? StatusTask.TODO,
-        estimatedEffort: typeof s.estimatedEffort === 'number' ? s.estimatedEffort : 0,
-        type: (s.type as unknown as typeof subtasks.$inferInsert['type']) ?? 'theorie',
-        id: s.id ?? crypto.randomUUID(),
         taskId: createdTask.id,
         createdAt: new Date(),
         updatedAt: new Date(),

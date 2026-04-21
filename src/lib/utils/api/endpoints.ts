@@ -24,6 +24,8 @@ export const API_ENDPOINTS = {
     LIST_BY_COURSE: (courseId: string) => `/api/tasks?courseId=${encodeURIComponent(courseId)}`,
     DETAIL: (taskId: string) => `/api/tasks/${taskId}`,
     STATUS: (taskId: string) => `/api/tasks/${taskId}/status`,
+    SUBTASKS: (taskId: string) => `/api/tasks/${taskId}/subtasks`,
+    SUBTASK_DETAIL: (taskId: string, subtaskId: string) => `/api/tasks/${taskId}/subtasks/${subtaskId}`,
     FOCUS: '/api/tasks/focus',
     CALENDAR: '/api/tasks/calendar',
     UPDATE: '/api/tasks/update',

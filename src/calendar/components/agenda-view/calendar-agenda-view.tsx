@@ -1,10 +1,11 @@
 import type { TEvent } from '@/calendar/types';
-import { format, isSameMonth, parseISO, startOfDay } from 'date-fns';
+import { format, isSameMonth } from 'date-fns';
 import { CalendarX2 } from 'lucide-react';
 
 import { useMemo } from 'react';
 
 import { AgendaDayGroup } from '@/calendar/components/agenda-view/agenda-day-group';
+import { groupEventsByDay } from '@/calendar/selectors';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
@@ -17,27 +18,10 @@ export function CalendarAgendaView({ events }: Props) {
   const selectedDate = useCalendarViewStore(state => state.selectedDate);
 
   const eventsByDay = useMemo(() => {
-    const allDates = new Map<string, { date: Date; events: TEvent[] }>();
-
-    events.forEach((event) => {
-      const eventDate = parseISO(event.startDate);
-      if (!isSameMonth(eventDate, selectedDate)) {
-        return;
-      }
-
-      const dateKey = format(eventDate, 'yyyy-MM-dd');
-
-      if (!allDates.has(dateKey)) {
-        allDates.set(dateKey, { date: startOfDay(eventDate), events: [] });
-      }
-
-      allDates.get(dateKey)?.events.push(event);
-    });
-
-    return Array.from(allDates.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+    return groupEventsByDay(events).filter(dayGroup => isSameMonth(dayGroup.date, selectedDate));
   }, [events, selectedDate]);
 
-  const hasAnyEvents = events.length > 0;
+  const hasAnyEvents = eventsByDay.length > 0;
 
   return (
     <div>

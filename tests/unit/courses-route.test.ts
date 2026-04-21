@@ -1,23 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
+  withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 vi.mock('@/server/db', () => ({ db: {} }));
 vi.mock('@/server/db/schema', () => ({
   courses: {},
+  customLinks: {},
+  subtasks: {},
+  tasks: {},
 }));
 
 const getUserCourseSummariesMock = vi.fn();
 
 vi.mock('@/lib/auth/db', () => ({
+  assertUserOwnsCourse: vi.fn(),
   createUserCourse: vi.fn(),
+  createUserTask: vi.fn(),
+  deleteUserCourse: vi.fn(),
+  deleteUserTask: vi.fn(),
+  getUserCourse: vi.fn(),
   getUserCourseSummaries: (...args: unknown[]) => getUserCourseSummariesMock(...args),
+  getUserCourseTasks: vi.fn(),
+  getUserCourses: vi.fn(),
+  getUserTask: vi.fn(),
+  updateUserTask: vi.fn(),
 }));
 
 describe('courses route', () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
   });
 

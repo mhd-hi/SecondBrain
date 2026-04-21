@@ -1,12 +1,13 @@
 import type { TEvent } from '@/calendar/types';
 import type { Course } from '@/types/course';
-import { endOfDay, format, parseISO, startOfDay, startOfWeek } from 'date-fns';
+import { format, parseISO, startOfWeek } from 'date-fns';
 import * as React from 'react';
 import { useMemo } from 'react';
 import { CalendarTimeline } from '@/calendar/components/week-and-day-view/calendar-time-line';
 import { EventBlock } from '@/calendar/components/week-and-day-view/event-block';
 import { TimeSlotBlock } from '@/calendar/components/week-and-day-view/time-slot-block';
-import { getEventBlockStyle, getVisibleHours, groupEvents } from '@/calendar/helpers';
+import { getEventBlockStyle, getEventLayouts, getVisibleHours } from '@/calendar/helpers';
+import { eventOverlapsDay, sortEventsByStart } from '@/calendar/selectors';
 
 import { AddTaskDialog } from '@/components/shared/dialogs/AddTaskDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,17 +44,11 @@ export function CalendarWeekView({ events, courses }: IProps) {
   // For each day, group events by overlap
   const dayGroups = useMemo(() => {
     return weekDays.map((day) => {
-      const dayStart = startOfDay(day);
-      const dayEnd = endOfDay(day);
-      const dayEvents = events.filter((event) => {
-        const eventStart = typeof event.startDate === 'string' ? parseISO(event.startDate) : event.startDate;
-        const eventEnd = typeof event.endDate === 'string' ? parseISO(event.endDate) : event.endDate;
-        // Event overlaps with this day if it starts before dayEnd and ends after dayStart
-        return eventStart < dayEnd && eventEnd > dayStart;
-      });
+      const dayEvents = sortEventsByStart(events.filter(event => eventOverlapsDay(event, day)));
       return {
         day,
-        groupedEvents: groupEvents(dayEvents),
+        dayEvents,
+        eventLayouts: getEventLayouts(dayEvents),
       };
     });
   }, [weekDays, events]);
@@ -106,7 +101,7 @@ export function CalendarWeekView({ events, courses }: IProps) {
             {/* Week grid */}
             <div className="relative flex-1 border-l">
               <div className="grid grid-cols-7 divide-x">
-                {dayGroups.map(({ day, groupedEvents }) => {
+                {dayGroups.map(({ day, dayEvents, eventLayouts }) => {
                   const slotsPerHour = 60 / WEEK_VIEW_SLOT_INTERVAL_MINUTES;
                   const slotHeight = WEEK_VIEW_HOUR_BLOCK_HEIGHT / slotsPerHour;
                   return (
@@ -122,7 +117,7 @@ export function CalendarWeekView({ events, courses }: IProps) {
                               slotDate.setHours(hour, minute, 0, 0);
                               // A slot is occupied if any event overlaps with this slot window
                               const slotEnd = new Date(slotDate.getTime() + WEEK_VIEW_SLOT_INTERVAL_MINUTES * 60 * 1000);
-                              const isOccupied = events.some((event) => {
+                              const isOccupied = dayEvents.some((event) => {
                                 const eventStart = typeof event.startDate === 'string' ? parseISO(event.startDate) : event.startDate;
                                 const eventEnd = typeof event.endDate === 'string' ? parseISO(event.endDate) : event.endDate;
                                 return eventStart < slotEnd && eventEnd > slotDate;
@@ -144,23 +139,21 @@ export function CalendarWeekView({ events, courses }: IProps) {
                           </div>
                         );
                       })}
-                      {groupedEvents.map((group, groupIndex) => (
-                        group.map((event) => {
-                          const style = getEventBlockStyle(
-                            event,
-                            day,
-                            groupIndex,
-                            groupedEvents.length,
-                            { from: earliestEventHour, to: latestEventHour },
-                            WEEK_VIEW_HOUR_BLOCK_HEIGHT,
-                            WEEK_VIEW_SLOT_INTERVAL_MINUTES,
-                            slotHeight,
-                          );
-                          return (
-                            <EventBlock key={event.id} event={event} className="absolute p-0.5 py-0.5 px-1 text-xs" style={style} />
-                          );
-                        })
-                      ))}
+                      {eventLayouts.map(({ event, columnCount, columnIndex }) => {
+                        const style = getEventBlockStyle(
+                          event,
+                          day,
+                          columnIndex,
+                          columnCount,
+                          { from: earliestEventHour, to: latestEventHour },
+                          WEEK_VIEW_HOUR_BLOCK_HEIGHT,
+                          WEEK_VIEW_SLOT_INTERVAL_MINUTES,
+                          slotHeight,
+                        );
+                        return (
+                          <EventBlock key={event.id} event={event} className="absolute px-1 py-0.5 text-xs" style={style} />
+                        );
+                      })}
                     </div>
                   );
                 })}

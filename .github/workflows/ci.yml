@@ -95,18 +95,45 @@ jobs:
       - name: Run tests
         run: bun run test:run
 
+  detect-db-migration-changes:
+    name: Detect DB Migration Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.filter.outputs.should_run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check DB migration-related changes
+        id: filter
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          printf '%s\n' "$changed_files"
+
+          if printf '%s\n' "$changed_files" | grep -Eq '^(drizzle/|src/server/db/schema\.ts$|drizzle\.config\.ts$)'; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Tests DB migrations for production build
   test-db-migration-build:
     name: Test DB Migration
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'push' ||
-      contains(github.event.pull_request.changed_files.*.filename, 'drizzle/') ||
-      contains(github.event.pull_request.changed_files.*.filename, 'src/server/db/schema.ts') ||
-      contains(github.event.pull_request.changed_files.*.filename, 'drizzle.config.ts')
+    needs: detect-db-migration-changes
+    if: needs.detect-db-migration-changes.outputs.should_run == 'true'
     services:
       postgres:
-        image: postgres:15
+        image: postgres:17
         # expose 5432 on the VM so "localhost:5432" works
         ports:
           - 5432:5432

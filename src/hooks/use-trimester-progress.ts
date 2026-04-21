@@ -1,14 +1,12 @@
 'use client';
 
 import type { Course } from '@/types/course';
-import type { Task } from '@/types/task';
 import type { CourseProgressBar, StatsProgressBar, TrimesterProgressBar } from '@/types/trimester-progressbar';
 import { useMemo } from 'react';
 
 import { useCourses } from '@/hooks/course/use-course-store';
 import { calculateCourseProgressMetrics, calculateProgressMetrics } from '@/lib/utils/progress-util';
 import { getCurrentTrimesterInfo } from '@/lib/utils/trimester-util';
-import { StatusTask } from '@/types/status-task';
 
 export function useTrimesterProgress(): StatsProgressBar | null {
   const { courses, isLoading } = useCourses();
@@ -24,16 +22,22 @@ export function useTrimesterProgress(): StatsProgressBar | null {
 
     // Calculate course progress
     const courseProgresses: CourseProgressBar[] = courses.map((course: Course) => {
-      const tasks = course.tasks || [];
-      const progress = calculateProgressMetrics(tasks);
-
-      // Tasks due within the next week
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      const dueTasksCount = tasks.filter((task: Task) =>
-        task.status !== StatusTask.COMPLETED
-        && new Date(task.dueDate) <= nextWeek,
-      ).length;
+      const tasks = course.tasks ?? [];
+      const progress = tasks.length > 0
+        ? calculateProgressMetrics(tasks)
+        : {
+            total: course.totalTasks ?? 0,
+            completed: course.completedTasks ?? 0,
+            inProgress: course.inProgressTasks ?? 0,
+            todo: course.todoTasks ?? 0,
+            completionPercentage:
+              (course.totalTasks ?? 0) > 0
+                ? Math.round(((course.completedTasks ?? 0) / (course.totalTasks ?? 0)) * 100)
+                : 0,
+          };
+      const dueTasksCount = tasks.length > 0
+        ? tasks.filter(task => new Date(task.dueDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).length
+        : (course.dueSoonCount ?? 0) + (course.overdueCount ?? 0);
 
       return {
         courseId: course.id,

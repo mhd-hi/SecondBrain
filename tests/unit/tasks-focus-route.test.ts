@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
+  withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 
@@ -23,9 +25,7 @@ type FocusDbState = {
     id: string;
     taskId: string;
     title: string;
-    status: string;
     notes: string | null;
-    estimatedEffort: number;
   }>;
 };
 
@@ -64,14 +64,15 @@ vi.mock('@/server/db/schema', () => ({
     name: Symbol('courses.name'),
     color: Symbol('courses.color'),
   },
+  customLinks: {
+    __table: 'customLinks',
+  },
   subtasks: {
     __table: 'subtasks',
     id: Symbol('subtasks.id'),
     taskId: Symbol('subtasks.taskId'),
     title: Symbol('subtasks.title'),
-    status: Symbol('subtasks.status'),
     notes: Symbol('subtasks.notes'),
-    estimatedEffort: Symbol('subtasks.estimatedEffort'),
   },
   tasks: {
     __table: 'tasks',
@@ -118,8 +119,12 @@ describe('tasks focus route cache headers', () => {
 
   it('returns no-store cache headers for focus tasks', async () => {
     const { GET } = await import('@/app/api/tasks/focus/route');
+    const getRoute = GET as unknown as (
+      request: Request,
+      user: { id: string },
+    ) => Promise<Response>;
 
-    const response = await GET(
+    const response = await getRoute(
       new Request('http://localhost/api/tasks/focus?filter=week') as never,
       { id: 'user-1' },
     );

@@ -1,11 +1,12 @@
 import type { TEvent } from '@/calendar/types';
-import { areIntervalsOverlapping, format, isSameDay, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 import { Calendar, Clock } from 'lucide-react';
 
 import { CalendarTimeline } from '@/calendar/components/week-and-day-view/calendar-time-line';
 import { EventBlock } from '@/calendar/components/week-and-day-view/event-block';
-import { getCurrentEvents, getEventBlockStyle, getVisibleHours, groupEvents } from '@/calendar/helpers';
+import { getCurrentEvents, getEventBlockStyle, getEventLayouts, getVisibleHours } from '@/calendar/helpers';
+import { eventOverlapsDay, sortEventsByStart } from '@/calendar/selectors';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { SingleCalendar } from '@/components/ui/single-calendar';
@@ -28,14 +29,11 @@ export function CalendarDayView({ events }: IProps) {
     }
   };
 
-  const dayEvents = events.filter((event) => {
-    const eventDate = parseISO(event.startDate);
-    return isSameDay(eventDate, selectedDate);
-  });
+  const dayEvents = sortEventsByStart(events.filter(event => eventOverlapsDay(event, selectedDate)));
 
   const { hours, earliestEventHour, latestEventHour } = getVisibleHours(visibleHours, dayEvents);
   const currentEvents = getCurrentEvents(dayEvents);
-  const groupedEvents = groupEvents(dayEvents);
+  const eventLayouts = getEventLayouts(dayEvents);
 
   return (
     <div className="flex">
@@ -76,29 +74,20 @@ export function CalendarDayView({ events }: IProps) {
                     </div>
                   );
                 })}
-                {groupedEvents.map((group, groupIndex) =>
-                  group.map((event) => {
-                    let style = getEventBlockStyle(event, selectedDate, groupIndex, groupedEvents.length, { from: earliestEventHour, to: latestEventHour });
-                    const hasOverlap = groupedEvents.some(
-                      (otherGroup, otherIndex) =>
-                        otherIndex !== groupIndex
-                        && otherGroup.some(otherEvent =>
-                          areIntervalsOverlapping(
-                            { start: parseISO(event.startDate), end: parseISO(event.endDate) },
-                            { start: parseISO(otherEvent.startDate), end: parseISO(otherEvent.endDate) },
-                          ),
-                        ),
+                {eventLayouts.map(({ event, columnCount, columnIndex }) => {
+                    const style = getEventBlockStyle(
+                      event,
+                      selectedDate,
+                      columnIndex,
+                      columnCount,
+                      { from: earliestEventHour, to: latestEventHour },
                     );
-                    if (!hasOverlap) {
-                      style = { ...style, width: '100%', left: '0%' };
-                    }
                     return (
                       <div key={event.id} className="absolute p-1" style={style}>
                         <EventBlock event={event} />
                       </div>
                     );
-                  }),
-                )}
+                  })}
               </div>
               <CalendarTimeline firstVisibleHour={earliestEventHour} lastVisibleHour={latestEventHour} />
             </div>

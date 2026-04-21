@@ -1,7 +1,18 @@
 import antfu from '@antfu/eslint-config';
-import * as nextPlugin from '@next/eslint-plugin-next';
+import nextPlugin from '@next/eslint-plugin-next';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import testingLibrary from 'eslint-plugin-testing-library';
+
+const nextCoreWebVitals = {
+  name: 'next/core-web-vitals',
+  plugins: {
+    '@next/next': nextPlugin,
+  },
+  rules: {
+    ...nextPlugin.configs.recommended.rules,
+    ...nextPlugin.configs['core-web-vitals'].rules,
+  },
+};
 
 export default antfu(
   {
@@ -35,7 +46,7 @@ export default antfu(
     ],
   },
   jsxA11y.flatConfigs.recommended,
-  nextPlugin.flatConfig.coreWebVitals,
+  nextCoreWebVitals,
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',

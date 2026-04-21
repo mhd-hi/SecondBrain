@@ -4,6 +4,7 @@ import type { Subtask } from '@/types/subtask';
 import type { Task, TaskType } from '@/types/task';
 import { toast } from 'sonner';
 import { create } from 'zustand';
+import { invalidateCalendarEvents } from '@/lib/stores/calendar-view-store';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
@@ -249,6 +250,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         get().addTask(response[0] as Task);
       }
 
+      invalidateCalendarEvents();
       set({ isLoading: false });
       return true;
     } catch (error) {
@@ -275,6 +277,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       // Optimistically update the store
       get().updateTask(taskId, { [field]: value } as Partial<Task>);
 
+      invalidateCalendarEvents();
       set({ isLoading: false });
       return true;
     } catch (error) {
@@ -304,6 +307,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         throw new Error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
       }
 
+      invalidateCalendarEvents();
       return true;
     } catch (error) {
       const errorMessage = CommonErrorMessages.TASK_STATUS_UPDATE_FAILED;
@@ -339,6 +343,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       // Optimistically update the store
       get().updateTask(taskId, { dueDate });
 
+      invalidateCalendarEvents();
       set({ isLoading: false });
       return true;
     } catch (error) {
@@ -357,6 +362,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       // Remove from store
       get().deleteTask(taskId);
 
+      invalidateCalendarEvents();
       toast.success('Task deleted successfully');
       set({ isLoading: false });
       return true;

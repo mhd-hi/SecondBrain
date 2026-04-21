@@ -4,8 +4,8 @@ import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/cour
 import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
 
 /**
- * Hook for course operations with automatic fetching on mount
- * Should only be used at the top level (layout) to avoid duplicate fetches
+ * Hook for top-level course operations in the dashboard shell.
+ * The layout bootstraps server-fetched summaries, so this hook only handles auth-driven resets.
  */
 export function useCourseOperations() {
   const { status } = useSession();
@@ -18,14 +18,11 @@ export function useCourseOperations() {
   const courses = useMemo(() => Array.from(coursesMap.values()), [coursesMap]);
   const coursesListItems = useMemo(() => getCourseListItemsFromCourses(courses), [courses]);
 
-  // Auto-fetch only on the initial idle state after authentication resolves.
   useEffect(() => {
-    if (status === 'authenticated' && fetchStatus === 'idle') {
-      void useCourseStore.getState().fetchCourses();
-    } else if (status === 'unauthenticated') {
+    if (status === 'unauthenticated') {
       useCourseStore.getState().reset();
     }
-  }, [status, fetchStatus]);
+  }, [status]);
 
   const fetchCourses = useCallback(async () => {
     return useCourseStore.getState().fetchCourses();

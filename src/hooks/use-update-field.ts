@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { invalidateCalendarEvents } from '@/lib/stores/calendar-view-store';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 
@@ -56,6 +57,9 @@ export function useUpdateField() {
       });
       if (!res.ok) {
         throw new Error('Failed to update');
+      }
+      if (params.type === 'task') {
+        invalidateCalendarEvents();
       }
       return await res.json();
     } catch (err) {

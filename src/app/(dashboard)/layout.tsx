@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import * as React from 'react';
+import { getUserCourseSummaries } from '@/lib/auth/db';
 import { ROUTES } from '@/lib/page-routes';
 import { auth } from '@/server/auth';
+import { DashboardProviders } from './dashboard-providers';
 import DashboardLayoutContent from './layout-content';
 
 export default async function DashboardLayout({
@@ -15,9 +17,13 @@ export default async function DashboardLayout({
     redirect(ROUTES.SIGNIN);
   }
 
+  const initialCourses = await getUserCourseSummaries(session.user.id);
+
   return (
-    <DashboardLayoutContent>
-      {children}
-    </DashboardLayoutContent>
+    <DashboardProviders initialCourses={initialCourses} session={session}>
+      <DashboardLayoutContent initialCourses={initialCourses}>
+        {children}
+      </DashboardLayoutContent>
+    </DashboardProviders>
   );
 }

@@ -2,7 +2,7 @@
 
 import type { CustomLink } from '@/types/custom-link';
 import { Trash } from 'lucide-react';
-import { useState } from 'react';
+import * as React from 'react';
 
 import { toast } from 'sonner';
 import LinkFields from '@/components/CustomLinks/LinkFields';
@@ -24,24 +24,24 @@ type UpdateCustomLinksDialogProps = {
 };
 
 const UpdateCustomLinksDialog = ({ courseId, open, onOpenChange }: UpdateCustomLinksDialogProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
   const controlled = typeof open === 'boolean' && typeof onOpenChange === 'function';
-  const dialogOpen = controlled ? open! : isOpen;
-  const setDialogOpen = (v: boolean) => {
+  const dialogOpen = controlled ? open : isOpen;
+  const setDialogOpen = (value: boolean) => {
     if (controlled) {
- onOpenChange!(v);
-} else {
- setIsOpen(v);
-}
+      onOpenChange(value);
+    } else {
+      setIsOpen(value);
+    }
   };
 
   const store = useCustomLinkStore();
   const links = store.getCustomLinksByCourse(courseId);
 
-  const [editing, setEditing] = useState<Map<string, EditingEntry>>(() => new Map());
+  const [editing, setEditing] = React.useState<Map<string, EditingEntry>>(() => new Map());
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const saveLink = async (id: string, data: EditingEntry) => {
     await api.patch<{ success: boolean; customLink: unknown }>(API_ENDPOINTS.CUSTOM_LINKS.DETAIL(id), {

@@ -1,9 +1,9 @@
 import type { TEvent } from '@/calendar/types';
-import { format, getDaysInMonth, isSameDay, startOfMonth } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth } from 'date-fns';
 import { useMemo } from 'react';
 
 import { YearViewDayCell } from '@/calendar/components/year-view/year-view-day-cell';
-import { getEventEnd, getEventStart } from '@/calendar/date-utils';
+import { groupEventsByDay } from '@/calendar/selectors';
 import { WEEK_DAYS } from '@/lib/calendar/constants';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 
@@ -30,6 +30,12 @@ export function YearViewMonth({ month, events }: IProps) {
 
     return [...blanks, ...days];
   }, [month]);
+
+  const dayEventsByDate = useMemo(() => {
+    return new Map(
+      groupEventsByDay(events).map(group => [format(group.date, 'yyyy-MM-dd'), group.events] as const),
+    );
+  }, [events]);
 
   const handleClick = () => {
     setSelectedDate(new Date(month.getFullYear(), month.getMonth(), 1));
@@ -62,7 +68,7 @@ export function YearViewMonth({ month, events }: IProps) {
             }
 
             const date = new Date(month.getFullYear(), month.getMonth(), item.day);
-            const dayEvents = events.filter(event => isSameDay(getEventStart(event), date) || isSameDay(getEventEnd(event), date));
+            const dayEvents = dayEventsByDate.get(format(date, 'yyyy-MM-dd')) ?? [];
 
             return <YearViewDayCell key={item.id} day={item.day} date={date} events={dayEvents} />;
           })}

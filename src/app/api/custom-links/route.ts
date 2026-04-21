@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { withAuth } from '@/lib/auth/api';
+import { AuthorizationError, withAuth } from '@/lib/auth/api';
+import { assertUserOwnsCourse } from '@/lib/auth/db';
 import { statusResponse } from '@/lib/utils/api/api-server-util';
 import { validateUrl } from '@/lib/utils/url-util';
 import { db } from '@/server/db';
@@ -66,6 +67,10 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       return NextResponse.json({ success: false, error: msg }, { status: 400 });
     }
 
+    if (courseId) {
+      await assertUserOwnsCourse(courseId, user.id);
+    }
+
     const inserted = await db.insert(customLinks).values({
       title,
       url: normalizedUrl,
@@ -78,6 +83,10 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return statusResponse({ success: true, customLink: inserted[0] });
   } catch (err) {
+    if (err instanceof AuthorizationError) {
+      throw err;
+    }
+
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ success: false, error: msg }, { status: 400 });
   }

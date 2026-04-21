@@ -1,11 +1,12 @@
 import type { CustomLinkItem } from '@/types/custom-link';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCustomLinkStore } from '@/lib/stores/custom-link-store';
-import { api } from '@/lib/utils/api/api-client-util';
+
+const apiGetMock = vi.fn();
 
 vi.mock('@/lib/utils/api/api-client-util', () => ({
   api: {
-    get: vi.fn(),
+    get: (...args: unknown[]) => apiGetMock(...args),
   },
 }));
 
@@ -41,7 +42,7 @@ describe('useCustomLinkStore.fetchCustomLinksByCourse', () => {
     const freshCourseTwoLink = createCustomLink({ id: 'fresh-course-2-link', courseId: 'course-2' });
 
     useCustomLinkStore.getState().setCustomLinks([existingCourseOneLink, staleCourseTwoLink]);
-    vi.mocked(api.get).mockResolvedValueOnce({
+    apiGetMock.mockResolvedValueOnce({
       success: true,
       customLinks: [freshCourseTwoLink],
     });

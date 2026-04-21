@@ -18,7 +18,6 @@ import {
   getTotalTasksCount,
   getUpcomingTask,
 } from '@/lib/utils/task';
-import { StatusTask } from '@/types/status-task';
 
 type CourseCardProps = {
   course: Course;
@@ -27,19 +26,18 @@ type CourseCardProps = {
 
 export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) {
   const [showColorDialog, setShowColorDialog] = useState(false);
-    const [showDaypartDialog, setShowDaypartDialog] = useState(false);
+  const [showDaypartDialog, setShowDaypartDialog] = useState(false);
   const [selectedColor, setSelectedColor] = useState(course.color || 'blue');
   const tasks = course.tasks ?? [];
   const displayColor = selectedColor || course.color || 'blue';
 
-  // Calculate progress and task counts
-  const progressPercentage = calculateProgress(tasks);
-  const completedTasks = getCompletedTasksCount(tasks);
-  const totalTasks = getTotalTasksCount(tasks);
-
-  // Get next and upcoming tasks
-  const nextTask = getNextTask(tasks);
-  const upcomingTask = getUpcomingTask(tasks);
+  const totalTasks = course.totalTasks ?? getTotalTasksCount(tasks);
+  const completedTasks = course.completedTasks ?? getCompletedTasksCount(tasks);
+  const progressPercentage = totalTasks > 0
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : calculateProgress(tasks);
+  const nextTask = course.nextTask ?? getNextTask(tasks);
+  const upcomingTask = course.upcomingTask ?? getUpcomingTask(tasks);
 
   const handleChangeColorClick = () => {
     setShowColorDialog(true);
@@ -127,7 +125,7 @@ export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) 
                 />
               </Link>
             </div>
-            {nextTask.dueDate && nextTask.status !== StatusTask.COMPLETED && (
+            {nextTask.dueDate && (
               <div className="flex items-center mb-2">
                 <DueDateDisplay
                   date={nextTask.dueDate}
@@ -138,7 +136,7 @@ export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) 
           </div>
         )}
 
-        {upcomingTask && upcomingTask !== nextTask && (
+        {upcomingTask && upcomingTask.id !== nextTask?.id && (
           <div>
             <div className="flex items-center gap-1 mt-1 pt-1 border-t border-border">
               <span className="text-xs font-bold text-foreground">Upcoming:</span>
@@ -153,7 +151,7 @@ export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) 
                 />
               </Link>
             </div>
-            {upcomingTask.dueDate && upcomingTask.status !== StatusTask.COMPLETED && (
+            {upcomingTask.dueDate && (
               <div className="flex items-center">
                 <DueDateDisplay
                   date={upcomingTask.dueDate}

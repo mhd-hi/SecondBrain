@@ -2,19 +2,24 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import * as React from 'react';
 import { CapybaraLoader } from '@/components/shared/CapybaraLoader';
 import { SignInCard } from '@/components/shared/SignInCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { ROUTES } from '@/lib/page-routes';
+import { normalizeCallbackUrl } from '@/lib/utils/auth/callback-url';
 
 function SignInContent() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || ROUTES.DASHBOARD;
+  const rawCallbackUrl = searchParams.get('callbackUrl');
+  const callbackUrl = React.useMemo(() => normalizeCallbackUrl(rawCallbackUrl, {
+    baseUrl: typeof window === 'undefined' ? undefined : window.location.origin,
+    fallbackPath: ROUTES.DASHBOARD,
+  }), [rawCallbackUrl]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (status === 'authenticated') {
       router.push(callbackUrl);
     }
@@ -56,7 +61,7 @@ function SignInContent() {
 
 export default function SignInPage() {
   return (
-    <Suspense
+    <React.Suspense
       fallback={(
         <div className="min-h-screen flex items-center justify-center">
           <CapybaraLoader />
@@ -64,6 +69,6 @@ export default function SignInPage() {
       )}
     >
       <SignInContent />
-    </Suspense>
+    </React.Suspense>
   );
 }

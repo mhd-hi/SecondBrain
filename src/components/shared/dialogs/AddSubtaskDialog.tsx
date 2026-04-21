@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import type { Subtask } from '@/types/subtask';
 import { useState } from 'react';
@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { createSubtask } from '@/hooks/task/use-subtask';
 import { useTaskStore } from '@/lib/stores/task-store';
-import { StatusTask } from '@/types/status-task';
 
 type AddSubtaskDialogProps = {
   taskId: string;
@@ -29,7 +28,6 @@ export const AddSubtaskDialog = ({ taskId, open, onOpenChange, onSubtaskAdded }:
   const [newSubtask, setNewSubtask] = useState(() => ({
     title: '',
     notes: '',
-    estimatedEffort: 0.5,
   }));
 
   const handleClose = () => onOpenChange(false);
@@ -46,8 +44,6 @@ export const AddSubtaskDialog = ({ taskId, open, onOpenChange, onSubtaskAdded }:
       const payload = {
         title: newSubtask.title,
         notes: newSubtask.notes ?? '',
-        estimatedEffort: newSubtask.estimatedEffort ?? 0.5,
-        status: StatusTask.TODO,
       };
 
       const created = await createSubtask(taskId, payload);
@@ -60,7 +56,7 @@ export const AddSubtaskDialog = ({ taskId, open, onOpenChange, onSubtaskAdded }:
 
       toast.success('Subtask added');
       handleClose();
-      setNewSubtask({ title: '', notes: '', estimatedEffort: 0.5 });
+      setNewSubtask({ title: '', notes: '' });
       if (onSubtaskAdded) {
         onSubtaskAdded(created as Subtask);
       }
@@ -95,26 +91,12 @@ export const AddSubtaskDialog = ({ taskId, open, onOpenChange, onSubtaskAdded }:
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="notes" className="text-sm font-medium">Notes</label>
+              <label htmlFor="notes" className="text-sm font-medium">Description</label>
               <textarea
                 id="notes"
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={newSubtask.notes}
                 onChange={e => setNewSubtask(prev => ({ ...prev, notes: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor="estimatedEffort" className="text-sm font-medium">Estimated Effort (hours)</label>
-              <input
-                id="estimatedEffort"
-                type="number"
-                step="0.25"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={newSubtask.estimatedEffort}
-                onChange={e => setNewSubtask(prev => ({ ...prev, estimatedEffort: Number.parseFloat(e.target.value) || 0.5 }))}
-                min="0.25"
-                required
               />
             </div>
           </div>

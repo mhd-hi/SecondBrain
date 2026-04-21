@@ -1,3 +1,4 @@
+import type { TCalendarView } from '@/calendar/types';
 import { CalendarRange, Columns, Grid2x2, Grid3x3, List, Plus } from 'lucide-react';
 
 import { useState } from 'react';
@@ -11,17 +12,62 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCourses } from '@/hooks/course/use-course-store';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
+
+const CALENDAR_VIEW_OPTIONS: Array<{
+  className: string;
+  description: string;
+  icon: React.ComponentType<{ strokeWidth?: number }>;
+  label: string;
+  value: TCalendarView;
+}> = [
+  {
+    value: 'day',
+    label: 'Day',
+    description: 'See one day at a time.',
+    icon: List,
+    className: 'rounded-r-none [&_svg]:size-5',
+  },
+  {
+    value: 'week',
+    label: 'Week',
+    description: 'See your week.',
+    icon: Columns,
+    className: '-ml-px rounded-none [&_svg]:size-5',
+  },
+  {
+    value: 'month',
+    label: 'Month',
+    description: 'See the full month.',
+    icon: Grid2x2,
+    className: '-ml-px rounded-none [&_svg]:size-5',
+  },
+  {
+    value: 'year',
+    label: 'Year',
+    description: 'See the full year.',
+    icon: Grid3x3,
+    className: '-ml-px rounded-none [&_svg]:size-5',
+  },
+  {
+    value: 'agenda',
+    label: 'Agenda',
+    description: 'See tasks in a simple list.',
+    icon: CalendarRange,
+    className: '-ml-px rounded-l-none [&_svg]:size-5',
+  },
+];
 
 export function CalendarHeader() {
   const view = useCalendarViewStore(state => state.view);
   const setView = useCalendarViewStore(state => state.setView);
-  const { courses, isLoading } = useCourses();
-  const [addTaskOpen, setAddTaskOpen] = useState(false);
-
   const selectedDate = useCalendarViewStore(state => state.selectedDate);
   const setSelectedDate = useCalendarViewStore(state => state.setSelectedDate);
+
+  const { courses, isLoading } = useCourses();
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   // Compute weekDates based on selectedDate
   const getCurrentWeekDates = () => {
@@ -62,51 +108,24 @@ export function CalendarHeader() {
       <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:justify-between">
         <div className="flex w-full items-center gap-1.5">
           <div className="inline-flex first:rounded-r-none last:rounded-l-none [&:not(:first-child):not(:last-child)]:rounded-none">
-            <Button
-              aria-label="View by day"
-              size="icon"
-              variant={view === 'day' ? 'default' : 'outline'}
-              className="rounded-r-none [&_svg]:size-5"
-              onClick={() => setView('day')}
-            >
-              <List strokeWidth={1.8} />
-            </Button>
-            <Button
-              aria-label="View by week"
-              size="icon"
-              variant={view === 'week' ? 'default' : 'outline'}
-              className="-ml-px rounded-none [&_svg]:size-5"
-              onClick={() => setView('week')}
-            >
-              <Columns strokeWidth={1.8} />
-            </Button>
-            <Button
-              aria-label="View by month"
-              size="icon"
-              variant={view === 'month' ? 'default' : 'outline'}
-              className="-ml-px rounded-none [&_svg]:size-5"
-              onClick={() => setView('month')}
-            >
-              <Grid2x2 strokeWidth={1.8} />
-            </Button>
-            <Button
-              aria-label="View by year"
-              size="icon"
-              variant={view === 'year' ? 'default' : 'outline'}
-              className="-ml-px rounded-none [&_svg]:size-5"
-              onClick={() => setView('year')}
-            >
-              <Grid3x3 strokeWidth={1.8} />
-            </Button>
-            <Button
-              aria-label="View by agenda"
-              size="icon"
-              variant={view === 'agenda' ? 'default' : 'outline'}
-              className="-ml-px rounded-l-none [&_svg]:size-5"
-              onClick={() => setView('agenda')}
-            >
-              <CalendarRange strokeWidth={1.8} />
-            </Button>
+            {CALENDAR_VIEW_OPTIONS.map(({ className, description, icon: Icon, label, value }) => (
+              <Tooltip key={value}>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={`View by ${label.toLowerCase()}`}
+                    size="icon"
+                    variant={view === value ? 'default' : 'outline'}
+                    className={className}
+                    onClick={() => setView(value)}
+                  >
+                    <Icon strokeWidth={1.8} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  {description}
+                </TooltipContent>
+              </Tooltip>
+            ))}
           </div>
         </div>
 

@@ -133,7 +133,7 @@ jobs:
     if: needs.detect-db-migration-changes.outputs.should_run == 'true'
     services:
       postgres:
-        image: postgres:15
+        image: postgres:17
         # expose 5432 on the VM so "localhost:5432" works
         ports:
           - 5432:5432

@@ -6,30 +6,21 @@ import { useRouter } from 'next/navigation';
 import CourseCard from '@/components/Boards/Course/CourseCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { deleteCourseById } from '@/hooks/course/use-course';
-import { useCourses } from '@/hooks/course/use-course-store';
+import { useCourseMutations, useCourses } from '@/hooks/course/use-course-store';
 import { getAddCoursePath } from '@/lib/page-routes';
 import { handleConfirm } from '@/lib/utils/dialog-util';
-import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 
 export function CourseListTile() {
   const router = useRouter();
   const { courses, isLoading, refreshCourses } = useCourses();
+  const { deleteCourse } = useCourseMutations();
 
   const handleDeleteCourse = async (courseId: string) => {
     await handleConfirm(
       'Are you sure you want to delete this course? This action cannot be undone.',
       async () => {
-        try {
-          await deleteCourseById(courseId);
-          await refreshCourses();
-        } catch (error) {
-          ErrorHandlers.api(
-            error,
-            CommonErrorMessages.COURSE_DELETE_FAILED,
-            'CoursesTile',
-          );
-        }
+        await deleteCourse(courseId);
+        await refreshCourses();
       },
       undefined,
       {
@@ -43,7 +34,7 @@ export function CourseListTile() {
 
   return (
     <div className="bg-muted/30 rounded-lg border p-6">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-semibold">Courses</h2>
         <Button onClick={() => router.push(getAddCoursePath())}>
           <Plus className="mr-2 h-4 w-4 rounded-sm" />

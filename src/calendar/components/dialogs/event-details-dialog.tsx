@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getCoursePath } from '@/lib/page-routes';
+import { getCourseTaskPath } from '@/lib/page-routes';
 
 type IProps = {
   event: TEvent;
@@ -69,7 +69,7 @@ export function EventDetailsDialog({ event, children }: IProps) {
           <DialogFooter>
             {event.type === 'task' && event.courseId && (
               <Button asChild variant="outline" className="ml-auto">
-                <Link href={`${getCoursePath(event.courseId)}#task-${event.id}`}>
+                <Link href={getCourseTaskPath(event.courseId, event.id)}>
                   <ExternalLink className="size-4" />
                   View Task
                 </Link>

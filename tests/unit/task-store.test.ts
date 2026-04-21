@@ -1,7 +1,7 @@
 import type { Task } from '@/types/task';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { updateTaskDueDate, updateTaskStatus } from '@/hooks/task/use-task';
 import { useTaskStore } from '@/lib/stores/task-store';
-import { CommonErrorMessages } from '@/lib/utils/errors/error';
 import { StatusTask } from '@/types/status-task';
 
 vi.mock('sonner', () => ({
@@ -54,7 +54,7 @@ function setFetchMock(fetchMock: typeof fetch) {
   });
 }
 
-describe('useTaskStore.updateTaskStatus', () => {
+describe('updateTaskStatus', () => {
   beforeEach(() => {
     useTaskStore.getState().reset();
     vi.clearAllMocks();
@@ -73,12 +73,15 @@ describe('useTaskStore.updateTaskStatus', () => {
     const deferred = createDeferred<Response>();
     setFetchMock(vi.fn(() => deferred.promise) as unknown as typeof fetch);
 
-    const updatePromise = useTaskStore.getState().updateTaskStatus('task-1', StatusTask.IN_PROGRESS);
+    const updatePromise = updateTaskStatus('task-1', StatusTask.IN_PROGRESS);
 
     expect(useTaskStore.getState().getTask('task-1')?.status).toBe(StatusTask.IN_PROGRESS);
     expect(useTaskStore.getState().isLoading).toBe(false);
 
-    deferred.resolve({ ok: true } as Response);
+    deferred.resolve({
+      ok: true,
+      json: vi.fn().mockResolvedValue({}),
+    } as unknown as Response);
 
     await expect(updatePromise).resolves.toBe(true);
   });
@@ -86,14 +89,58 @@ describe('useTaskStore.updateTaskStatus', () => {
   it('rolls back the optimistic status when the request fails', async () => {
     useTaskStore.getState().setTasks([createTask()]);
 
-    setFetchMock(vi.fn().mockResolvedValue({ ok: false } as Response) as unknown as typeof fetch);
+    setFetchMock(vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: vi.fn().mockResolvedValue('status update failed'),
+    } as unknown as Response) as unknown as typeof fetch);
 
     await expect(
-      useTaskStore.getState().updateTaskStatus('task-1', StatusTask.COMPLETED),
-    ).resolves.toBe(false);
+      updateTaskStatus('task-1', StatusTask.COMPLETED),
+    ).rejects.toBeInstanceOf(Error);
 
     expect(useTaskStore.getState().getTask('task-1')?.status).toBe(StatusTask.TODO);
-    expect(useTaskStore.getState().error).toBe(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
+  });
+
+  it('updates the due date immediately without flipping loading state', async () => {
+    useTaskStore.getState().setTasks([createTask()]);
+
+    const nextDueDate = new Date('2026-04-15T09:00:00.000Z');
+    const deferred = createDeferred<Response>();
+    setFetchMock(vi.fn(() => deferred.promise) as unknown as typeof fetch);
+
+    const updatePromise = updateTaskDueDate('task-1', nextDueDate);
+
+    expect(useTaskStore.getState().getTask('task-1')?.dueDate).toEqual(nextDueDate);
+    expect(useTaskStore.getState().isLoading).toBe(false);
+
+    deferred.resolve({
+      ok: true,
+      json: vi.fn().mockResolvedValue({}),
+    } as unknown as Response);
+
+    await expect(updatePromise).resolves.toBe(true);
+  });
+
+  it('rolls back the optimistic due date when the request fails', async () => {
+    const originalTask = createTask();
+    useTaskStore.getState().setTasks([originalTask]);
+
+    const nextDueDate = new Date('2026-04-15T09:00:00.000Z');
+
+    setFetchMock(vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: vi.fn().mockResolvedValue('due date update failed'),
+    } as unknown as Response) as unknown as typeof fetch);
+
+    await expect(
+      updateTaskDueDate('task-1', nextDueDate),
+    ).rejects.toBeInstanceOf(Error);
+
+    expect(useTaskStore.getState().getTask('task-1')?.dueDate).toEqual(originalTask.dueDate);
   });
 
   it('replaces only the fetched course slice and tracks status per course', async () => {

@@ -1,6 +1,5 @@
 'use client';
 
-import type { Subtask } from '@/types/subtask';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,23 +11,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { createSubtask } from '@/hooks/task/use-subtask';
-import { useTaskStore } from '@/lib/stores/task-store';
+import { useSubtaskActions } from '@/hooks/task/use-subtask-actions';
 
 type AddSubtaskDialogProps = {
   taskId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubtaskAdded?: (subtask: Subtask) => void;
 };
 
-export const AddSubtaskDialog = ({ taskId, open, onOpenChange, onSubtaskAdded }: AddSubtaskDialogProps) => {
+export const AddSubtaskDialog = ({ taskId, open, onOpenChange }: AddSubtaskDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const addSubtask = useTaskStore(state => state.addSubtask);
   const [newSubtask, setNewSubtask] = useState(() => ({
     title: '',
     notes: '',
   }));
+  const { addSubtask } = useSubtaskActions({ taskId });
 
   const handleClose = () => onOpenChange(false);
 
@@ -41,25 +38,17 @@ export const AddSubtaskDialog = ({ taskId, open, onOpenChange, onSubtaskAdded }:
 
     setIsLoading(true);
     try {
-      const payload = {
+      const created = await addSubtask({
         title: newSubtask.title,
         notes: newSubtask.notes ?? '',
-      };
-
-      const created = await createSubtask(taskId, payload);
+      });
       if (!created) {
         throw new Error('Creation failed');
       }
 
-      // Update the store with the new subtask
-      addSubtask(taskId, created);
-
       toast.success('Subtask added');
       handleClose();
       setNewSubtask({ title: '', notes: '' });
-      if (onSubtaskAdded) {
-        onSubtaskAdded(created as Subtask);
-      }
     } catch {
       toast.error('Failed to add subtask');
     } finally {

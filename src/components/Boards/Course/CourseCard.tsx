@@ -10,7 +10,7 @@ import { getCourseActions } from '@/components/shared/atoms/get-course-actions';
 import { TruncatedTextWithTooltip } from '@/components/shared/atoms/text-with-tooltip';
 import { ChangeCourseColorDialog } from '@/components/shared/dialogs/ChangeCourseColorDialog';
 import { ChangeCourseDaypartDialog } from '@/components/shared/dialogs/ChangeCourseDaypartDialog';
-import { getCoursePath } from '@/lib/page-routes';
+import { getCoursePath, getCourseTaskPath } from '@/lib/page-routes';
 import {
   calculateProgress,
   getCompletedTasksCount,
@@ -115,7 +115,7 @@ export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) 
             <div className="flex items-center gap-1">
               <span className="text-xs font-bold text-foreground">Next:</span>
               <Link
-                href={`${getCoursePath(course.id)}#task-${nextTask.id}`}
+                href={getCourseTaskPath(course.id, nextTask.id)}
                 className="flex-1 hover:underline transition-colors"
               >
                 <TruncatedTextWithTooltip
@@ -141,7 +141,7 @@ export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) 
             <div className="flex items-center gap-1 mt-1 pt-1 border-t border-border">
               <span className="text-xs font-bold text-foreground">Upcoming:</span>
               <Link
-                href={`${getCoursePath(course.id)}#task-${upcomingTask.id}`}
+                href={getCourseTaskPath(course.id, upcomingTask.id)}
                 className="flex-1 hover:underline transition-colors"
               >
                 <TruncatedTextWithTooltip

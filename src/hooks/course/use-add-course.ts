@@ -1,5 +1,6 @@
 'use client';
 
+import type { StepStatus } from './add-course-pipeline/types';
 import type { CourseAIResponse } from '@/types/api/ai';
 import type { Daypart } from '@/types/course';
 import type { SchoolId } from '@/types/school';
@@ -7,15 +8,14 @@ import type { PipelineStepResult } from '@/types/server-pipelines/pipelines';
 import { useCallback, useReducer } from 'react';
 import { toast } from 'sonner';
 import { createPlanETSLink } from '@/hooks/use-custom-link';
+import { normalizeTasks } from '@/lib/ai/normalize';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { assertValidCourseCode } from '@/lib/utils/course/course';
 import { calculateDueDateTaskForTerm } from '@/lib/utils/task/task-util';
 import { SCHOOL } from '@/types/school';
 import { pipelineReducer } from './add-course-pipeline/reducer';
-import { deriveStepStatus, deriveCurrentStep, deriveParsedData, deriveCreatedCourseId, deriveError, deriveIsProcessing } from './add-course-pipeline/selectors';
-import type { StepStatus } from './add-course-pipeline/types';
-import { normalizeTasks } from '@/lib/ai/normalize';
+import { deriveCreatedCourseId, deriveCurrentStep, deriveError, deriveIsProcessing, deriveParsedData, deriveStepStatus } from './add-course-pipeline/selectors';
 
 export type UseAddCourseReturn = {
   currentStep: string;
@@ -39,24 +39,15 @@ export type UseAddCourseReturn = {
 async function fetchCourseFromPlanETS(courseCode: string, term: string) {
   const cleanCode = assertValidCourseCode(courseCode);
 
-  const response = await fetch(API_ENDPOINTS.COURSES.PIPELINE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const result = await api.post<PipelineStepResult>(
+    API_ENDPOINTS.COURSES.PIPELINE,
+    {
       courseCode: cleanCode,
       term,
       step: 'planets',
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = (await response.json()) as { error?: string };
-    throw new Error(errorData.error ?? 'Failed to fetch planets data');
-  }
-
-  const result = (await response.json()) as PipelineStepResult;
+    },
+    'Failed to fetch planets data',
+  );
 
   if (result.step.status === 'error') {
     throw new Error(result.step.error ?? 'Failed to fetch course data');
@@ -75,26 +66,17 @@ async function parseCourseWithAI(
 ): Promise<CourseAIResponse> {
   const cleanCode = assertValidCourseCode(courseCode);
 
-  const response = await fetch(API_ENDPOINTS.COURSES.PIPELINE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const result = await api.post<PipelineStepResult>(
+    API_ENDPOINTS.COURSES.PIPELINE,
+    {
       courseCode: cleanCode,
       term,
       step: 'ai',
       htmlData: html,
       userContext,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = (await response.json()) as { error?: string };
-    throw new Error(errorData.error ?? 'Failed to process with AI');
-  }
-
-  const result = (await response.json()) as PipelineStepResult;
+    },
+    'Failed to process with AI',
+  );
 
   if (result.step.status === 'error') {
     throw new Error(result.step.error ?? 'Failed to parse with AI');

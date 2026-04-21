@@ -1,18 +1,20 @@
 import type { Subtask } from '@/types/subtask';
 import * as React from 'react';
 import { toast } from 'sonner';
-import { deleteSubtask } from '@/hooks/task/use-subtask';
-import { useUpdateField } from '@/hooks/use-update-field';
+import { createSubtask, deleteSubtask, useUpdateSubtaskField } from '@/hooks/task/use-subtask';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { buildTaskFromSubtask } from '@/lib/utils/task/task-draft';
 
 type UseSubtaskActionsParams = {
-  taskId?: string;
+  taskId: string;
   courseId?: string | null;
   courseIdDueDate?: Date | string | undefined;
-  onDeleteSubtask?: (subtaskId: string) => void;
-  onEditSubtask?: (subtaskId: string, changes: Partial<Subtask>) => void;
   onTaskAdded?: () => void;
+};
+
+type NewSubtaskInput = {
+  title: string;
+  notes: string;
 };
 
 function notifyTaskAdded(onTaskAdded?: () => void) {
@@ -31,44 +33,41 @@ export function useSubtaskActions({
   taskId,
   courseId,
   courseIdDueDate,
-  onDeleteSubtask,
-  onEditSubtask,
   onTaskAdded,
 }: UseSubtaskActionsParams) {
-  const updateField = useUpdateField();
+  const updateSubtaskField = useUpdateSubtaskField(taskId);
+  const addSubtaskToStore = useTaskStore(state => state.addSubtask);
   const createTask = useTaskStore(state => state.createTask);
   const deleteSubtaskFromStore = useTaskStore(state => state.deleteSubtask);
+
+  const addSubtask = React.useCallback(async (payload: NewSubtaskInput) => {
+    const created = await createSubtask(taskId, payload);
+    if (!created) {
+      return null;
+    }
+
+    addSubtaskToStore(taskId, created);
+    return created;
+  }, [addSubtaskToStore, taskId]);
 
   const saveSubtaskField = React.useCallback(async (
     subtaskId: string,
     input: 'title' | 'notes',
     value: string,
-    changes: Partial<Subtask>,
   ) => {
-    await updateField({
-      type: 'subtask',
-      id: subtaskId,
-      input,
-      value,
-    });
-
-    onEditSubtask?.(subtaskId, changes);
-  }, [onEditSubtask, updateField]);
+    await updateSubtaskField(subtaskId, input, value);
+  }, [updateSubtaskField]);
 
   const saveSubtaskTitle = React.useCallback(async (subtaskId: string, title: string) => {
-    await saveSubtaskField(subtaskId, 'title', title, { title });
+    await saveSubtaskField(subtaskId, 'title', title);
   }, [saveSubtaskField]);
 
   const saveSubtaskNotes = React.useCallback(async (subtaskId: string, notes: string) => {
-    await saveSubtaskField(subtaskId, 'notes', notes, { notes });
+    await saveSubtaskField(subtaskId, 'notes', notes);
   }, [saveSubtaskField]);
 
   const deleteSubtaskAction = React.useCallback(async (subtaskId: string) => {
     try {
-      if (!taskId) {
-        throw new Error('Missing task id');
-      }
-
       const deleted = await deleteSubtask(taskId, subtaskId);
       if (!deleted) {
         throw new Error('Failed to delete');
@@ -76,19 +75,14 @@ export function useSubtaskActions({
 
       deleteSubtaskFromStore(taskId, subtaskId);
       toast.success('Subtask deleted');
-      onDeleteSubtask?.(subtaskId);
     } catch (error) {
       console.error(error);
       toast.error('Failed to delete subtask');
     }
-  }, [deleteSubtaskFromStore, onDeleteSubtask, taskId]);
+  }, [deleteSubtaskFromStore, taskId]);
 
   const convertSubtaskToTask = React.useCallback(async (subtask: Subtask) => {
     try {
-      if (!taskId) {
-        throw new Error('Missing task id');
-      }
-
       if (!courseId) {
         toast.error('Cannot convert subtask to task: parent task has no course');
         console.warn('Convert aborted: courseId is falsy', { taskId, courseId, courseIdDueDate, subtask });
@@ -115,7 +109,6 @@ export function useSubtaskActions({
 
       deleteSubtaskFromStore(taskId, subtask.id);
       toast.success('Subtask converted to task');
-      onDeleteSubtask?.(subtask.id);
     } catch (error) {
       console.error(error);
       toast.error('Failed to convert subtask to task');
@@ -125,12 +118,12 @@ export function useSubtaskActions({
     courseIdDueDate,
     createTask,
     deleteSubtaskFromStore,
-    onDeleteSubtask,
     onTaskAdded,
     taskId,
   ]);
 
   return {
+    addSubtask,
     convertSubtaskToTask,
     deleteSubtask: deleteSubtaskAction,
     saveSubtaskNotes,

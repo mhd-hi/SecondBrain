@@ -1,7 +1,7 @@
 import type { Task } from '@/types/task';
 import * as React from 'react';
 import { toast } from 'sonner';
-import { useUpdateField } from '@/hooks/use-update-field';
+import { updateTaskDueDate, useUpdateTaskField } from '@/hooks/task/use-task';
 
 function getEditableEffort(task: Task) {
   return task.estimatedEffort > 0 ? task.estimatedEffort : undefined;
@@ -17,16 +17,21 @@ function normalizeEffortValue(estimatedEffort: number | undefined) {
   return rawValue < 0 ? 0.5 : Math.max(0, rawValue);
 }
 
+function getDueDateTime(dueDate: Date | string | null | undefined) {
+  if (!dueDate) {
+    return null;
+  }
+
+  const parsedDate = dueDate instanceof Date ? dueDate : new Date(dueDate);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate.getTime();
+}
+
 export function useTaskCard(task: Task) {
-  const updateField = useUpdateField();
+  const updateTaskField = useUpdateTaskField();
   const effortInputContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const [editedTitle, setEditedTitle] = React.useState(task.title);
-  const [editedDescription, setEditedDescription] = React.useState(task.notes ?? '');
   const [isEditingEffort, setIsEditingEffort] = React.useState(false);
   const [editedEffort, setEditedEffort] = React.useState<number | undefined>(() => getEditableEffort(task));
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = React.useState(false);
-  const [editedType, setEditedType] = React.useState(task.type);
-  const [editedDueDate, setEditedDueDate] = React.useState(() => (task.dueDate ? new Date(task.dueDate) : undefined));
 
   React.useEffect(() => {
     if (!isEditingEffort) {
@@ -41,26 +46,18 @@ export function useTaskCard(task: Task) {
   }, [isEditingEffort]);
 
   const saveTaskField = React.useCallback(async (input: string, value: string) => {
-    await updateField({
-      type: 'task',
-      id: task.id,
-      input,
-      value,
-    });
-  }, [task.id, updateField]);
+    await updateTaskField(task.id, input, value);
+  }, [task.id, updateTaskField]);
 
   const saveTitle = React.useCallback(async (title: string) => {
-    setEditedTitle(title);
     await saveTaskField('title', title);
   }, [saveTaskField]);
 
   const saveDescription = React.useCallback(async (description: string) => {
-    setEditedDescription(description);
     await saveTaskField('notes', description);
   }, [saveTaskField]);
 
   const saveType = React.useCallback(async (type: Task['type']) => {
-    setEditedType(type);
     setIsTypeDropdownOpen(false);
 
     if (type === task.type) {
@@ -73,17 +70,22 @@ export function useTaskCard(task: Task) {
 
   const saveDueDate = React.useCallback(async (dueDate: Date | null | undefined) => {
     const nextDueDate = dueDate instanceof Date && !Number.isNaN(dueDate.getTime()) ? dueDate : undefined;
-    setEditedDueDate(nextDueDate);
+    const currentDueDateTime = getDueDateTime(task.dueDate);
+    const nextDueDateTime = getDueDateTime(nextDueDate);
+
+    if (currentDueDateTime === nextDueDateTime) {
+      return;
+    }
 
     if (nextDueDate) {
-      await saveTaskField('dueDate', nextDueDate.toISOString());
+      await updateTaskDueDate(task.id, nextDueDate);
       toast.success('Due date updated');
       return;
     }
 
     await saveTaskField('dueDate', '');
     toast.success('Due date cleared');
-  }, [saveTaskField]);
+  }, [saveTaskField, task.dueDate, task.id]);
 
   const startEffortEditing = React.useCallback(() => {
     setEditedEffort(getEditableEffort(task));
@@ -111,8 +113,9 @@ export function useTaskCard(task: Task) {
     } catch (error) {
       console.error('Failed to save estimated effort', error);
       toast.error('Failed to update estimated effort');
+      setEditedEffort(getEditableEffort(task));
     }
-  }, [editedEffort, saveTaskField, task.estimatedEffort]);
+  }, [editedEffort, saveTaskField, task]);
 
   const handleEffortKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
@@ -125,11 +128,7 @@ export function useTaskCard(task: Task) {
   }, [cancelEffortEditing]);
 
   return {
-    editedDescription,
-    editedDueDate,
     editedEffort,
-    editedTitle,
-    editedType,
     effortInputContainerRef,
     handleEffortKeyDown,
     isEditingEffort,

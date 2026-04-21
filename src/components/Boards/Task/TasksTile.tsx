@@ -4,10 +4,12 @@ import type { Task } from '@/types/task';
 import type { FilterType, GroupConfig, GroupedTasks, TodaysFocusGroup } from '@/types/todays-focus';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useShallow } from 'zustand/react/shallow';
 import { TaskCard } from '@/components/Task/TaskCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { fetchFocusTasks } from '@/hooks/task/use-task';
+import { fetchFocusTasks, updateTaskStatus } from '@/hooks/task/use-task';
+import { getCourseTaskPath } from '@/lib/page-routes';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { CommonErrorMessages } from '@/lib/utils/errors/error';
 import { StatusTask } from '@/types/status-task';
@@ -88,7 +90,7 @@ const GroupSection = ({
                     label: `Go to ${task.course.code}`,
                     onClick: () => {
                       if (task.course?.id) {
-                        window.location.href = `/courses/${task.course.id}#task-${task.id}`;
+                        window.location.href = getCourseTaskPath(task.course.id, task.id);
                       }
                     },
                     destructive: false,
@@ -128,21 +130,28 @@ const GroupSection = ({
 };
 
 export const TodaysFocusTile = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskIds, setTaskIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<FilterType>('week');
   const [expandedSections, setExpandedSections] = useState<Set<TodaysFocusGroup>>(() => new Set());
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(() => new Set());
   const [removingTaskIds, setRemovingTaskIds] = useState<Set<string>>(() => new Set());
+  const tasks = useTaskStore(
+    useShallow(state => taskIds.flatMap((taskId) => {
+      const task = state.tasks.get(taskId);
+      return task ? [task] : [];
+    })),
+  );
 
   const removeTask = useTaskStore(state => state.removeTask);
-  const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
+  const upsertTasks = useTaskStore(state => state.upsertTasks);
 
   const fetchFocusTasksData = useCallback(async () => {
     setIsLoading(true);
     try {
       const focusTasks = await fetchFocusTasks(filter);
-      setTasks(focusTasks);
+      upsertTasks(focusTasks);
+      setTaskIds(focusTasks.map(task => task.id));
       setRemovingTaskIds(new Set());
     } catch (error) {
       console.error('Failed to load focus tasks:', error);
@@ -150,7 +159,7 @@ export const TodaysFocusTile = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, [filter, upsertTasks]);
 
   useEffect(() => {
     void fetchFocusTasksData();
@@ -161,51 +170,32 @@ export const TodaysFocusTile = () => {
   };
 
   const handleStatusChange = async (taskId: string, newStatus: StatusTask) => {
-    // Optimistic update - update UI immediately
     if (shouldRemoveTask(newStatus)) {
       setRemovingTaskIds(prev => new Set(prev).add(taskId));
-
-      setTimeout(() => {
-        setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
-        setRemovingTaskIds((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(taskId);
-          return newSet;
-        });
-      }, 300);
-    } else {
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? { ...task, status: newStatus } : task,
-        ),
-      );
     }
 
     try {
       await updateTaskStatus(taskId, newStatus);
+
+      if (shouldRemoveTask(newStatus)) {
+        setTimeout(() => {
+          setTaskIds(prevTaskIds => prevTaskIds.filter(id => id !== taskId));
+          setRemovingTaskIds((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(taskId);
+            return newSet;
+          });
+        }, 300);
+      }
     } catch (error) {
       console.error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED, error);
-      toast.error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
 
-      // Rollback optimistic update on error
       if (shouldRemoveTask(newStatus)) {
-        // Restore the removed task
         setRemovingTaskIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(taskId);
           return newSet;
         });
-        // Note: We can't easily restore the removed task since we don't have the original data
-        // In this case, we could refetch the data or maintain a backup
-      } else {
-        // Rollback status change
-        setTasks(prevTasks =>
-          prevTasks.map(task =>
-            task.id === taskId
-              ? { ...task, status: tasks.find(t => t.id === taskId)?.status || StatusTask.TODO }
-              : task,
-          ),
-        );
       }
     }
   };
@@ -214,10 +204,13 @@ export const TodaysFocusTile = () => {
     try {
       setRemovingTaskIds(prev => new Set(prev).add(taskId));
 
-      await removeTask(taskId);
+      const removed = await removeTask(taskId);
+      if (!removed) {
+        throw new Error('Failed to delete task');
+      }
 
       setTimeout(() => {
-        setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+        setTaskIds(prevTaskIds => prevTaskIds.filter(id => id !== taskId));
         setRemovingTaskIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(taskId);
@@ -332,7 +325,7 @@ export const TodaysFocusTile = () => {
   return (
     <div className="border rounded-lg bg-muted/30 min-h-80 flex flex-col">
       <div className="p-6 pb-4 flex-1">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-semibold">Today&apos;s Focus</h2>
           <div className="flex items-center gap-2">
             {[

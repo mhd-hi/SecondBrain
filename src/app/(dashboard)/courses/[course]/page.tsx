@@ -19,8 +19,8 @@ import { CourseSkeleton } from '@/components/shared/skeletons/CourseSkeleton';
 import { TaskCard } from '@/components/Task/TaskCard';
 
 import { Button } from '@/components/ui/button';
-import { useCourses } from '@/hooks/course/use-course-store';
-import { batchUpdateStatusTask } from '@/hooks/task/use-task';
+import { useCourseMutations, useCourses } from '@/hooks/course/use-course-store';
+import { batchUpdateStatusTask, updateTaskStatus } from '@/hooks/task/use-task';
 import { useCourseTasksStore } from '@/hooks/task/use-task-store';
 import { useCourseCustomLinksStore } from '@/hooks/use-custom-link-store';
 import { ROUTES } from '@/lib/page-routes';
@@ -47,6 +47,7 @@ export default function CoursePage({ params }: CoursePageProps) {
 
   // Use store-based hooks (read-only, layout handles fetching)
   const { isLoading: areCoursesLoading } = useCourses();
+  const { deleteCourse, updateCourseField } = useCourseMutations();
   const course = useCourseStore(state => state.courses.get(courseId));
   const [searchQuery, setSearchQuery] = useState('');
   const [showFloatingButton, setShowFloatingButton] = useState(false);
@@ -67,11 +68,8 @@ export default function CoursePage({ params }: CoursePageProps) {
     = isPendingFetchStatus(tasksFetchStatus) || isPendingFetchStatus(customLinksFetchStatus);
 
   // Get store methods for operations
-  const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
   const updateTask = useTaskStore(state => state.updateTask);
   const removeTask = useTaskStore(state => state.removeTask);
-  const deleteCourseFromStore = useCourseStore(state => state.removeCourse);
-  const updateCourseField = useCourseStore(state => state.updateCourseField);
   const fetchTasksByCourse = useTaskStore(state => state.fetchTasksByCourse);
   const fetchCustomLinksByCourse = useCustomLinkStore(state => state.fetchCustomLinksByCourse);
 
@@ -161,7 +159,7 @@ export default function CoursePage({ params }: CoursePageProps) {
     try {
       await updateTaskStatus(taskId, newStatus);
     } catch (error) {
-      ErrorHandlers.api(error, CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
+      ErrorHandlers.silent(error, 'CoursePage handleUpdateStatusTask');
     }
   };
 
@@ -179,7 +177,7 @@ export default function CoursePage({ params }: CoursePageProps) {
       await handleConfirm(
         'Are you sure you want to delete this course? This action cannot be undone.',
         async () => {
-          await deleteCourseFromStore(course.id);
+          await deleteCourse(course.id);
           // Redirect to root
           router.push(ROUTES.DASHBOARD);
           // Show toast with course code
@@ -195,7 +193,7 @@ export default function CoursePage({ params }: CoursePageProps) {
       );
     } catch (error) {
       // Use centralized error handling
-      ErrorHandlers.api(error, 'Failed to delete course', 'CoursePage');
+      ErrorHandlers.silent(error, 'CoursePage handleDeleteCourse');
     }
   };
 
@@ -309,7 +307,7 @@ export default function CoursePage({ params }: CoursePageProps) {
 
                 setShowUpdateDialog(false);
               } catch (e) {
-                ErrorHandlers.api(e, 'Failed to update course');
+                ErrorHandlers.silent(e, 'CoursePage onUpdateCourse');
               }
             }}
           />

@@ -1,4 +1,6 @@
 import type { Subtask } from '@/types/subtask';
+import { useCallback } from 'react';
+import { useTaskStore } from '@/lib/stores/task-store';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { ErrorHandlers } from '@/lib/utils/errors/error';
@@ -24,4 +26,28 @@ export async function deleteSubtask(taskId: string, subtaskId: string): Promise<
     ErrorHandlers.api(error, 'Failed to delete subtask');
     return false;
   }
+}
+
+export function useUpdateSubtaskField(taskId: string) {
+  const updateSubtask = useTaskStore(state => state.updateSubtask);
+
+  return useCallback(async (
+    subtaskId: string,
+    input: 'title' | 'notes',
+    value: string,
+  ) => {
+    updateSubtask(taskId, subtaskId, { [input]: value });
+
+    try {
+      await api.post(
+        API_ENDPOINTS.TASKS.SUBTASK_UPDATE,
+        { id: subtaskId, input, value },
+        'Failed to update subtask',
+      );
+      return true;
+    } catch (error) {
+      console.error('Failed to update subtask field', error);
+      throw error;
+    }
+  }, [taskId, updateSubtask]);
 }

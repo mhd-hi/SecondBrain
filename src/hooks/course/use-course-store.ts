@@ -1,7 +1,26 @@
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo } from 'react';
+import { deleteCourseById, updateCourseFieldById } from '@/hooks/course/use-course';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
 import { isPendingFetchStatus } from '@/lib/stores/helpers/fetch-status';
+
+export function useCourseMutations() {
+  const updateCourseField = useCallback(
+    async (courseId: string, field: string, value: unknown) => {
+      return updateCourseFieldById(courseId, field, value);
+    },
+    [],
+  );
+
+  const deleteCourse = useCallback(async (courseId: string) => {
+    return deleteCourseById(courseId);
+  }, []);
+
+  return {
+    updateCourseField,
+    deleteCourse,
+  };
+}
 
 /**
  * Hook for top-level course operations in the dashboard shell.
@@ -9,6 +28,7 @@ import { isPendingFetchStatus } from '@/lib/stores/helpers/fetch-status';
  */
 export function useCourseOperations() {
   const { status } = useSession();
+  const { deleteCourse, updateCourseField } = useCourseMutations();
 
   const fetchStatus = useCourseStore(state => state.fetchStatus);
   const error = useCourseStore(state => state.error);
@@ -30,17 +50,6 @@ export function useCourseOperations() {
 
   const refreshCourses = useCallback(async () => {
     return useCourseStore.getState().refreshCourses();
-  }, []);
-
-  const updateCourseField = useCallback(
-    async (courseId: string, field: string, value: unknown) => {
-      return useCourseStore.getState().updateCourseField(courseId, field, value);
-    },
-    [],
-  );
-
-  const deleteCourse = useCallback(async (courseId: string) => {
-    return useCourseStore.getState().removeCourse(courseId);
   }, []);
 
   const getCourse = useCallback((courseId: string) => {

@@ -1,3 +1,4 @@
+import type { FetchStatus } from './fetch-status';
 import type { CourseListItem } from '@/types/api/course';
 import type { Course } from '@/types/course';
 import { toast } from 'sonner';
@@ -9,9 +10,9 @@ import { getOverdueTasks } from '@/lib/utils/task';
 
 type CourseStore = {
   courses: Map<string, Course>;
+  fetchStatus: FetchStatus;
   isLoading: boolean;
   error: string | null;
-  hasInitialized: boolean;
 
   setCourses: (courses: Course[]) => void;
   addCourse: (course: Course) => void;
@@ -46,9 +47,9 @@ export function getCourseListItemsFromCourses(courses: Iterable<Course>): Course
 
 export const useCourseStore = create<CourseStore>((set, get) => ({
   courses: new Map(),
+  fetchStatus: 'idle',
   isLoading: false,
   error: null,
-  hasInitialized: false,
 
   setCourses: (courses) => {
     const courseMap = new Map<string, Course>();
@@ -105,31 +106,31 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
   },
 
   fetchCourses: async () => {
-    // Don't fetch if already initialized
-    if (get().hasInitialized) {
+    if (get().fetchStatus === 'loading') {
       return;
     }
 
-    set({ isLoading: true, error: null });
+    set({ fetchStatus: 'loading', error: null });
     try {
       const data = await api.get<Course[]>(API_ENDPOINTS.COURSES.LIST);
       get().setCourses(data ?? []);
-      set({ isLoading: false, hasInitialized: true });
+      set({ fetchStatus: 'success' });
     } catch (error) {
       const errorMessage = 'Failed to load courses';
-      set({ isLoading: false, error: errorMessage });
+      set({ fetchStatus: 'error', error: errorMessage });
       ErrorHandlers.silent(error, 'CourseStore fetchCourses');
     }
   },
 
   refreshCourses: async () => {
-    set({ error: null });
+    set({ fetchStatus: 'loading', error: null });
     try {
       const data = await api.get<Course[]>(API_ENDPOINTS.COURSES.LIST);
       get().setCourses(data ?? []);
+      set({ fetchStatus: 'success' });
     } catch (error) {
       const errorMessage = 'Failed to refresh courses';
-      set({ error: errorMessage });
+      set({ fetchStatus: 'error', error: errorMessage });
       ErrorHandlers.silent(error, 'CourseStore refreshCourses');
     }
   },
@@ -210,5 +211,10 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  reset: () => set({ courses: new Map(), isLoading: false, error: null, hasInitialized: false }),
+  reset: () => set({
+    courses: new Map(),
+    fetchStatus: 'idle',
+    isLoading: false,
+    error: null,
+  }),
 }));

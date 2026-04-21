@@ -1,11 +1,37 @@
+import type { FetchStatus } from './fetch-status';
 import type { CustomLink, CustomLinkItem } from '@/types/custom-link';
 import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { ErrorHandlers } from '@/lib/utils/errors/error';
+import {
+  getFetchStatusForKey,
+  setFetchStatusForKey,
+} from './fetch-status';
+
+function replaceCustomLinksForCourse(
+  existingLinks: ReadonlyMap<string, CustomLinkItem>,
+  courseId: string,
+  customLinks: CustomLinkItem[],
+) {
+  const nextLinks = new Map(existingLinks);
+
+  for (const [linkId, link] of nextLinks.entries()) {
+    if (link.courseId === courseId) {
+      nextLinks.delete(linkId);
+    }
+  }
+
+  for (const customLink of customLinks) {
+    nextLinks.set(customLink.id, customLink);
+  }
+
+  return nextLinks;
+}
 
 type CustomLinkStore = {
   customLinks: Map<string, CustomLinkItem>;
+  fetchStatusByCourse: Map<string, FetchStatus>;
   isLoading: boolean;
   error: string | null;
 
@@ -17,6 +43,7 @@ type CustomLinkStore = {
   getCustomLink: (customLinkId: string) => CustomLinkItem | undefined;
   getCustomLinksByCourse: (courseId: string) => CustomLinkItem[];
   getAllCustomLinks: () => CustomLinkItem[];
+  getFetchStatusByCourse: (courseId: string) => FetchStatus;
 
   fetchCustomLinksByCourse: (courseId: string) => Promise<CustomLinkItem[]>;
   createCustomLink: (data: {
@@ -33,6 +60,7 @@ type CustomLinkStore = {
 
 export const useCustomLinkStore = create<CustomLinkStore>((set, get) => ({
   customLinks: new Map(),
+  fetchStatusByCourse: new Map(),
   isLoading: false,
   error: null,
 
@@ -83,21 +111,32 @@ export const useCustomLinkStore = create<CustomLinkStore>((set, get) => ({
     return Array.from(get().customLinks.values());
   },
 
+  getFetchStatusByCourse: (courseId) => {
+    return getFetchStatusForKey(get().fetchStatusByCourse, courseId);
+  },
+
   fetchCustomLinksByCourse: async (courseId) => {
-    set({ isLoading: true, error: null });
+    set(state => ({
+      isLoading: true,
+      error: null,
+      fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'loading'),
+    }));
     try {
       const response = await api.get<{ success: boolean; customLinks: CustomLinkItem[] }>(API_ENDPOINTS.CUSTOM_LINKS.BY_COURSE(courseId));
       const customLinks = response.customLinks ?? [];
-      // Add to store
-      const newCustomLinks = new Map(get().customLinks);
-      for (const customLink of customLinks) {
-        newCustomLinks.set(customLink.id, customLink);
-      }
-      set({ customLinks: newCustomLinks, isLoading: false });
+      set(state => ({
+        customLinks: replaceCustomLinksForCourse(state.customLinks, courseId, customLinks),
+        isLoading: false,
+        fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'success'),
+      }));
       return customLinks;
     } catch (error) {
       const errorMessage = 'Failed to fetch custom links';
-      set({ isLoading: false, error: errorMessage });
+      set(state => ({
+        isLoading: false,
+        error: errorMessage,
+        fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'error'),
+      }));
       ErrorHandlers.silent(error, 'CustomLinkStore fetchCustomLinksByCourse');
       return [];
     }
@@ -175,5 +214,10 @@ export const useCustomLinkStore = create<CustomLinkStore>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  reset: () => set({ customLinks: new Map(), isLoading: false, error: null }),
+  reset: () => set({
+    customLinks: new Map(),
+    fetchStatusByCourse: new Map(),
+    isLoading: false,
+    error: null,
+  }),
 }));

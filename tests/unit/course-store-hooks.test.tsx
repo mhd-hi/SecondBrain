@@ -1,9 +1,30 @@
 import type { Course } from '@/types/course';
 import type { Task } from '@/types/task';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import * as React from 'react';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useCourses } from '@/hooks/course/use-course-store';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
+import { api } from '@/lib/utils/api/api-client-util';
 import { StatusTask } from '@/types/status-task';
-import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
+import { ensureHappyDom, restoreSystemDate, setSystemDate } from '../helpers/runtime';
+
+vi.mock('@/lib/utils/api/api-client-util', () => ({
+  api: {
+    get: vi.fn(),
+  },
+}));
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+
+  return { promise, resolve };
+}
 
 function createTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -32,15 +53,45 @@ function createCourse(overrides: Partial<Course> = {}): Course {
   };
 }
 
+function renderCourseLoadingProbe() {
+  const container = document.createElement('div');
+  const root = createRoot(container);
+
+  function CourseLoadingProbe() {
+    const { isLoading } = useCourses();
+    return <div>{isLoading ? 'loading' : 'ready'}</div>;
+  }
+
+  return {
+    container,
+    render: async () => {
+      // We mount through ReactDOM directly in this test helper, so manual act is required.
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      await act(async () => {
+        root.render(<CourseLoadingProbe />);
+      });
+    },
+    unmount: async () => {
+      await act(async () => {
+        root.unmount();
+      });
+    },
+  };
+}
+
 beforeEach(() => {
+  ensureHappyDom();
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   setSystemDate(new Date(2026, 3, 20, 12));
   useCourseStore.getState().reset();
-  useCourseStore.setState({ hasInitialized: true });
+  useCourseStore.setState({ fetchStatus: 'success' });
+  vi.clearAllMocks();
+  vi.spyOn(console, 'error').mockImplementation(() => { });
 });
 
 afterEach(() => {
   restoreSystemDate();
+  vi.restoreAllMocks();
   useCourseStore.getState().reset();
 });
 
@@ -94,5 +145,60 @@ describe('course list derivation', () => {
     const expected = getCourseListItemsFromCourses(courses);
 
     expect(useCourseStore.getState().getCoursesListItems()).toEqual(expected);
+  });
+
+  it('keeps the hook loading until the initial fetch succeeds', async () => {
+    const deferred = createDeferred<Course[]>();
+    const fetchedCourse = createCourse({ id: 'course-2', code: 'MAT145', color: 'green' });
+
+    vi.mocked(api.get).mockReturnValueOnce(deferred.promise);
+    useCourseStore.getState().reset();
+
+    const view = renderCourseLoadingProbe();
+
+    try {
+      await view.render();
+      expect(view.container.textContent).toBe('loading');
+
+      let fetchPromise!: Promise<void>;
+      await act(async () => {
+        fetchPromise = useCourseStore.getState().fetchCourses();
+      });
+
+      expect(useCourseStore.getState().fetchStatus).toBe('loading');
+      expect(view.container.textContent).toBe('loading');
+
+      await act(async () => {
+        deferred.resolve([fetchedCourse]);
+        await fetchPromise;
+      });
+
+      expect(useCourseStore.getState().fetchStatus).toBe('success');
+      expect(useCourseStore.getState().courses.get(fetchedCourse.id)).toEqual(fetchedCourse);
+      expect(view.container.textContent).toBe('ready');
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('marks the course list fetch status as error and clears loading when the initial fetch fails', async () => {
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('network down'));
+    useCourseStore.getState().reset();
+
+    const view = renderCourseLoadingProbe();
+
+    try {
+      await view.render();
+
+      await act(async () => {
+        await useCourseStore.getState().fetchCourses();
+      });
+
+      expect(useCourseStore.getState().fetchStatus).toBe('error');
+      expect(useCourseStore.getState().error).toBe('Failed to load courses');
+      expect(view.container.textContent).toBe('ready');
+    } finally {
+      await view.unmount();
+    }
   });
 });

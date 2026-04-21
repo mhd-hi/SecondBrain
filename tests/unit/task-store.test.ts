@@ -95,4 +95,26 @@ describe('useTaskStore.updateTaskStatus', () => {
     expect(useTaskStore.getState().getTask('task-1')?.status).toBe(StatusTask.TODO);
     expect(useTaskStore.getState().error).toBe(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
   });
+
+  it('replaces only the fetched course slice and tracks status per course', async () => {
+    const existingCourseOneTask = createTask({ id: 'task-course-1', courseId: 'course-1' });
+    const staleCourseTwoTask = createTask({ id: 'stale-course-2', courseId: 'course-2' });
+    const freshCourseTwoTask = createTask({ id: 'task-2', courseId: 'course-2' });
+    const response = {
+      ok: true,
+      json: vi.fn().mockResolvedValue([freshCourseTwoTask]),
+    } as unknown as Response;
+
+    useTaskStore.getState().setTasks([existingCourseOneTask, staleCourseTwoTask]);
+    setFetchMock(vi.fn().mockResolvedValue(response) as unknown as typeof fetch);
+
+    await expect(
+      useTaskStore.getState().fetchTasksByCourse('course-2'),
+    ).resolves.toEqual([freshCourseTwoTask]);
+
+    expect(useTaskStore.getState().getTasksByCourse('course-1')).toEqual([existingCourseOneTask]);
+    expect(useTaskStore.getState().getTasksByCourse('course-2')).toEqual([freshCourseTwoTask]);
+    expect(useTaskStore.getState().getFetchStatusByCourse('course-2')).toBe('success');
+    expect(useTaskStore.getState().getFetchStatusByCourse('course-1')).toBe('idle');
+  });
 });

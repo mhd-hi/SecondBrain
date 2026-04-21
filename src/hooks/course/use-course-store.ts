@@ -1,6 +1,7 @@
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
+import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
 
 /**
  * Hook for course operations with automatic fetching on mount
@@ -9,25 +10,24 @@ import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/cour
 export function useCourseOperations() {
   const { status } = useSession();
 
-  const isLoading = useCourseStore(state => state.isLoading);
+  const fetchStatus = useCourseStore(state => state.fetchStatus);
   const error = useCourseStore(state => state.error);
-  const hasInitialized = useCourseStore(state => state.hasInitialized);
+  const isLoading = isPendingFetchStatus(fetchStatus);
 
   const coursesMap = useCourseStore(state => state.courses);
   const courses = useMemo(() => Array.from(coursesMap.values()), [coursesMap]);
   const coursesListItems = useMemo(() => getCourseListItemsFromCourses(courses), [courses]);
 
-  // Auto-fetch only if authenticated and not initialized
+  // Auto-fetch only on the initial idle state after authentication resolves.
   useEffect(() => {
-    if (status === 'authenticated' && !hasInitialized && !isLoading) {
+    if (status === 'authenticated' && fetchStatus === 'idle') {
       void useCourseStore.getState().fetchCourses();
     } else if (status === 'unauthenticated') {
       useCourseStore.getState().reset();
     }
-  }, [status, hasInitialized, isLoading]);
+  }, [status, fetchStatus]);
 
   const fetchCourses = useCallback(async () => {
-    useCourseStore.setState({ hasInitialized: false });
     return useCourseStore.getState().fetchCourses();
   }, []);
 
@@ -58,6 +58,7 @@ export function useCourseOperations() {
     courses,
     coursesListItems,
     isLoading,
+    fetchStatus,
     error,
     fetchCourses,
     refreshCourses,
@@ -76,8 +77,9 @@ export function useCourseOperations() {
  * Use this in child components - the layout handles fetching via useCourseOperations
  */
 export function useCourses() {
-  const isLoading = useCourseStore(state => state.isLoading);
+  const fetchStatus = useCourseStore(state => state.fetchStatus);
   const error = useCourseStore(state => state.error);
+  const isLoading = isPendingFetchStatus(fetchStatus);
 
   const coursesMap = useCourseStore(state => state.courses);
   const courses = useMemo(() => Array.from(coursesMap.values()), [coursesMap]);
@@ -99,6 +101,7 @@ export function useCourses() {
     courses,
     coursesListItems,
     isLoading,
+    fetchStatus,
     error,
     refreshCourses,
     getCourse,

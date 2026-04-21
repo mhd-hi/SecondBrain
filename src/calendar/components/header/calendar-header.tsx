@@ -17,7 +17,7 @@ import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 export function CalendarHeader() {
   const view = useCalendarViewStore(state => state.view);
   const setView = useCalendarViewStore(state => state.setView);
-  const { courses } = useCourses();
+  const { courses, isLoading } = useCourses();
   const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   const selectedDate = useCalendarViewStore(state => state.selectedDate);
@@ -113,7 +113,7 @@ export function CalendarHeader() {
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="w-full sm:w-auto" variant="default">
+              <Button className="w-full sm:w-auto" variant="default" disabled={isLoading}>
                 <Plus className="mr-2" />
                 Add
               </Button>

@@ -4,6 +4,9 @@ import { withAuthSimple } from '@/lib/auth/api';
 import { createUserTask, deleteUserTask, getUserCourse, getUserCourseTasks, updateUserTask } from '@/lib/auth/db';
 import { StatusTask } from '@/types/status-task';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const GET = withAuthSimple(
   async (request, user) => {
     const { searchParams } = new URL(request.url);
@@ -29,7 +32,7 @@ export const GET = withAuthSimple(
 
     return NextResponse.json(filteredTasks, {
       headers: {
-        'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+        'Cache-Control': 'private, no-store, no-cache, must-revalidate, max-age=0',
       },
     });
   },

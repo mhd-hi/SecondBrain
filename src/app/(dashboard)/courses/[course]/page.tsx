@@ -26,6 +26,7 @@ import { useCourseCustomLinksStore } from '@/hooks/use-custom-link-store';
 import { ROUTES } from '@/lib/page-routes';
 import { useCourseStore } from '@/lib/stores/course-store';
 import { useCustomLinkStore } from '@/lib/stores/custom-link-store';
+import { getFetchStatusForKey, isPendingFetchStatus } from '@/lib/stores/fetch-status';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { getWeekNumberFromDueDate } from '@/lib/utils/date-util';
 import { handleConfirm } from '@/lib/utils/dialog-util';
@@ -72,7 +73,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   const courseId = unwrappedParams.course;
 
   // Use store-based hooks (read-only, layout handles fetching)
-  const { courses } = useCourses();
+  const { courses, isLoading: areCoursesLoading } = useCourses();
   const course = useCourseStore(state => state.courses.get(courseId));
   const [searchQuery, setSearchQuery] = useState('');
   const [showFloatingButton, setShowFloatingButton] = useState(false);
@@ -81,10 +82,17 @@ export default function CoursePage({ params }: CoursePageProps) {
   // Get tasks directly from the store for automatic reactivity
   const storeTasks = useCourseTasksStore(courseId);
   const [courseTasks, dispatchCourseTasks] = useReducer(courseTasksReducer, storeTasks);
-  const isLoading = useTaskStore(state => state.isLoading);
+  const tasksFetchStatus = useTaskStore(state =>
+    getFetchStatusForKey(state.fetchStatusByCourse, courseId),
+  );
 
   // Get custom links directly from the store for automatic reactivity
   const customLinks = useCourseCustomLinksStore(courseId);
+  const customLinksFetchStatus = useCustomLinkStore(state =>
+    getFetchStatusForKey(state.fetchStatusByCourse, courseId),
+  );
+  const isCourseContentLoading
+    = isPendingFetchStatus(tasksFetchStatus) || isPendingFetchStatus(customLinksFetchStatus);
 
   // Get store methods for operations
   const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
@@ -101,18 +109,30 @@ export default function CoursePage({ params }: CoursePageProps) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     if (courseId && uuidRegex.test(courseId)) {
-      fetchTasksByCourse(courseId).catch((error: unknown) => {
-        console.error(CommonErrorMessages.TASKS_FETCH_FAILED, error);
-      });
-      fetchCustomLinksByCourse(courseId).catch((error: unknown) => {
-        console.error('Failed to fetch custom links:', error);
-      });
+      if (tasksFetchStatus === 'idle') {
+        fetchTasksByCourse(courseId).catch((error: unknown) => {
+          console.error(CommonErrorMessages.TASKS_FETCH_FAILED, error);
+        });
+      }
+
+      if (customLinksFetchStatus === 'idle') {
+        fetchCustomLinksByCourse(courseId).catch((error: unknown) => {
+          console.error('Failed to fetch custom links:', error);
+        });
+      }
     } else if (courseId && !uuidRegex.test(courseId)) {
       // Invalid course ID format - redirect to home
       console.warn('Invalid course ID format, redirecting:', courseId);
       router.push(ROUTES.DASHBOARD);
     }
-  }, [courseId, fetchTasksByCourse, fetchCustomLinksByCourse, router]);
+  }, [
+    courseId,
+    customLinksFetchStatus,
+    fetchCustomLinksByCourse,
+    fetchTasksByCourse,
+    router,
+    tasksFetchStatus,
+  ]);
 
   useEffect(() => {
     dispatchCourseTasks({ type: 'sync', tasks: storeTasks });
@@ -276,7 +296,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   });
 
   // Show skeleton only if courses haven't loaded yet AND no course found
-  if (!course && courses.length === 0) {
+  if (!course && areCoursesLoading) {
     return (
       <main className="container mx-auto px-8 flex min-h-screen flex-col mt-6 mb-8">
         <CourseSkeleton />
@@ -285,18 +305,9 @@ export default function CoursePage({ params }: CoursePageProps) {
   }
 
   // If courses loaded but this specific course not found, redirect to home
-  if (!course && courses.length > 0) {
+  if (!course) {
     router.push(ROUTES.DASHBOARD);
     return null;
-  }
-
-  // At this point, either courses are still loading (show skeleton) or course exists
-  if (!course) {
-    return (
-      <main className="container mx-auto px-8 flex min-h-screen flex-col mt-6 mb-8">
-        <CourseSkeleton />
-      </main>
-    );
   }
 
   return (
@@ -355,106 +366,107 @@ export default function CoursePage({ params }: CoursePageProps) {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <section>
-          <CourseCustomLinks
-            courseId={course.id}
-            customLinks={customLinks}
-          />
-        </section>
-        <section>
-          <CourseProgressTile tasks={courseTasks} />
-        </section>
-        <div ref={addTaskButtonRef} className="flex items-center gap-4 mb-2">
-          <SearchBar
-            id="course-tasks-search-bar"
-            name="course-tasks-search-bar"
-            placeholder="Search tasks by title, notes, or subtasks..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            className="flex-1"
-          />
-          <AddTaskDialog
-            courseId={course.id}
-            courseCode={course.code}
-            onTaskAdded={() => {}}
-            courses={courses}
-            trigger={(
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Task
-              </Button>
-            )}
-          />
-        </div>
+      {isCourseContentLoading
+        ? (
+          <CourseSkeleton />
+        )
+        : (
+          <div className="space-y-4">
+            <section>
+              <CourseCustomLinks
+                courseId={course.id}
+                customLinks={customLinks}
+              />
+            </section>
+            <section>
+              <CourseProgressTile tasks={courseTasks} />
+            </section>
+            <div ref={addTaskButtonRef} className="flex items-center gap-4 mb-2">
+              <SearchBar
+                id="course-tasks-search-bar"
+                name="course-tasks-search-bar"
+                placeholder="Search tasks by title, notes, or subtasks..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                className="flex-1"
+              />
+              <AddTaskDialog
+                courseId={course.id}
+                courseCode={course.code}
+                onTaskAdded={() => {}}
+                courses={courses}
+                trigger={(
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                  </Button>
+                )}
+              />
+            </div>
 
-        {/* Floating Add Task Button */}
-        {showFloatingButton && (
-          <div className="fixed top-20 z-40 animate-in slide-in-from-top duration-200 ease-out" style={{ right: '2rem' }}>
-            <AddTaskDialog
-              courseId={course.id}
-              courseCode={course.code}
-              onTaskAdded={() => {}}
-              courses={courses}
-              trigger={(
-                <Button className="shadow-lg hover:shadow-xl transition-all w-30">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
-              )}
-            />
-          </div>
-        )}
-
-        {/* Tasks content */}
-        {isLoading
-          ? (
-            <CourseSkeleton />
-          )
-          : filteredTasks.length > 0
-            ? (
-              <div className="space-y-5 will-change-scroll mt-7">
-                {Object.entries(tasksByWeek)
-                  .sort(([a], [b]) => Number(a) - Number(b))
-                  .map(([week, weekTasks]) => (
-                    <div key={week} className="space-y-3">
-                      <h3 className="font-semibold text-lg mb-1">
-                        {'Week '}
-                        {week}
-                      </h3>
-                      <div className="space-y-3">
-                        {weekTasks.map(task => (
-                          <div
-                            id={`task-${task.id}`}
-                            key={task.id}
-                            className="transform-gpu transition-all duration-200 rounded-lg"
-                          >
-                            <TaskCard
-                              task={task}
-                              onDeleteTask={handleDeleteTask}
-                              onUpdateStatusTask={handleUpdateStatusTask}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+            {/* Floating Add Task Button */}
+            {showFloatingButton && (
+              <div className="fixed top-20 z-40 animate-in slide-in-from-top duration-200 ease-out" style={{ right: '2rem' }}>
+                <AddTaskDialog
+                  courseId={course.id}
+                  courseCode={course.code}
+                  onTaskAdded={() => {}}
+                  courses={courses}
+                  trigger={(
+                    <Button className="shadow-lg hover:shadow-xl transition-all w-30">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Task
+                    </Button>
+                  )}
+                />
               </div>
-            )
-            : searchQuery.trim()
+            )}
+
+            {filteredTasks.length > 0
               ? (
-                <div className="text-center text-muted-foreground py-12">
-                  No tasks found matching &quot;
-                  {searchQuery}
-                  &quot;. Try a different search term.
+                <div className="space-y-5 will-change-scroll mt-7">
+                  {Object.entries(tasksByWeek)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([week, weekTasks]) => (
+                      <div key={week} className="space-y-3">
+                        <h3 className="font-semibold text-lg mb-1">
+                          {'Week '}
+                          {week}
+                        </h3>
+                        <div className="space-y-3">
+                          {weekTasks.map(task => (
+                            <div
+                              id={`task-${task.id}`}
+                              key={task.id}
+                              className="transform-gpu transition-all duration-200 rounded-lg"
+                            >
+                              <TaskCard
+                                task={task}
+                                onDeleteTask={handleDeleteTask}
+                                onUpdateStatusTask={handleUpdateStatusTask}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )
-              : (
-                <div className="text-center text-muted-foreground py-12">
-                  No tasks found. Add a task to get started.
-                </div>
-              )}
-      </div>
+              : searchQuery.trim()
+                ? (
+                  <div className="text-center text-muted-foreground py-12">
+                    No tasks found matching &quot;
+                    {searchQuery}
+                    &quot;. Try a different search term.
+                  </div>
+                )
+                : (
+                  <div className="text-center text-muted-foreground py-12">
+                    No tasks found. Add a task to get started.
+                  </div>
+                )}
+          </div>
+        )}
     </main>
   );
 }

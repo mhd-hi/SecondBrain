@@ -8,7 +8,10 @@ import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { withLoadingState } from '@/lib/utils/api/loading-util';
 
 export const fetchFocusTasks = async (filter: FilterType): Promise<Task[]> => {
-  return api.get(`${API_ENDPOINTS.TASKS.FOCUS}?filter=${filter}`, 'Failed to fetch focus tasks');
+  return api.get(
+    `${API_ENDPOINTS.TASKS.FOCUS}?filter=${filter}`,
+    'Failed to fetch focus tasks',
+  );
 };
 
 const fetchCalendarTasks = async (startDate: Date, endDate: Date): Promise<TEvent[]> => {

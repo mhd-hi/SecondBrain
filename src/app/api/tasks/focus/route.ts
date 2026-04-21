@@ -7,6 +7,9 @@ import { db } from '@/server/db';
 import { courses, subtasks, tasks } from '@/server/db/schema';
 import { StatusTask } from '@/types/status-task';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const GET = withAuthSimple(
   async (request, user) => {
     const { searchParams } = new URL(request.url);
@@ -125,7 +128,7 @@ export const GET = withAuthSimple(
 
     return NextResponse.json(tasksData, {
       headers: {
-        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        'Cache-Control': 'private, no-store, no-cache, must-revalidate, max-age=0',
       },
     });
   },

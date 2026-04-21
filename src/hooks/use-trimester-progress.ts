@@ -14,7 +14,7 @@ export function useTrimesterProgress(): StatsProgressBar | null {
   const { courses, isLoading } = useCourses();
 
   return useMemo(() => {
-    if (isLoading || !courses) {
+    if (isLoading) {
       return null;
     }
 

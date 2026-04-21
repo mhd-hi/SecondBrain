@@ -1,3 +1,4 @@
+import type { FetchStatus } from './fetch-status';
 import type { StatusTask } from '@/types/status-task';
 import type { Subtask } from '@/types/subtask';
 import type { Task, TaskType } from '@/types/task';
@@ -6,9 +7,34 @@ import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
+import {
+  getFetchStatusForKey,
+  setFetchStatusForKey,
+} from './fetch-status';
+
+function replaceTasksForCourse(
+  existingTasks: ReadonlyMap<string, Task>,
+  courseId: string,
+  tasks: Task[],
+) {
+  const nextTasks = new Map(existingTasks);
+
+  for (const [taskId, task] of nextTasks.entries()) {
+    if (task.courseId === courseId) {
+      nextTasks.delete(taskId);
+    }
+  }
+
+  for (const task of tasks) {
+    nextTasks.set(task.id, task);
+  }
+
+  return nextTasks;
+}
 
 type TaskStore = {
   tasks: Map<string, Task>;
+  fetchStatusByCourse: Map<string, FetchStatus>;
   isLoading: boolean;
   error: string | null;
 
@@ -26,6 +52,7 @@ type TaskStore = {
   getTasksByStatus: (status: StatusTask) => Task[];
   getTasksByDateRange: (startDate: Date, endDate: Date) => Task[];
   getAllTasks: () => Task[];
+  getFetchStatusByCourse: (courseId: string) => FetchStatus;
 
   fetchTask: (taskId: string) => Promise<Task | null>;
   fetchTasksByCourse: (courseId: string) => Promise<Task[]>;
@@ -48,6 +75,7 @@ type TaskStore = {
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: new Map(),
+  fetchStatusByCourse: new Map(),
   isLoading: false,
   error: null,
 
@@ -150,6 +178,10 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     return Array.from(get().tasks.values());
   },
 
+  getFetchStatusByCourse: (courseId) => {
+    return getFetchStatusForKey(get().fetchStatusByCourse, courseId);
+  },
+
   fetchTask: async (taskId) => {
     set({ isLoading: true, error: null });
     try {
@@ -170,19 +202,30 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   fetchTasksByCourse: async (courseId) => {
-    set({ isLoading: true, error: null });
+    set(state => ({
+      isLoading: true,
+      error: null,
+      fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'loading'),
+    }));
     try {
       const response = await fetch(API_ENDPOINTS.TASKS.LIST_BY_COURSE(courseId));
       if (!response.ok) {
         throw new Error(CommonErrorMessages.TASKS_FETCH_FAILED);
       }
       const tasks = await response.json() as Task[];
-      get().setTasks(tasks);
-      set({ isLoading: false });
+      set(state => ({
+        tasks: replaceTasksForCourse(state.tasks, courseId, tasks),
+        isLoading: false,
+        fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'success'),
+      }));
       return tasks;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : CommonErrorMessages.TASKS_FETCH_FAILED;
-      set({ isLoading: false, error: errorMessage });
+      set(state => ({
+        isLoading: false,
+        error: errorMessage,
+        fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'error'),
+      }));
       ErrorHandlers.api(error, errorMessage);
       return [];
     }
@@ -327,5 +370,10 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  reset: () => set({ tasks: new Map(), isLoading: false, error: null }),
+  reset: () => set({
+    tasks: new Map(),
+    fetchStatusByCourse: new Map(),
+    isLoading: false,
+    error: null,
+  }),
 }));

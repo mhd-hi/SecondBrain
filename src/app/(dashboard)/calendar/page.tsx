@@ -3,8 +3,8 @@
 import type { TCalendarView } from '@/calendar/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
+import { useCalendarEventsSync } from '@/calendar/hooks/use-calendar-events-sync';
 import { CalendarWrapper } from '@/components/Calendar/CalendarWrapper';
-import { useCalendarTasks } from '@/hooks/task/use-task';
 import { getCalendarPath } from '@/lib/page-routes';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 
@@ -13,8 +13,7 @@ const VALID_VIEWS: TCalendarView[] = ['day', 'week', 'month', 'year', 'agenda'];
 export default function CalendarPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { getCalendarTasks, isLoading: _isLoading, error } = useCalendarTasks();
-  const setStoreEvents = useCalendarViewStore(state => state.setEvents);
+  const { error } = useCalendarEventsSync();
   const view = useCalendarViewStore(state => state.view);
   const setView = useCalendarViewStore(state => state.setView);
   const isInitializedRef = useRef(false);
@@ -40,25 +39,6 @@ export default function CalendarPage() {
       router.replace(getCalendarPath(view), { scroll: false });
     }
   }, [view, router, searchParams]);
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        // Fetch events for a wider range to ensure we get all relevant events
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30); // 30 days ago
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 30); // 30 days from now
-
-        const fetchedEvents = await getCalendarTasks(startDate, endDate);
-        setStoreEvents(fetchedEvents);
-      } catch (err) {
-        console.error('Failed to fetch calendar events:', err);
-      }
-    };
-
-    fetchEvents();
-  }, [getCalendarTasks, setStoreEvents]);
 
   if (error) {
     return (

@@ -4,8 +4,8 @@ import * as React from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
+import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
 import { StatusTask } from '@/types/status-task';
 import { ensureHappyDom, restoreSystemDate, setSystemDate } from '../helpers/runtime';
 

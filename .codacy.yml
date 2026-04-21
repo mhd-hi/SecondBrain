@@ -19,6 +19,8 @@ engines:
     enabled: false
   eslint:
     enabled: false
+  jshint:
+    enabled: false
   csslint:
     enabled: false
   remark-lint:

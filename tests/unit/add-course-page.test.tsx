@@ -9,6 +9,7 @@ import * as courseInputFormModule from '@/components/shared/dialogs/CourseInputF
 import * as addCourseHook from '@/hooks/course/use-add-course';
 import * as courseStoreHooks from '@/hooks/course/use-course-store';
 import * as termsHook from '@/hooks/use-terms';
+import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
 import { ensureHappyDom } from '../helpers/runtime';
 
 vi.mock('next/navigation', () => ({
@@ -64,17 +65,12 @@ function renderPage() {
   };
 }
 
-function getLatestCourseInputFormProps() {
-  const mock = courseInputFormModule.CourseInputForm as unknown as Mock;
-  const lastCall = mock.mock.calls.at(-1);
-  return (lastCall?.[0] ?? null) as Record<string, unknown> | null;
-}
-
 beforeEach(() => {
   ensureHappyDom();
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   (nextNavigation.useRouter as unknown as Mock).mockReturnValue({ push: vi.fn() });
   (courseInputFormModule.CourseInputForm as unknown as Mock).mockClear();
+  useAddCourseFormStore.getState().reset();
   (courseStoreHooks.useCourses as unknown as Mock).mockReturnValue({
     courses: [],
     coursesListItems: [],
@@ -103,6 +99,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  useAddCourseFormStore.getState().reset();
   vi.clearAllMocks();
 });
 
@@ -151,7 +148,7 @@ describe('add course page terms flow', () => {
     }
   });
 
-  it('uses hook terms as the single source of truth and defaults to the middle term', async () => {
+  it('defaults the shared add-course form store to the middle term from the hook', async () => {
     const terms = [
       { id: '20251', label: 'Hiver 2025' },
       { id: '20252', label: 'Été 2025' },
@@ -168,12 +165,36 @@ describe('add course page terms flow', () => {
     const view = renderPage();
     try {
       await view.render();
+      const { firstDayOfClass, term } = useAddCourseFormStore.getState();
 
-      const formProps = getLatestCourseInputFormProps();
+      expect(term).toBe('20252');
+      expect(firstDayOfClass).toEqual(new Date(2025, 4, 1));
+    } finally {
+      await view.unmount();
+    }
+  });
 
-      expect(formProps?.availableTerms).toEqual(terms);
-      expect(formProps?.term).toBe('20252');
-      expect(formProps?.firstDayOfClass).toEqual(new Date(2025, 4, 1));
+  it('derives the first day of class from a zero-padded term id', async () => {
+    const terms = [
+      { id: '20251', label: 'Hiver 2025' },
+      { id: '020252', label: 'Été 2025' },
+      { id: '20253', label: 'Automne 2025' },
+    ];
+
+    (termsHook.useTerms as unknown as Mock).mockReturnValue({
+      terms,
+      loading: false,
+      error: null,
+      fetchTerms: vi.fn(),
+    });
+
+    const view = renderPage();
+    try {
+      await view.render();
+      const { firstDayOfClass, term } = useAddCourseFormStore.getState();
+
+      expect(term).toBe('020252');
+      expect(firstDayOfClass).toEqual(new Date(2025, 4, 1));
     } finally {
       await view.unmount();
     }

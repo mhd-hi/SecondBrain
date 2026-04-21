@@ -1,6 +1,7 @@
 import type { ActionButtonsProps } from '@/types/dialog/add-course-dialog';
 import { Link as LinkIcon, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
 
 function GoToCourseActions({
   onCancel,
@@ -26,7 +27,6 @@ export function ActionButtons({
   currentStep,
   existingCourse,
   isCheckingExistence,
-  courseCode,
   isProcessing,
   createdCourseId,
   onStartParsing,
@@ -34,6 +34,8 @@ export function ActionButtons({
   onDialogClose,
   onGoToCourse,
 }: ActionButtonsProps) {
+  const courseCode = useAddCourseFormStore(state => state.courseCode);
+
   // Idle state without existing course - show Cancel and Add Course buttons
   if (currentStep === 'idle' && !existingCourse) {
     return (

@@ -41,7 +41,7 @@ describe('getUserCourseSummaries', () => {
     findUserCourseSummaryMetricsMock.mockResolvedValueOnce([]);
     findUserCourseSummaryCandidateTasksMock.mockResolvedValueOnce([]);
 
-    const { getUserCourseSummaries } = await import('@/lib/auth/db');
+    const { getUserCourseSummaries } = await import('@/lib/auth/course-summaries');
 
     await expect(getUserCourseSummaries('user-1')).resolves.toEqual([]);
   });
@@ -95,7 +95,7 @@ describe('getUserCourseSummaries', () => {
       },
     ]);
 
-    const { getUserCourseSummaries } = await import('@/lib/auth/db');
+    const { getUserCourseSummaries } = await import('@/lib/auth/course-summaries');
     const summaries = await getUserCourseSummaries('user-1');
 
     expect(summaries).toEqual([

@@ -3,7 +3,7 @@ import { isToday } from 'date-fns';
 
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type IProps = {
   day: number;

@@ -9,7 +9,7 @@ import { EventDetailsDialog } from '@/calendar/components/dialogs/event-details-
 import { DraggableEvent } from '@/calendar/components/dnd/draggable-event';
 
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 const eventBadgeVariants = cva(
   'mx-1 flex size-auto h-6.5 select-none items-center justify-between gap-1.5 truncate whitespace-nowrap rounded-md border px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',

@@ -1,4 +1,4 @@
-import type { FetchStatus } from './fetch-status';
+import type { FetchStatus } from './helpers/fetch-status';
 import type { CourseListItem, CourseSummaryApiResponse } from '@/types/api/course';
 import type { Course } from '@/types/course';
 import { toast } from 'sonner';
@@ -6,7 +6,7 @@ import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { ErrorHandlers } from '@/lib/utils/errors/error';
-import { getOverdueTasks } from '@/lib/utils/task';
+import { getOverdueTasks } from '@/lib/utils/task/task-util';
 
 type CourseStore = {
   courses: Map<string, Course>;

@@ -12,7 +12,7 @@ import { getCalendarPath } from '@/lib/page-routes';
 
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type IProps = {
   cell: TCalendarCell;

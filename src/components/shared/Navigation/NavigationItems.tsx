@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { navbarItems } from '@/lib/navigation/constants';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type NavigationItemsProps = {
   variant: 'horizontal' | 'vertical';

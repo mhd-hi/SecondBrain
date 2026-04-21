@@ -3,7 +3,7 @@ import type { Task } from '@/types/task';
 
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CourseProgressTile } from '@/components/Boards/Progress/TaskCompletionProgressTile';
 import CourseCustomLinks from '@/components/CustomLinks/CourseCustomLinks';
@@ -26,7 +26,7 @@ import { useCourseCustomLinksStore } from '@/hooks/use-custom-link-store';
 import { ROUTES } from '@/lib/page-routes';
 import { useCourseStore } from '@/lib/stores/course-store';
 import { useCustomLinkStore } from '@/lib/stores/custom-link-store';
-import { getFetchStatusForKey, isPendingFetchStatus } from '@/lib/stores/fetch-status';
+import { getFetchStatusForKey, isPendingFetchStatus } from '@/lib/stores/helpers/fetch-status';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { getWeekNumberFromDueDate } from '@/lib/utils/date-util';
 import { handleConfirm } from '@/lib/utils/dialog-util';
@@ -40,48 +40,20 @@ type CoursePageProps = {
   }>;
 };
 
-type CourseTasksAction =
-  | { type: 'sync'; tasks: Task[] }
-  | { type: 'update-status'; taskId: string; status: StatusTask }
-  | { type: 'delete'; taskId: string }
-  | { type: 'batch-update-status'; taskIds: string[]; status: StatusTask };
-
-function courseTasksReducer(state: Task[], action: CourseTasksAction): Task[] {
-  switch (action.type) {
-    case 'sync':
-      return action.tasks;
-    case 'update-status':
-      return state.map(task =>
-        task.id === action.taskId ? { ...task, status: action.status } : task,
-      );
-    case 'delete':
-      return state.filter(task => task.id !== action.taskId);
-    case 'batch-update-status': {
-      const updatedTaskIds = new Set(action.taskIds);
-      return state.map(task =>
-        updatedTaskIds.has(task.id) ? { ...task, status: action.status } : task,
-      );
-    }
-    default:
-      return state;
-  }
-}
-
 export default function CoursePage({ params }: CoursePageProps) {
   const router = useRouter();
   const unwrappedParams = use(params);
   const courseId = unwrappedParams.course;
 
   // Use store-based hooks (read-only, layout handles fetching)
-  const { courses, isLoading: areCoursesLoading } = useCourses();
+  const { isLoading: areCoursesLoading } = useCourses();
   const course = useCourseStore(state => state.courses.get(courseId));
   const [searchQuery, setSearchQuery] = useState('');
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const addTaskButtonRef = useRef<HTMLDivElement>(null);
 
   // Get tasks directly from the store for automatic reactivity
-  const storeTasks = useCourseTasksStore(courseId);
-  const [courseTasks, dispatchCourseTasks] = useReducer(courseTasksReducer, storeTasks);
+  const courseTasks = useCourseTasksStore(courseId);
   const tasksFetchStatus = useTaskStore(state =>
     getFetchStatusForKey(state.fetchStatusByCourse, courseId),
   );
@@ -133,10 +105,6 @@ export default function CoursePage({ params }: CoursePageProps) {
     router,
     tasksFetchStatus,
   ]);
-
-  useEffect(() => {
-    dispatchCourseTasks({ type: 'sync', tasks: storeTasks });
-  }, [storeTasks]);
 
   // Track when Add Task button scrolls out of view
   useEffect(() => {
@@ -190,31 +158,15 @@ export default function CoursePage({ params }: CoursePageProps) {
   }, [courseTasks, searchQuery]);
 
   const handleUpdateStatusTask = async (taskId: string, newStatus: StatusTask) => {
-    const previousStatus = courseTasks.find(task => task.id === taskId)?.status;
-
-    dispatchCourseTasks({ type: 'update-status', taskId, status: newStatus });
-
     try {
-      const didUpdate = await updateTaskStatus(taskId, newStatus);
-
-      if (!didUpdate && previousStatus) {
-        dispatchCourseTasks({ type: 'update-status', taskId, status: previousStatus });
-      }
+      await updateTaskStatus(taskId, newStatus);
     } catch (error) {
-      if (previousStatus) {
-        dispatchCourseTasks({ type: 'update-status', taskId, status: previousStatus });
-      }
-
       ErrorHandlers.api(error, CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    const didRemove = await removeTask(taskId);
-
-    if (didRemove) {
-      dispatchCourseTasks({ type: 'delete', taskId });
-    }
+    await removeTask(taskId);
   };
 
   const handleDeleteCourse = async () => {
@@ -265,8 +217,6 @@ export default function CoursePage({ params }: CoursePageProps) {
       const taskIds = currentOverdueTasks.map(task => task.id);
 
       await batchUpdateStatusTask(taskIds, StatusTask.COMPLETED);
-
-      dispatchCourseTasks({ type: 'batch-update-status', taskIds, status: StatusTask.COMPLETED });
 
       for (const taskId of taskIds) {
         updateTask(taskId, { status: StatusTask.COMPLETED });
@@ -392,9 +342,6 @@ export default function CoursePage({ params }: CoursePageProps) {
               />
               <AddTaskDialog
                 courseId={course.id}
-                courseCode={course.code}
-                onTaskAdded={() => {}}
-                courses={courses}
                 trigger={(
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -409,9 +356,6 @@ export default function CoursePage({ params }: CoursePageProps) {
               <div className="fixed top-20 z-40 animate-in slide-in-from-top duration-200 ease-out" style={{ right: '2rem' }}>
                 <AddTaskDialog
                   courseId={course.id}
-                  courseCode={course.code}
-                  onTaskAdded={() => {}}
-                  courses={courses}
                   trigger={(
                     <Button className="shadow-lg hover:shadow-xl transition-all w-30">
                       <Plus className="h-4 w-4 mr-2" />

@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useMemo, useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 import { formatBadgeDate, formatDueDate } from '@/lib/utils/date-util';
 
 type DueDateDisplayProps = {

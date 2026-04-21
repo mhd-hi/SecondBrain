@@ -1,7 +1,7 @@
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
-import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
+import { isPendingFetchStatus } from '@/lib/stores/helpers/fetch-status';
 
 /**
  * Hook for top-level course operations in the dashboard shell.

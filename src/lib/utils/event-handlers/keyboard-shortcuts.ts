@@ -99,13 +99,27 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const pressedKey
+        = typeof e.key === 'string' ? e.key.toLowerCase() : '';
+
+      if (!pressedKey) {
+        return;
+      }
+
       const isMac
         = typeof navigator !== 'undefined'
         // eslint-disable-next-line style/indent-binary-ops
         && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
       const matchingShortcut = KEYBOARD_SHORTCUTS.find((shortcut) => {
-        const keyMatches = e.key.toLowerCase() === shortcut.key.toLowerCase();
+        const shortcutKey
+          = typeof shortcut.key === 'string' ? shortcut.key.toLowerCase() : '';
+
+        if (!shortcutKey) {
+          return false;
+        }
+
+        const keyMatches = pressedKey === shortcutKey;
         const ctrlMatches = shortcut.ctrl === (isMac ? e.metaKey : e.ctrlKey);
         const altMatches = shortcut.alt === e.altKey;
 

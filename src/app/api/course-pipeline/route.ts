@@ -3,13 +3,13 @@ import type {
   PipelineStepResult,
 } from '@/types/server-pipelines/pipelines';
 import { NextResponse } from 'next/server';
-import { runAIProvider } from '@/lib/ai';
+import { runAIProvider } from '@/lib/ai/registry';
 import { withAuthSimple } from '@/lib/auth/api';
 import { assertValidCourseCode } from '@/lib/utils/course/course';
 import { courseExists } from '@/lib/utils/course/queries';
 import { sanitizeUserInput, validateUserContext } from '@/lib/utils/sanitize';
-import { UniversityCourseDataSource } from '@/pipelines';
-import { UNIVERSITY } from '@/types/university';
+import { SchoolCourseDataSource } from '@/pipelines/data-sources/planets';
+import { SCHOOL } from '@/types/school';
 
 // Endpoint for step-by-step course processing
 export async function handleCoursePipelinePost(request: Request, user: { id: string }) {
@@ -82,7 +82,7 @@ export async function handleCoursePipelinePost(request: Request, user: { id: str
     if (step === 'planets') {
       try {
         const startTime = new Date().toISOString();
-        const planetsSource = new UniversityCourseDataSource(UNIVERSITY.ETS);
+        const planetsSource = new SchoolCourseDataSource(SCHOOL.ETS);
         const result = await planetsSource.fetch(cleanCode, term);
         const endTime = new Date().toISOString();
 

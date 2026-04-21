@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type StatusBadgeProps = {
   content: string | number;
@@ -43,7 +43,7 @@ export function StatusBadge({
         <TooltipTrigger asChild>
           <span
             className={cn(
-              'rounded-full px-2 py-0.5 text-s inline-flex items-center justify-center mt-[-1px] min-[]:h-[20px] min-w-[25px] font-medium',
+              'rounded-full px-2 py-0.5 text-s inline-flex items-center justify-center -mt-px min-[]:h-[20px] min-w-6.25 font-medium',
               badgeColorClass,
               className,
             )}

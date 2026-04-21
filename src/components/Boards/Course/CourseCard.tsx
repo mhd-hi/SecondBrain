@@ -17,7 +17,7 @@ import {
   getNextTask,
   getTotalTasksCount,
   getUpcomingTask,
-} from '@/lib/utils/task';
+} from '@/lib/utils/task/task-util';
 
 type CourseCardProps = {
   course: Course;

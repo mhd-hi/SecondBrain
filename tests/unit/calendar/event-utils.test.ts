@@ -4,7 +4,7 @@ import * as daypartUtils from '@/lib/utils/course/daypart';
 import { StatusTask } from '@/types/status-task';
 import { taskToEvent } from '../../../src/calendar/event-utils';
 
-vi.mock('@/lib/utils', () => ({
+vi.mock('@/lib/utils/task/task-util', () => ({
   getStatusBgClass: vi.fn(() => 'mock-secondary'),
 }));
 

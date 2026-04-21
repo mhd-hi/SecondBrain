@@ -22,7 +22,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useTaskCard } from '@/hooks/task/use-task-card';
 import { getCoursePath, getPomodoroPath } from '@/lib/page-routes';
-import { cn, formatEffortTime } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
+import { formatEffortTime } from '@/lib/utils/task/task-util';
 import { StatusTask } from '@/types/status-task';
 import { TASK_TYPE_OPTIONS } from '@/types/task';
 import { CourseCodeBadge } from '../shared/atoms/CourseCodeBadge';

@@ -22,11 +22,13 @@ vi.mock('@/lib/auth/db', () => ({
   deleteUserCourse: vi.fn(),
   deleteUserTask: vi.fn(),
   getUserCourse: vi.fn(),
-  getUserCourseSummaries: (...args: unknown[]) => getUserCourseSummariesMock(...args),
   getUserCourseTasks: vi.fn(),
   getUserCourses: vi.fn(),
   getUserTask: vi.fn(),
   updateUserTask: vi.fn(),
+}));
+vi.mock('@/lib/auth/course-summaries', () => ({
+  getUserCourseSummaries: (...args: unknown[]) => getUserCourseSummariesMock(...args),
 }));
 
 describe('courses route', () => {

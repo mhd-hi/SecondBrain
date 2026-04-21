@@ -1,27 +1,21 @@
 'use client';
 
-import type { StepStatus } from '@/hooks/course/add-course-pipeline';
 import type { CourseAIResponse } from '@/types/api/ai';
 import type { Daypart } from '@/types/course';
+import type { SchoolId } from '@/types/school';
 import type { PipelineStepResult } from '@/types/server-pipelines/pipelines';
 import { useCallback, useReducer } from 'react';
 import { toast } from 'sonner';
-import {
-  deriveCreatedCourseId,
-  deriveCurrentStep,
-  deriveError,
-  deriveIsProcessing,
-  deriveParsedData,
-  deriveStepStatus,
-  pipelineReducer,
-} from '@/hooks/course/add-course-pipeline';
 import { createPlanETSLink } from '@/hooks/use-custom-link';
-import { normalizeTasks } from '@/lib/ai';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { assertValidCourseCode } from '@/lib/utils/course/course';
-import { calculateDueDateTaskForTerm } from '@/lib/utils/task';
-import { UNIVERSITY } from '@/types/university';
+import { calculateDueDateTaskForTerm } from '@/lib/utils/task/task-util';
+import { SCHOOL } from '@/types/school';
+import { pipelineReducer } from './add-course-pipeline/reducer';
+import { deriveStepStatus, deriveCurrentStep, deriveParsedData, deriveCreatedCourseId, deriveError, deriveIsProcessing } from './add-course-pipeline/selectors';
+import type { StepStatus } from './add-course-pipeline/types';
+import { normalizeTasks } from '@/lib/ai/normalize';
 
 export type UseAddCourseReturn = {
   currentStep: string;
@@ -35,7 +29,7 @@ export type UseAddCourseReturn = {
     term: string,
     firstDayOfClass: Date,
     daypart: Daypart,
-    university?: string,
+    school: SchoolId,
     userContext?: string,
   ) => Promise<void>;
   retry: () => void;
@@ -187,7 +181,7 @@ export function useAddCourse(): UseAddCourseReturn {
       term: string,
       firstDayOfClass: Date,
       daypart: Daypart,
-      university?: string,
+      school: SchoolId,
       userContext?: string,
     ) => {
       if (!courseCode.trim()) {
@@ -197,7 +191,7 @@ export function useAddCourse(): UseAddCourseReturn {
 
       dispatch({ type: 'START_CHECKING' });
 
-      const shouldSkipPipeline = !university || university === UNIVERSITY.NONE;
+      const shouldSkipPipeline = school !== SCHOOL.ETS;
 
       if (shouldSkipPipeline) {
         dispatch({ type: 'START_SKIP_PIPELINE' });

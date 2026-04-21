@@ -13,7 +13,7 @@ import { SingleCalendar } from '@/components/ui/single-calendar';
 import { DAY_VIEW_HOUR_BLOCK_HEIGHT } from '@/lib/calendar/constants';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type IProps = {
   events: TEvent[];

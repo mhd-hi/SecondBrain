@@ -1,10 +1,8 @@
 'use client';
-
-import type { Daypart } from '@/types/course';
 import { AlertCircle, NotebookText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
 import { ActionButtons } from '@/components/shared/dialogs/ActionButtons';
 import { CourseInputForm } from '@/components/shared/dialogs/CourseInputForm';
@@ -14,23 +12,24 @@ import { useAddCourse } from '@/hooks/course/use-add-course';
 import { useCourses } from '@/hooks/course/use-course-store';
 import { useTerms } from '@/hooks/use-terms';
 import { getCoursePath, ROUTES } from '@/lib/page-routes';
+import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
 import { isValidCourseCode, normalizeCourseCode } from '@/lib/utils/course/course';
 import { PipelineErrorHandlers } from '@/lib/utils/errors/error';
 import { MAX_USER_CONTEXT_LENGTH } from '@/lib/utils/sanitize';
-import { getDatesForTerm, isValidTermId } from '@/lib/utils/term-util';
-import { DEFAULT_UNIVERSITY } from '@/types/university';
+import { getDatesForTerm, getNormalizedValidTermId } from '@/lib/utils/term-util';
 
 export default function AddCoursePage() {
   const router = useRouter();
-  const [courseCode, setCourseCode] = useState('');
-  const [term, setTerm] = useState<string>('');
-  const [firstDayOfClass, setFirstDayOfClass] = useState<Date | undefined>(
-    undefined,
-  );
-  const [daypart, setDaypart] = useState<Daypart | ''>('');
-  const [university, setUniversity] = useState<string>(DEFAULT_UNIVERSITY);
-  const [userContext, setUserContext] = useState<string>('');
-  const [showDaypartError, setShowDaypartError] = useState(false);
+  const courseCode = useAddCourseFormStore(state => state.courseCode);
+  const term = useAddCourseFormStore(state => state.term);
+  const firstDayOfClass = useAddCourseFormStore(state => state.firstDayOfClass);
+  const daypart = useAddCourseFormStore(state => state.daypart);
+  const school = useAddCourseFormStore(state => state.school);
+  const userContext = useAddCourseFormStore(state => state.userContext);
+  const setTerm = useAddCourseFormStore(state => state.setTerm);
+  const setFirstDayOfClass = useAddCourseFormStore(state => state.setFirstDayOfClass);
+  const setShowDaypartError = useAddCourseFormStore(state => state.setShowDaypartError);
+  const resetForm = useAddCourseFormStore(state => state.reset);
 
   const {
     terms,
@@ -50,6 +49,12 @@ export default function AddCoursePage() {
     startProcessing,
     retry,
   } = useAddCourse();
+  const normalizedTerm = getNormalizedValidTermId(term);
+
+  useLayoutEffect(() => {
+    resetForm();
+    return () => resetForm();
+  }, [resetForm]);
 
   // Fetch terms on mount
   useEffect(() => {
@@ -62,30 +67,21 @@ export default function AddCoursePage() {
     });
   }, [fetchTerms, terms.length, termsLoading]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (term || terms.length === 0) {
       return;
     }
 
     const middle = terms.length === 3 ? terms[1] : terms[Math.floor(terms.length / 2)];
     if (middle) {
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setTerm(middle.id);
     }
-  }, [term, terms]);
+  }, [setTerm, term, terms]);
 
   // Set first day of class based on term
-  useEffect(() => {
-    if (!term || !isValidTermId(term)) {
-      return;
-    }
-
-    const termDateStart = getDatesForTerm(term).start;
-    if (termDateStart) {
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
-      setFirstDayOfClass(termDateStart);
-    }
-  }, [term]);
+  useLayoutEffect(() => {
+    setFirstDayOfClass(normalizedTerm ? getDatesForTerm(normalizedTerm).start : undefined);
+  }, [normalizedTerm, setFirstDayOfClass]);
 
   // Automatically refresh courses when course creation is completed
   useEffect(() => {
@@ -122,11 +118,6 @@ export default function AddCoursePage() {
       return;
     }
 
-    if (!firstDayOfClass) {
-      toast.error('Please select a first day of class.');
-      return;
-    }
-
     if (!daypart) {
       toast.error('Please select a daypart for the first day of class.');
       setShowDaypartError(true);
@@ -134,25 +125,21 @@ export default function AddCoursePage() {
     }
     setShowDaypartError(false);
 
-    let termToUse = term;
-    if (!isValidTermId(termToUse)) {
-      const cleaned = termToUse.replace(/^0+/, '');
-      if (isValidTermId(cleaned)) {
-        termToUse = cleaned;
-      } else {
-        toast.error(
-          'Selected term id looks invalid. Please pick a valid term.',
-        );
-        return;
-      }
+    if (!normalizedTerm) {
+      toast.error(
+        'Selected term id looks invalid. Please pick a valid term.',
+      );
+      return;
     }
+
+    const resolvedFirstDayOfClass = firstDayOfClass ?? getDatesForTerm(normalizedTerm).start;
 
     await startProcessing(
       cleanCode,
-      termToUse,
-      firstDayOfClass,
+      normalizedTerm,
+      resolvedFirstDayOfClass,
       daypart,
-      university,
+      school,
       userContext,
     );
   };
@@ -187,22 +174,9 @@ export default function AddCoursePage() {
 
       <div className="bg-card mx-auto w-full max-w-3xl space-y-6 rounded-lg border p-6">
         <CourseInputForm
-          courseCode={courseCode}
-          setCourseCode={setCourseCode}
-          term={term}
-          setTerm={setTerm}
           availableTerms={terms}
-          firstDayOfClass={firstDayOfClass}
-          setFirstDayOfClass={setFirstDayOfClass}
-          daypart={daypart}
-          setDaypart={setDaypart}
-          university={university}
-          setUniversity={setUniversity}
-          userContext={userContext}
-          setUserContext={setUserContext}
           isProcessing={isProcessing}
           currentStep={currentStep}
-          showDaypartError={showDaypartError}
           onSubmit={handleStartParsing}
         />
 
@@ -246,8 +220,6 @@ export default function AddCoursePage() {
             currentStep={currentStep}
             existingCourse={null}
             isCheckingExistence={false}
-            courseCode={courseCode}
-            userContext={userContext}
             isProcessing={isProcessing}
             parsedData={parsedData}
             createdCourseId={createdCourseId}

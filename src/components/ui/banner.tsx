@@ -1,5 +1,5 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 export type BannerProps = {
   icon?: React.ElementType;

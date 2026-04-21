@@ -13,7 +13,7 @@ import { AddTaskDialog } from '@/components/shared/dialogs/AddTaskDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WEEK_VIEW_HOUR_BLOCK_HEIGHT, WEEK_VIEW_SLOT_INTERVAL_MINUTES } from '@/lib/calendar/constants';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type IProps = {
   events: TEvent[];
@@ -167,9 +167,7 @@ export function CalendarWeekView({ events, courses }: IProps) {
       <AddTaskDialog
         open={taskDialogOpen}
         onOpenChange={setTaskDialogOpen}
-        courses={courses}
         dueDate={selectedDate ?? new Date('2027-01-01')}
-        onTaskAdded={() => setTaskDialogOpen(false)}
         trigger={false}
       />
     </>

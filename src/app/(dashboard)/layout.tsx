@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import * as React from 'react';
-import { getUserCourseSummaries } from '@/lib/auth/db';
+import { getUserCourseSummaries } from '@/lib/auth/course-summaries';
 import { ROUTES } from '@/lib/page-routes';
 import { auth } from '@/server/auth';
 import { DashboardProviders } from './dashboard-providers';

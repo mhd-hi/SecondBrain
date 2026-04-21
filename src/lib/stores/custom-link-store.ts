@@ -1,4 +1,4 @@
-import type { FetchStatus } from './fetch-status';
+import type { FetchStatus } from './helpers/fetch-status';
 import type { CustomLink, CustomLinkItem } from '@/types/custom-link';
 import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
@@ -7,7 +7,7 @@ import { ErrorHandlers } from '@/lib/utils/errors/error';
 import {
   getFetchStatusForKey,
   setFetchStatusForKey,
-} from './fetch-status';
+} from './helpers/fetch-status';
 
 function replaceCustomLinksForCourse(
   existingLinks: ReadonlyMap<string, CustomLinkItem>,

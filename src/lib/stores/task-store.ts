@@ -1,4 +1,4 @@
-import type { FetchStatus } from './fetch-status';
+import type { FetchStatus } from './helpers/fetch-status';
 import type { StatusTask } from '@/types/status-task';
 import type { Subtask } from '@/types/subtask';
 import type { Task, TaskType } from '@/types/task';
@@ -11,7 +11,7 @@ import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 import {
   getFetchStatusForKey,
   setFetchStatusForKey,
-} from './fetch-status';
+} from './helpers/fetch-status';
 
 function replaceTasksForCourse(
   existingTasks: ReadonlyMap<string, Task>,

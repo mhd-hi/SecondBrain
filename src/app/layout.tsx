@@ -4,12 +4,12 @@ import { GlobalConfirmDialogProvider } from '@/components/shared/dialogs/Confirm
 import { VersionLogger } from '@/components/shared/VersionLogger';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/ui/theme-provider';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'SecondBrain ETS',
-  description: 'SecondBrain ETS: Your AI-powered course management assistant for ETS university students. Helps manage academic workload by parsing course plans and creating tasks.',
+  description: 'SecondBrain ETS: Your AI-powered course management assistant for university students. Helps manage academic workload by parsing course plans and creating tasks.',
   icons: [{ rel: 'icon', url: '/favicon.ico' }],
 };
 

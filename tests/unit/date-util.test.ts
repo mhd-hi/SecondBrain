@@ -1,5 +1,8 @@
 /* eslint-disable ts/no-explicit-any */
+import type { Mock } from 'vitest';
+import * as dateFns from 'date-fns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getEventEnd, getEventStart } from '../../src/calendar/date-utils';
 import {
   formatBadgeDate,
   formatDueDate,
@@ -7,17 +10,44 @@ import {
   getWeekNumberFromDueDate,
 } from '../../src/lib/utils/date-util';
 import { STANDARD_WEEKS_PER_TERM } from '../../src/lib/utils/term-util';
+import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
+
+vi.mock('date-fns', () => {
+  const parseIsoLikeDateFns = (value: string) => {
+    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    return new Date(value);
+  };
+
+  return {
+    parseISO: vi.fn(parseIsoLikeDateFns),
+  };
+});
 
 const createLocalDate = (year: number, month: number, day: number) => new Date(year, month - 1, day, 12);
 
 describe('date-util', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(createLocalDate(2026, 2, 14));
+    setSystemDate(createLocalDate(2026, 2, 14));
+    (dateFns.parseISO as unknown as Mock).mockImplementation((value: string) => {
+      const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+      if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+      }
+
+      return new Date(value);
+    });
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    restoreSystemDate();
     vi.resetAllMocks();
     vi.restoreAllMocks();
   });
@@ -65,9 +95,7 @@ describe('date-util', () => {
   });
 
   describe('calendar date-utils', () => {
-    it('parses ISO start/end and caches the Date objects', async () => {
-      const { getEventStart, getEventEnd } = await import('../../src/calendar/date-utils');
-
+    it('parses ISO start/end and caches the Date objects', () => {
       const ev: any = {
         id: '1',
         startDate: '2026-02-14',
@@ -92,8 +120,7 @@ describe('date-util', () => {
       expect(e.getDate()).toBe(15);
     });
 
-    it('returns existing startDateObj/endDateObj when present', async () => {
-      const { getEventStart, getEventEnd } = await import('../../src/calendar/date-utils');
+    it('returns existing startDateObj/endDateObj when present', () => {
       const start = new Date(2020, 0, 1);
       const end = new Date(2020, 0, 2);
 
@@ -112,15 +139,10 @@ describe('date-util', () => {
       expect(getEventEnd(ev)).toBe(end);
     });
 
-    it('falls back to `new Date` when parseISO throws', async () => {
-      vi.resetModules();
-      vi.doMock('date-fns', () => ({
-        parseISO: () => {
-          throw new Error('boom');
-        },
-      }));
-
-      const { getEventStart: getStartMocked } = await import('../../src/calendar/date-utils');
+    it('falls back to `new Date` when parseISO throws', () => {
+      (dateFns.parseISO as unknown as Mock).mockImplementationOnce(() => {
+        throw new Error('boom');
+      });
 
       const ev: any = {
         id: '3',
@@ -131,13 +153,10 @@ describe('date-util', () => {
         color: 'green',
       };
 
-      const d = getStartMocked(ev);
+      const d = getEventStart(ev);
 
       expect(d).toBeInstanceOf(Date);
       expect(ev.startDateObj).toBe(d);
-
-      vi.doUnmock('date-fns');
-      vi.resetModules();
     });
   });
 });

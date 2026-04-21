@@ -1,7 +1,6 @@
-import type { CourseCreateRequest } from '@/types/course';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo } from 'react';
-import { useCourseStore } from '@/lib/stores/course-store';
+import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
 
 /**
  * Hook for course operations with automatic fetching on mount
@@ -16,13 +15,7 @@ export function useCourseOperations() {
 
   const coursesMap = useCourseStore(state => state.courses);
   const courses = useMemo(() => Array.from(coursesMap.values()), [coursesMap]);
-  const coursesListItems = useMemo(
-    () => courses.map(course => ({
-      ...course,
-      overdueCount: 0,
-    })).sort((a, b) => a.code.localeCompare(b.code)),
-    [courses],
-  );
+  const coursesListItems = useMemo(() => getCourseListItemsFromCourses(courses), [courses]);
 
   // Auto-fetch only if authenticated and not initialized
   useEffect(() => {
@@ -40,10 +33,6 @@ export function useCourseOperations() {
 
   const refreshCourses = useCallback(async () => {
     return useCourseStore.getState().refreshCourses();
-  }, []);
-
-  const createCourse = useCallback(async (courseData: CourseCreateRequest) => {
-    return useCourseStore.getState().createCourse(courseData);
   }, []);
 
   const updateCourseField = useCallback(
@@ -72,7 +61,6 @@ export function useCourseOperations() {
     error,
     fetchCourses,
     refreshCourses,
-    createCourse,
     updateCourseField,
     deleteCourse,
     getCourse,
@@ -93,13 +81,7 @@ export function useCourses() {
 
   const coursesMap = useCourseStore(state => state.courses);
   const courses = useMemo(() => Array.from(coursesMap.values()), [coursesMap]);
-  const coursesListItems = useMemo(
-    () => courses.map(course => ({
-      ...course,
-      overdueCount: 0,
-    })).sort((a, b) => a.code.localeCompare(b.code)),
-    [courses],
-  );
+  const coursesListItems = useMemo(() => getCourseListItemsFromCourses(courses), [courses]);
 
   const getCourse = useCallback((courseId: string) => {
     return useCourseStore.getState().getCourse(courseId);

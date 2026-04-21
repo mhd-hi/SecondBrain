@@ -1,5 +1,5 @@
 import type { CourseListItem } from '@/types/api/course';
-import type { Course, CourseCreateRequest } from '@/types/course';
+import type { Course } from '@/types/course';
 import { toast } from 'sonner';
 import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
@@ -25,13 +25,24 @@ type CourseStore = {
 
   fetchCourses: () => Promise<void>;
   refreshCourses: () => Promise<void>;
-  createCourse: (courseData: CourseCreateRequest) => Promise<Course | null>;
   updateCourseField: (courseId: string, field: string, value: unknown) => Promise<boolean>;
   removeCourse: (courseId: string) => Promise<boolean>;
 
   clearError: () => void;
   reset: () => void;
 };
+
+export function getCourseListItemsFromCourses(courses: Iterable<Course>): CourseListItem[] {
+  return Array.from(courses)
+    .map(course => ({
+      id: course.id,
+      code: course.code,
+      name: course.name,
+      color: course.color,
+      overdueCount: getOverdueTasks(course.tasks ?? []).length,
+    }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+}
 
 export const useCourseStore = create<CourseStore>((set, get) => ({
   courses: new Map(),
@@ -90,15 +101,7 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
   },
 
   getCoursesListItems: () => {
-    return Array.from(get().courses.values())
-      .map(course => ({
-        id: course.id,
-        code: course.code,
-        name: course.name,
-        color: course.color,
-        overdueCount: getOverdueTasks(course.tasks ?? []).length,
-      }))
-      .sort((a, b) => a.code.localeCompare(b.code));
+    return getCourseListItemsFromCourses(get().courses.values());
   },
 
   fetchCourses: async () => {
@@ -128,50 +131,6 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
       const errorMessage = 'Failed to refresh courses';
       set({ error: errorMessage });
       ErrorHandlers.silent(error, 'CourseStore refreshCourses');
-    }
-  },
-
-  createCourse: async (courseData) => {
-    // Optimistic update with temporary ID
-    const tempId = `temp-${Date.now()}`;
-    const optimisticCourse: Course = {
-      id: tempId,
-      code: courseData.code,
-      name: courseData.name,
-      description: courseData.description,
-      daypart: courseData.daypart,
-      color: 'blue', // Default color
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      tasks: [],
-    };
-
-    get().addCourse(optimisticCourse);
-
-    set({ isLoading: true, error: null });
-    try {
-      const response = await api.post<Course>(API_ENDPOINTS.COURSES.LIST, courseData);
-
-      // Remove temporary course and add real one
-      get().deleteCourse(tempId);
-      if (response) {
-        get().addCourse(response);
-        toast.success('Course created successfully');
-        set({ isLoading: false });
-        return response;
-      }
-
-      set({ isLoading: false });
-      return null;
-    } catch (error) {
-      // Rollback optimistic update
-      get().deleteCourse(tempId);
-
-      const errorMessage = 'Failed to create course';
-      set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
-      toast.error(errorMessage);
-      return null;
     }
   },
 

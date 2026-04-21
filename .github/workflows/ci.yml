@@ -28,6 +28,21 @@ jobs:
       - name: Run lint
         run: bun run lint
 
+  unused:
+    name: Check Unused Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - name: Install dependencies
+        run: bun install
+      - name: Run unused dependency check
+        run: bun run check:unused
+
   audit:
     name: Audit Dependencies
     runs-on: ubuntu-latest

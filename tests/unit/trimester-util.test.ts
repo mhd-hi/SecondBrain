@@ -1,31 +1,35 @@
 /* eslint-disable ts/no-explicit-any */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  getCurrentTrimesterInfoWithDeps,
+  getCurrentTrimesterPositionWithDeps,
+} from '../../src/lib/utils/trimester-util';
+import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
-describe('trimester-util', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-02-14T12:00:00Z'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.resetAllMocks();
-    vi.restoreAllMocks();
-  });
-
-  it('uses term dates from `getDatesForTerm` and computes totalWeeks and weekOfTrimester', async () => {
-    // Spy on term-util exports before importing module under test
-    const termUtil = (await import('@/lib/utils/term-util')) as any;
-    vi.spyOn(termUtil, 'getCurrentOrUpcomingTerm').mockReturnValue({ trimester: 'winter', year: 2026 } as any);
-    vi.spyOn(termUtil, 'getDatesForTerm').mockImplementation((..._args: unknown[]) => ({
+function createDeps() {
+  return {
+    getCurrentOrUpcomingTerm: () => ({ trimester: 'winter', year: 2026 } as any),
+    getDatesForTerm: () => ({
       start: new Date('2026-02-01'),
       end: new Date('2026-02-28'),
       weeks: 4,
-    }) as any);
+    } as any),
+  };
+}
 
-    const { getCurrentTrimesterInfo } = await import('../../src/lib/utils/trimester-util');
+describe('trimester-util', () => {
+  beforeEach(() => {
+    setSystemDate(new Date('2026-02-14T12:00:00Z'));
+  });
 
-    const info = getCurrentTrimesterInfo();
+  afterEach(() => {
+    restoreSystemDate();
+  });
+
+  it('uses term dates from `getDatesForTerm` and computes totalWeeks and weekOfTrimester', () => {
+    const deps = createDeps();
+
+    const info = getCurrentTrimesterInfoWithDeps(deps, new Date('2026-02-14T12:00:00Z'));
 
     expect(info.startOfTrimester.getTime()).toBe(new Date('2026-02-01').getTime());
     expect(info.endOfTrimester.getTime()).toBe(new Date('2026-02-28').getTime());
@@ -35,16 +39,15 @@ describe('trimester-util', () => {
     expect(info.weekOfTrimester).toBe(2);
   });
 
-  it('falls back to default dates when getDatesForTerm throws', async () => {
-    const termUtil2 = (await import('@/lib/utils/term-util')) as any;
-    vi.spyOn(termUtil2, 'getCurrentOrUpcomingTerm').mockReturnValue({ trimester: 'summer', year: 2026 } as any);
-    vi.spyOn(termUtil2, 'getDatesForTerm').mockImplementation((..._args: unknown[]) => {
-      throw new Error('no data');
-    }) as any;
+  it('falls back to default dates when getDatesForTerm throws', () => {
+    const deps = {
+      getCurrentOrUpcomingTerm: () => ({ trimester: 'summer', year: 2026 } as any),
+      getDatesForTerm: () => {
+        throw new Error('no data');
+      },
+    };
 
-    const { getCurrentTrimesterInfo } = await import('../../src/lib/utils/trimester-util');
-
-    const info = getCurrentTrimesterInfo();
+    const info = getCurrentTrimesterInfoWithDeps(deps, new Date('2026-02-14T12:00:00Z'));
 
     // Fallbacks are based on current year (2026): start = Aug 1, 2026; end = Jan 15, 2027
     expect(info.startOfTrimester.getTime()).toBe(new Date(2026, 7, 1).getTime());
@@ -53,19 +56,18 @@ describe('trimester-util', () => {
     expect(info.weekOfTrimester).toBe(1);
   });
 
-  it('computes current trimester position as a percentage (0-100)', async () => {
+  it('computes current trimester position as a percentage (0-100)', () => {
     // Make term start Feb 10 and end Feb 20 so current Feb 14 is 4/10 = 40%
-    const termUtil3 = (await import('@/lib/utils/term-util')) as any;
-    vi.spyOn(termUtil3, 'getCurrentOrUpcomingTerm').mockReturnValue({ trimester: 'winter', year: 2026 } as any);
-    vi.spyOn(termUtil3, 'getDatesForTerm').mockImplementation((..._args: unknown[]) => ({
-      start: new Date('2026-02-10'),
-      end: new Date('2026-02-20'),
-      weeks: 2,
-    }) as any);
+    const deps = {
+      getCurrentOrUpcomingTerm: () => ({ trimester: 'winter', year: 2026 } as any),
+      getDatesForTerm: () => ({
+        start: new Date('2026-02-10'),
+        end: new Date('2026-02-20'),
+        weeks: 2,
+      } as any),
+    };
 
-    const { getCurrentTrimesterPosition } = await import('../../src/lib/utils/trimester-util');
-
-    const pos = getCurrentTrimesterPosition();
+    const pos = getCurrentTrimesterPositionWithDeps(deps, new Date('2026-02-14T12:00:00Z'));
 
     // Allow a reasonable rounding tolerance due to timezone/time-of-day differences
     expect(pos).toBeGreaterThanOrEqual(35);

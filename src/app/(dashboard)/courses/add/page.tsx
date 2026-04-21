@@ -3,6 +3,7 @@
 import type { Daypart } from '@/types/course';
 import { AlertCircle, NotebookText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ActionButtons } from '@/components/shared/dialogs/ActionButtons';
@@ -29,15 +30,12 @@ export default function AddCoursePage() {
   const [daypart, setDaypart] = useState<Daypart | ''>('');
   const [university, setUniversity] = useState<string>(DEFAULT_UNIVERSITY);
   const [userContext, setUserContext] = useState<string>('');
-  const [availableTerms, setAvailableTerms] = useState<
-    Array<{ id: string; label: string }>
-  >([]);
   const [showDaypartError, setShowDaypartError] = useState(false);
 
   const {
-    terms: _fetchedTerms,
-    loading: _termsLoading,
-    error: _termsError,
+    terms,
+    loading: termsLoading,
+    error: termsError,
     fetchTerms,
   } = useTerms();
   const { refreshCourses } = useCourses();
@@ -55,23 +53,26 @@ export default function AddCoursePage() {
 
   // Fetch terms on mount
   useEffect(() => {
-    if (availableTerms.length === 0) {
-      (async () => {
-        try {
-          const got = await fetchTerms();
-          setAvailableTerms(got);
-          // Default term to current session (middle item) if present (prev/current/next)
-          const middle =
-            got.length === 3 ? got[1] : got[Math.floor(got.length / 2)];
-          if (middle) {
-            setTerm(middle.id);
-          }
-        } catch (err) {
-          console.error('Failed to fetch terms:', err);
-        }
-      })();
+    if (terms.length > 0 || termsLoading) {
+      return;
     }
-  }, [availableTerms.length, fetchTerms]);
+
+    void fetchTerms().catch((err) => {
+      console.error('Failed to fetch terms:', err);
+    });
+  }, [fetchTerms, terms.length, termsLoading]);
+
+  useEffect(() => {
+    if (term || terms.length === 0) {
+      return;
+    }
+
+    const middle = terms.length === 3 ? terms[1] : terms[Math.floor(terms.length / 2)];
+    if (middle) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setTerm(middle.id);
+    }
+  }, [term, terms]);
 
   // Set first day of class based on term
   useEffect(() => {
@@ -190,7 +191,7 @@ export default function AddCoursePage() {
           setCourseCode={setCourseCode}
           term={term}
           setTerm={setTerm}
-          availableTerms={availableTerms}
+          availableTerms={terms}
           firstDayOfClass={firstDayOfClass}
           setFirstDayOfClass={setFirstDayOfClass}
           daypart={daypart}
@@ -228,6 +229,14 @@ export default function AddCoursePage() {
             <AlertDescription>
               {PipelineErrorHandlers.getSafeErrorMessage(error)}
             </AlertDescription>
+          </Alert>
+        )}
+
+        {termsError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Term Loading Failed</AlertTitle>
+            <AlertDescription>{termsError}</AlertDescription>
           </Alert>
         )}
 

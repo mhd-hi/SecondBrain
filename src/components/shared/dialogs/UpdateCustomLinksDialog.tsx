@@ -23,7 +23,7 @@ type UpdateCustomLinksDialogProps = {
   onOpenChange?: (open: boolean) => void;
 };
 
-export const UpdateCustomLinksDialog = ({ courseId, open, onOpenChange }: UpdateCustomLinksDialogProps) => {
+const UpdateCustomLinksDialog = ({ courseId, open, onOpenChange }: UpdateCustomLinksDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const controlled = typeof open === 'boolean' && typeof onOpenChange === 'function';
   const dialogOpen = controlled ? open! : isOpen;

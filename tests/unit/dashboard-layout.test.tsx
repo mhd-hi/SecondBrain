@@ -1,4 +1,5 @@
 /* eslint-disable ts/no-explicit-any */
+import type { Mock } from 'vitest';
 import { redirect } from 'next/navigation';
 import * as React from 'react';
 import { isValidElement } from 'react';
@@ -8,7 +9,14 @@ import { ROUTES } from '@/lib/page-routes';
 import { auth } from '@/server/auth';
 
 vi.mock('@/server/auth', () => ({ auth: vi.fn() }));
-vi.mock('next/navigation', () => ({ redirect: vi.fn() }));
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn(),
+  usePathname: vi.fn(() => '/dashboard'),
+  useRouter: vi.fn(),
+}));
+vi.mock('@/app/(dashboard)/layout-content', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -17,8 +25,8 @@ beforeEach(() => {
 describe('dashboard layout auth guard', () => {
   it('redirects unauthenticated users to the sign-in page', async () => {
     const redirectError = new Error('redirect');
-    vi.mocked(auth).mockResolvedValue(null as any);
-    vi.mocked(redirect).mockImplementation(() => {
+    (auth as unknown as Mock).mockResolvedValue(null as any);
+    (redirect as unknown as Mock).mockImplementation(() => {
       throw redirectError;
     });
 
@@ -28,7 +36,7 @@ describe('dashboard layout auth guard', () => {
   });
 
   it('renders the dashboard shell for authenticated users', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as any);
+    (auth as unknown as Mock).mockResolvedValue({ user: { id: 'user-123' } } as any);
 
     const result = await DashboardLayout({ children: <span>Private</span> });
 

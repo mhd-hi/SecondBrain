@@ -5,11 +5,11 @@ import { withAuth } from '@/lib/auth/api';
 import { db } from '@/server/db';
 import { subtasks, tasks } from '@/server/db/schema';
 
-export const POST = withAuth(async (req: NextRequest, { user }) => {
+export async function handleSubtaskUpdatePost(req: NextRequest, user: { id: string }) {
   try {
     const { id, input, value } = await req.json();
     // Only allow updating specific fields for subtasks
-    const allowedFields = ['title', 'notes', 'status', 'estimatedEffort', 'actualEffort', 'dueDate'];
+    const allowedFields = ['title', 'notes', 'status', 'estimatedEffort', 'dueDate'];
     if (!allowedFields.includes(input)) {
       return NextResponse.json({ success: false, error: 'Invalid field' }, { status: 400 });
     }
@@ -28,7 +28,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     // sanitize numeric fields for subtasks
     let sanitizedValue: unknown = value;
-    if (input === 'estimatedEffort' || input === 'actualEffort') {
+    if (input === 'estimatedEffort') {
       const num = Number(value);
       sanitizedValue = Number.isFinite(num) ? (num < 0 ? 0.5 : Math.max(0, num)) : 0.5;
     }
@@ -44,4 +44,6 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     const errMsg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ success: false, error: errMsg || 'Unknown error' }, { status: 400 });
   }
-});
+}
+
+export const POST = withAuth(async (req, { user }) => handleSubtaskUpdatePost(req, user));

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TRIMESTER } from '@/types/term';
 import {
   buildTerm,
   calculateWeekFromDueDate,
@@ -13,9 +14,7 @@ import {
   nextTerm,
   parseTermId,
   STANDARD_WEEKS_PER_TERM,
-} from '@/lib/utils/term-util';
-
-import { TRIMESTER } from '@/types/term';
+} from '../../../../src/lib/utils/term-util';
 import { ensureViSetSystemTime } from '../../../helpers/time';
 
 ensureViSetSystemTime(vi);

@@ -12,7 +12,7 @@ import { UniversityCourseDataSource } from '@/pipelines';
 import { UNIVERSITY } from '@/types/university';
 
 // Endpoint for step-by-step course processing
-export const POST = withAuthSimple(async (request, user) => {
+export async function handleCoursePipelinePost(request: Request, user: { id: string }) {
   try {
     const body = (await request.json()) as PipelineStepRequest;
     const { courseCode, term, step, htmlData, userContext } = body;
@@ -205,4 +205,6 @@ export const POST = withAuthSimple(async (request, user) => {
       { status: 500 },
     );
   }
-});
+}
+
+export const POST = withAuthSimple(handleCoursePipelinePost);

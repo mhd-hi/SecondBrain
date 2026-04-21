@@ -5,10 +5,10 @@ import { withAuthSimple } from '@/lib/auth/api';
 import { db } from '@/server/db';
 import { tasks } from '@/server/db/schema';
 
-export const POST = withAuthSimple(async (req: NextRequest, user) => {
+export async function handleTaskUpdatePost(req: NextRequest, user: { id: string }) {
   try {
     const { taskId, input, value } = await req.json();
-    const allowedFields = ['title', 'notes', 'status', 'estimatedEffort', 'actualEffort', 'dueDate', 'week', 'type'];
+    const allowedFields = ['title', 'notes', 'status', 'estimatedEffort', 'actualEffort', 'dueDate', 'type'];
 
     if (!allowedFields.includes(input)) {
       console.error('Invalid field while updating task, field: ', input);
@@ -51,4 +51,6 @@ export const POST = withAuthSimple(async (req: NextRequest, user) => {
     const errMsg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ success: false, error: errMsg || 'Unknown error' }, { status: 400 });
   }
-});
+}
+
+export const POST = withAuthSimple(handleTaskUpdatePost);

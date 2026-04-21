@@ -1,5 +1,6 @@
 import type { Task } from '@/types/task';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as daypartUtils from '@/lib/utils/course/daypart';
 import { StatusTask } from '@/types/status-task';
 import { taskToEvent } from '../../../src/calendar/event-utils';
 
@@ -47,9 +48,7 @@ describe('taskToEvent', () => {
     expect(event.endDate).toEqual(new Date('2026-02-14T09:00:00.000Z'));
   });
 
-  it('passes a start-of-day Date to getDaypartTimes', async () => {
-    const { getDaypartTimes } = await import('@/lib/utils/course/daypart');
-
+  it('passes a start-of-day Date to getDaypartTimes', () => {
     const task: Task = {
       id: 't2',
       dueDate: new Date('2026-02-14T23:59:59.999Z'),
@@ -65,10 +64,10 @@ describe('taskToEvent', () => {
 
     taskToEvent(task);
 
-    expect(getDaypartTimes).toHaveBeenCalled();
+    expect(daypartUtils.getDaypartTimes).toHaveBeenCalled();
 
     // eslint-disable-next-line ts/no-explicit-any
-    const calledWith = (getDaypartTimes as any).mock.calls[0][0] as Date;
+    const calledWith = (daypartUtils.getDaypartTimes as any).mock.calls[0][0] as Date;
 
     expect(calledWith.getHours()).toBe(0);
     expect(calledWith.getMinutes()).toBe(0);

@@ -44,6 +44,16 @@ const createDeferred = <T>() => {
   return { promise, resolve };
 };
 
+const originalFetch = globalThis.fetch;
+
+function setFetchMock(fetchMock: typeof fetch) {
+  Object.defineProperty(globalThis, 'fetch', {
+    value: fetchMock,
+    configurable: true,
+    writable: true,
+  });
+}
+
 describe('useTaskStore.updateTaskStatus', () => {
   beforeEach(() => {
     useTaskStore.getState().reset();
@@ -52,7 +62,7 @@ describe('useTaskStore.updateTaskStatus', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    setFetchMock(originalFetch);
     vi.restoreAllMocks();
     useTaskStore.getState().reset();
   });
@@ -61,7 +71,7 @@ describe('useTaskStore.updateTaskStatus', () => {
     useTaskStore.getState().setTasks([createTask()]);
 
     const deferred = createDeferred<Response>();
-    vi.stubGlobal('fetch', vi.fn(() => deferred.promise));
+    setFetchMock(vi.fn(() => deferred.promise) as unknown as typeof fetch);
 
     const updatePromise = useTaskStore.getState().updateTaskStatus('task-1', StatusTask.IN_PROGRESS);
 
@@ -76,7 +86,7 @@ describe('useTaskStore.updateTaskStatus', () => {
   it('rolls back the optimistic status when the request fails', async () => {
     useTaskStore.getState().setTasks([createTask()]);
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response));
+    setFetchMock(vi.fn().mockResolvedValue({ ok: false } as Response) as unknown as typeof fetch);
 
     await expect(
       useTaskStore.getState().updateTaskStatus('task-1', StatusTask.COMPLETED),

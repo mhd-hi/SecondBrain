@@ -7,7 +7,6 @@ export type CourseApiResponse = {
   code: string;
   name: string;
   color: string;
-  description?: string;
   createdAt: string;
   updatedAt: string;
   daypart: Daypart;

@@ -8,14 +8,25 @@ type TrimesterInfo = {
   weekOfTrimester: number;
 };
 
+type TrimesterTermDeps = {
+  getCurrentOrUpcomingTerm: typeof getCurrentOrUpcomingTerm;
+  getDatesForTerm: typeof getDatesForTerm;
+};
+
+const defaultTrimesterTermDeps: TrimesterTermDeps = {
+  getCurrentOrUpcomingTerm,
+  getDatesForTerm,
+};
+
 /**
  * Calculate current trimester information including dates and week position
  */
-export function getCurrentTrimesterInfo(): TrimesterInfo {
-  const currentDate = new Date();
-
+export function getCurrentTrimesterInfoWithDeps(
+  deps: TrimesterTermDeps = defaultTrimesterTermDeps,
+  currentDate = new Date(),
+): TrimesterInfo {
   // Use getCurrentOrUpcomingTerm to handle between-term periods correctly
-  const { trimester, year } = getCurrentOrUpcomingTerm();
+  const { trimester, year } = deps.getCurrentOrUpcomingTerm();
   const termDigit = trimester === TRIMESTER.WINTER
     ? '1'
     : trimester === TRIMESTER.SUMMER
@@ -27,7 +38,7 @@ export function getCurrentTrimesterInfo(): TrimesterInfo {
   let endOfTrimester = new Date(currentDate.getFullYear() + 1, 0, 15);
 
   try {
-    const dates = getDatesForTerm(termId);
+    const dates = deps.getDatesForTerm(termId);
     startOfTrimester = dates.start;
     endOfTrimester = dates.end;
   } catch {
@@ -45,15 +56,25 @@ export function getCurrentTrimesterInfo(): TrimesterInfo {
   };
 }
 
+export function getCurrentTrimesterInfo(): TrimesterInfo {
+  return getCurrentTrimesterInfoWithDeps();
+}
+
 /**
  * Calculate current position as percentage within the trimester (0-100)
  */
-export function getCurrentTrimesterPosition(): number {
-  const currentDate = new Date();
-  const { startOfTrimester, endOfTrimester } = getCurrentTrimesterInfo();
+export function getCurrentTrimesterPositionWithDeps(
+  deps: TrimesterTermDeps = defaultTrimesterTermDeps,
+  currentDate = new Date(),
+): number {
+  const { startOfTrimester, endOfTrimester } = getCurrentTrimesterInfoWithDeps(deps, currentDate);
 
   const totalDuration = endOfTrimester.getTime() - startOfTrimester.getTime();
   const currentProgress = currentDate.getTime() - startOfTrimester.getTime();
 
   return Math.max(0, Math.min(100, (currentProgress / totalDuration) * 100));
+}
+
+export function getCurrentTrimesterPosition(): number {
+  return getCurrentTrimesterPositionWithDeps();
 }

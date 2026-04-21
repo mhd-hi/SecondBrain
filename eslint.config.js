@@ -1,6 +1,5 @@
 import antfu from '@antfu/eslint-config';
-import nextPlugin from '@next/eslint-plugin-next';
-import jestDom from 'eslint-plugin-jest-dom';
+import * as nextPlugin from '@next/eslint-plugin-next';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import testingLibrary from 'eslint-plugin-testing-library';
 
@@ -46,7 +45,6 @@ export default antfu(
   {
     files: ['**/*.test.ts?(x)'],
     ...testingLibrary.configs['flat/react'],
-    ...jestDom.configs['flat/recommended'],
   },
   {
     rules: {

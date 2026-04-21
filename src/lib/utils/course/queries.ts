@@ -1,6 +1,7 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { courses, subtasks, tasks } from '@/server/db/schema';
+import { StatusTask } from '@/types/status-task';
 
 export async function findUserCoursesWithTasks(userId: string) {
   return db.query.courses.findMany({
@@ -31,6 +32,54 @@ export async function findUserCoursesWithTasks(userId: string) {
   });
 }
 
+export async function findUserCourseMetadata(userId: string) {
+  return db
+    .select({
+      id: courses.id,
+      code: courses.code,
+      name: courses.name,
+      color: courses.color,
+      daypart: courses.daypart,
+    })
+    .from(courses)
+    .where(eq(courses.userId, userId))
+    .orderBy(asc(courses.code));
+}
+
+export async function findUserCourseSummaryMetrics(
+  userId: string,
+  today: Date,
+  dueSoonEnd: Date,
+) {
+  return db
+    .select({
+      courseId: tasks.courseId,
+      totalTasks: sql<number>`cast(count(*) as int)`,
+      completedTasks: sql<number>`cast(coalesce(sum(case when ${tasks.status} = ${StatusTask.COMPLETED} then 1 else 0 end), 0) as int)`,
+      inProgressTasks: sql<number>`cast(coalesce(sum(case when ${tasks.status} = ${StatusTask.IN_PROGRESS} then 1 else 0 end), 0) as int)`,
+      todoTasks: sql<number>`cast(coalesce(sum(case when ${tasks.status} = ${StatusTask.TODO} then 1 else 0 end), 0) as int)`,
+      overdueCount: sql<number>`cast(coalesce(sum(case when ${tasks.status} != ${StatusTask.COMPLETED} and ${tasks.dueDate} < ${sql.param(today, tasks.dueDate)} then 1 else 0 end), 0) as int)`,
+      dueSoonCount: sql<number>`cast(coalesce(sum(case when ${tasks.status} != ${StatusTask.COMPLETED} and ${tasks.dueDate} >= ${sql.param(today, tasks.dueDate)} and ${tasks.dueDate} <= ${sql.param(dueSoonEnd, tasks.dueDate)} then 1 else 0 end), 0) as int)`,
+    })
+    .from(tasks)
+    .where(eq(tasks.userId, userId))
+    .groupBy(tasks.courseId);
+}
+
+export async function findUserCourseSummaryCandidateTasks(userId: string) {
+  return db
+    .select({
+      courseId: tasks.courseId,
+      id: tasks.id,
+      title: tasks.title,
+      dueDate: tasks.dueDate,
+      type: tasks.type,
+    })
+    .from(tasks)
+    .where(and(eq(tasks.userId, userId), ne(tasks.status, StatusTask.COMPLETED)))
+    .orderBy(asc(tasks.courseId), asc(tasks.dueDate));
+}
+
 export async function findCourseByUserCodeTerm(userId: string, code: string, term: string) {
   return db.query.courses.findFirst({
     where: and(eq(courses.userId, userId), eq(courses.code, code), eq(courses.term, term)),
@@ -43,12 +92,23 @@ export async function courseExists(userId: string, code: string, term: string): 
   return { exists: !!found };
 }
 
+export async function findCourseOwnershipByIdAndUser(courseId: string, userId: string) {
+  return db.query.courses.findFirst({
+    where: and(eq(courses.id, courseId), eq(courses.userId, userId)),
+    columns: { id: true },
+  });
+}
+
 export async function findCourseByIdAndUser(courseId: string, userId: string) {
   return db.query.courses.findFirst({
     where: and(eq(courses.id, courseId), eq(courses.userId, userId)),
-    with: {
-      tasks: true,
-      customLinks: true,
+    columns: {
+      id: true,
+      code: true,
+      name: true,
+      term: true,
+      color: true,
+      daypart: true,
     },
   });
 }
@@ -103,8 +163,12 @@ export async function findTasksWithSubtasks(courseId: string, userId: string) {
 }
 
 export default {
+  findUserCourseMetadata,
+  findUserCourseSummaryCandidateTasks,
+  findUserCourseSummaryMetrics,
   findUserCoursesWithTasks,
   findCourseByUserCodeTerm,
+  findCourseOwnershipByIdAndUser,
   findCourseByIdAndUser,
   findTasksWithSubtasks,
 };

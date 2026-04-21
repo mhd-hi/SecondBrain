@@ -158,9 +158,11 @@ describe('course list derivation', () => {
 
     try {
       await view.render();
+
       expect(view.container.textContent).toBe('loading');
 
       let fetchPromise!: Promise<void>;
+
       await act(async () => {
         fetchPromise = useCourseStore.getState().fetchCourses();
       });

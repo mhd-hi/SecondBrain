@@ -2,8 +2,8 @@
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthorizationError } from '@/lib/auth/api';
+import { assertUserOwnsCourse } from '@/lib/auth/db';
 import { auth } from '@/server/auth';
-import { getUserCourse } from '@/lib/auth/db';
 
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
 vi.mock('@/server/auth', () => ({ auth: vi.fn() }));
@@ -22,7 +22,7 @@ vi.mock('@/server/db/schema', () => ({
   },
 }));
 vi.mock('@/lib/auth/db', () => ({
-  getUserCourse: vi.fn(),
+  assertUserOwnsCourse: vi.fn(),
 }));
 
 describe('custom links route authorization', () => {
@@ -32,7 +32,7 @@ describe('custom links route authorization', () => {
 
   it('returns 403 when creating a course-scoped link for a course the user does not own', async () => {
     (auth as unknown as Mock).mockResolvedValue({ user: { id: 'user-1' } } as any);
-    (getUserCourse as unknown as Mock).mockRejectedValue(new AuthorizationError('Course not found'));
+    (assertUserOwnsCourse as unknown as Mock).mockRejectedValue(new AuthorizationError('Course not found'));
 
     const { POST } = await import('@/app/api/custom-links/route');
     const response = await POST(

@@ -39,6 +39,7 @@ describe('getUserCourseSummaries', () => {
     findUserCourseSummaryCandidateTasksMock.mockResolvedValueOnce([]);
 
     const { getUserCourseSummaries } = await import('@/lib/auth/db');
+
     await expect(getUserCourseSummaries('user-1')).resolves.toEqual([]);
   });
 

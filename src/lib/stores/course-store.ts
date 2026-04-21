@@ -1,5 +1,5 @@
 import type { FetchStatus } from './fetch-status';
-import type { CourseListItem } from '@/types/api/course';
+import type { CourseListItem, CourseSummaryApiResponse } from '@/types/api/course';
 import type { Course } from '@/types/course';
 import { toast } from 'sonner';
 import { create } from 'zustand';
@@ -14,6 +14,7 @@ type CourseStore = {
   isLoading: boolean;
   error: string | null;
 
+  bootstrapCourses: (courses: Course[]) => void;
   setCourses: (courses: Course[]) => void;
   addCourse: (course: Course) => void;
   updateCourse: (courseId: string, updates: Partial<Course>) => void;
@@ -40,7 +41,7 @@ export function getCourseListItemsFromCourses(courses: Iterable<Course>): Course
       code: course.code,
       name: course.name,
       color: course.color,
-      overdueCount: getOverdueTasks(course.tasks ?? []).length,
+      overdueCount: course.overdueCount ?? getOverdueTasks(course.tasks ?? []).length,
     }))
     .sort((a, b) => a.code.localeCompare(b.code));
 }
@@ -50,6 +51,15 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
   fetchStatus: 'idle',
   isLoading: false,
   error: null,
+
+  bootstrapCourses: (courses) => {
+    get().setCourses(courses);
+    set({
+      fetchStatus: 'success',
+      isLoading: false,
+      error: null,
+    });
+  },
 
   setCourses: (courses) => {
     const courseMap = new Map<string, Course>();
@@ -112,7 +122,7 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
 
     set({ fetchStatus: 'loading', error: null });
     try {
-      const data = await api.get<Course[]>(API_ENDPOINTS.COURSES.LIST);
+      const data = await api.get<CourseSummaryApiResponse[]>(API_ENDPOINTS.COURSES.LIST);
       get().setCourses(data ?? []);
       set({ fetchStatus: 'success' });
     } catch (error) {
@@ -125,7 +135,7 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
   refreshCourses: async () => {
     set({ fetchStatus: 'loading', error: null });
     try {
-      const data = await api.get<Course[]>(API_ENDPOINTS.COURSES.LIST);
+      const data = await api.get<CourseSummaryApiResponse[]>(API_ENDPOINTS.COURSES.LIST);
       get().setCourses(data ?? []);
       set({ fetchStatus: 'success' });
     } catch (error) {

@@ -3,6 +3,7 @@ import type { StatusTask } from '@/types/status-task';
 import type { Task } from '@/types/task';
 import { and, eq, gte, inArray, lt } from 'drizzle-orm';
 import { taskToEvent } from '@/calendar/event-utils';
+import { AuthorizationError } from '@/lib/auth/api';
 import { db } from '@/server/db';
 import { courses, tasks } from '@/server/db/schema';
 
@@ -87,11 +88,17 @@ export const updateStatusTask = async (taskId: string, status: StatusTask, userI
     eq(tasks.userId, userId),
   ];
 
-  return db
+  const updatedTasks = await db
     .update(tasks)
     .set({ status, updatedAt: new Date() })
     .where(and(...conditions))
     .returning();
+
+  if (!updatedTasks.length) {
+    throw new AuthorizationError('Task not found or access denied');
+  }
+
+  return updatedTasks;
 };
 
 export const batchUpdateStatusTask = async (taskIds: string[], status: StatusTask, userId: string) => {

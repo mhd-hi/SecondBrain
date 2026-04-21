@@ -2,15 +2,18 @@ import type { Daypart } from '@/types/course';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuthSimple } from '@/lib/auth/api';
-import { createUserCourse, getUserCourses } from '@/lib/auth/db';
+import { createUserCourse, getUserCourseSummaries } from '@/lib/auth/db';
 import { generateRandomCourseColor } from '@/lib/utils/colors-util';
 import { db } from '@/server/db';
 import { courses } from '@/server/db/schema';
 
-export const GET = withAuthSimple(async (request, user) => {
-  // Use secure query function that automatically filters by user
-  const coursesWithTasks = await getUserCourses(user.id);
-  return NextResponse.json(coursesWithTasks);
+export const GET = withAuthSimple(async (_request, user) => {
+  const courseSummaries = await getUserCourseSummaries(user.id);
+  return NextResponse.json(courseSummaries, {
+    headers: {
+      'Cache-Control': 'private, no-store, no-cache, must-revalidate, max-age=0',
+    },
+  });
 });
 
 export const POST = withAuthSimple(async (request, user) => {

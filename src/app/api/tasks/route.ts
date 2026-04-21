@@ -1,7 +1,7 @@
 import type { NewTaskInput, UpdateTaskInput } from '@/types/api/task';
 import { NextResponse } from 'next/server';
 import { withAuthSimple } from '@/lib/auth/api';
-import { createUserTask, deleteUserTask, getUserCourse, getUserCourseTasks, updateUserTask } from '@/lib/auth/db';
+import { assertUserOwnsCourse, createUserTask, deleteUserTask, getUserCourseTasks, updateUserTask } from '@/lib/auth/db';
 import { StatusTask } from '@/types/status-task';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export const GET = withAuthSimple(
       );
     }
 
-    // Use secure query function that automatically verifies ownership
+    await assertUserOwnsCourse(courseId, user.id);
     const courseTasks = await getUserCourseTasks(courseId, user.id);
 
     // Filter by status if provided
@@ -47,8 +47,7 @@ export const POST = withAuthSimple(
 
     const { courseId, tasks: newTasks } = data;
 
-    // Verify course ownership first
-    await getUserCourse(courseId, user.id);
+    await assertUserOwnsCourse(courseId, user.id);
 
     try {
       // Create tasks with secure function
@@ -76,7 +75,9 @@ export const POST = withAuthSimple(
       // Use secure bulk insert
       const createdTasks = [];
       for (const taskData of tasksToCreate) {
-        const task = await createUserTask(user.id, taskData);
+        const task = await createUserTask(user.id, taskData, {
+          skipCourseOwnershipCheck: true,
+        });
         createdTasks.push(task);
       }
 

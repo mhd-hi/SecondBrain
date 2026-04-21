@@ -4,7 +4,8 @@ import { signIn } from 'next-auth/react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getCalendarPath } from '@/lib/page-routes';
+import { ROUTES } from '@/lib/page-routes';
+import { normalizeCallbackUrl } from '@/lib/utils/auth/callback-url';
 
 type SignInCardProps = {
   title?: string;
@@ -16,9 +17,14 @@ type SignInCardProps = {
 export function SignInCard({
   title = 'Welcome to SecondBrain ETS',
   description = 'Sign in to manage your courses and tasks',
-  callbackUrl = `${getCalendarPath()}`,
+  callbackUrl = ROUTES.DASHBOARD,
   className = '',
 }: SignInCardProps) {
+  const getSafeCallbackUrl = () => normalizeCallbackUrl(callbackUrl, {
+    baseUrl: typeof window === 'undefined' ? undefined : window.location.origin,
+    fallbackPath: ROUTES.DASHBOARD,
+  });
+
   return (
     <Card className={`relative w-full max-w-md shadow-xl border-0 bg-card from-background to-muted/20 ${className}`}>
       {/* Hanging Image */}
@@ -41,7 +47,7 @@ export function SignInCard({
       </CardHeader>
       <CardContent className="space-y-6 px-8 pb-10">
         <Button
-          onClick={() => signIn('google', { callbackUrl })}
+          onClick={() => signIn('google', { callbackUrl: getSafeCallbackUrl() })}
           className="w-full h-12 flex items-center justify-center gap-3 rounded-xl hover:scale-[1.02] transition-all duration-200 shadow-sm hover:shadow-md"
           variant="outline"
         >
@@ -64,7 +70,7 @@ export function SignInCard({
         </div>
 
         <Button
-          onClick={() => signIn('discord', { callbackUrl })}
+          onClick={() => signIn('discord', { callbackUrl: getSafeCallbackUrl() })}
           className="w-full h-12 flex items-center justify-center gap-3 rounded-xl hover:scale-[1.02] transition-all duration-200 shadow-sm hover:shadow-md bg-[#5865F2] hover:bg-[#4752C4] text-white border-0"
           variant="outline"
         >

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeCallbackUrl, resolveCallbackUrl } from '@/lib/utils/auth/callback-url';
 import { ROUTES } from '@/lib/page-routes';
+import { normalizeCallbackUrl, resolveCallbackUrl } from '@/lib/utils/auth/callback-url';
 
 describe('callback URL normalization', () => {
   it('keeps safe internal relative paths', () => {

@@ -118,8 +118,12 @@ describe('tasks focus route cache headers', () => {
 
   it('returns no-store cache headers for focus tasks', async () => {
     const { GET } = await import('@/app/api/tasks/focus/route');
+    const getRoute = GET as unknown as (
+      request: Request,
+      user: { id: string },
+    ) => Promise<Response>;
 
-    const response = await GET(
+    const response = await getRoute(
       new Request('http://localhost/api/tasks/focus?filter=week') as never,
       { id: 'user-1' },
     );

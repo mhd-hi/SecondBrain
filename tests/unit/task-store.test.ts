@@ -1,8 +1,11 @@
 import type { Task } from '@/types/task';
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { updateTaskDueDate, updateTaskStatus } from '@/hooks/task/use-task';
+import { updateTaskDueDate, updateTaskStatus, useUpdateTaskField } from '@/hooks/task/use-task';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { StatusTask } from '@/types/status-task';
+import { renderHookHost } from '../helpers/render-utils';
+import { ensureHappyDom } from '../helpers/runtime';
 
 vi.mock('sonner', () => ({
   toast: {
@@ -56,6 +59,8 @@ function setFetchMock(fetchMock: typeof fetch) {
 
 describe('updateTaskStatus', () => {
   beforeEach(() => {
+    ensureHappyDom();
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     useTaskStore.getState().reset();
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => { });
@@ -163,5 +168,50 @@ describe('updateTaskStatus', () => {
     expect(useTaskStore.getState().getTasksByCourse('course-2')).toEqual([freshCourseTwoTask]);
     expect(useTaskStore.getState().getFetchStatusByCourse('course-2')).toBe('success');
     expect(useTaskStore.getState().getFetchStatusByCourse('course-1')).toBe('idle');
+  });
+});
+
+describe('useUpdateTaskField', () => {
+  beforeEach(() => {
+    ensureHappyDom();
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    useTaskStore.getState().reset();
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => { });
+  });
+
+  afterEach(() => {
+    setFetchMock(originalFetch);
+    vi.restoreAllMocks();
+    useTaskStore.getState().reset();
+  });
+
+  it('rolls back the optimistic field update when the request fails', async () => {
+    useTaskStore.getState().setTasks([createTask()]);
+
+    let updateTaskField!: ReturnType<typeof useUpdateTaskField>;
+    const view = renderHookHost(useUpdateTaskField, hookValue => {
+      updateTaskField = hookValue;
+    });
+
+    try {
+      await view.render();
+
+      setFetchMock(vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: vi.fn().mockResolvedValue('task field update failed'),
+      } as unknown as Response) as unknown as typeof fetch);
+
+      const updatePromise = updateTaskField('task-1', 'title', 'Ship rollback fix');
+
+      expect(useTaskStore.getState().getTask('task-1')?.title).toBe('Ship rollback fix');
+
+      await expect(updatePromise).rejects.toBeInstanceOf(Error);
+      expect(useTaskStore.getState().getTask('task-1')?.title).toBe('Review lecture notes');
+    } finally {
+      await view.unmount();
+    }
   });
 });

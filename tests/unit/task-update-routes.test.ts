@@ -4,9 +4,17 @@ import { handleTaskUpdatePost } from '@/app/api/tasks/update/route';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 
-const { apiErrorHandlerMock } = vi.hoisted(() => ({
-  apiErrorHandlerMock: vi.fn(),
-}));
+function getApiErrorHandlerMock() {
+  const testGlobal = globalThis as typeof globalThis & {
+    __taskUpdateApiErrorHandlerMock?: ReturnType<typeof vi.fn>;
+  };
+
+  if (!testGlobal.__taskUpdateApiErrorHandlerMock) {
+    testGlobal.__taskUpdateApiErrorHandlerMock = vi.fn();
+  }
+
+  return testGlobal.__taskUpdateApiErrorHandlerMock;
+}
 
 vi.mock('@/lib/auth/api', () => ({
   AuthorizationError: class AuthorizationError extends Error {},
@@ -16,7 +24,8 @@ vi.mock('@/lib/auth/api', () => ({
 
 vi.mock('@/lib/utils/errors/error', () => ({
   ErrorHandlers: {
-    api: apiErrorHandlerMock,
+    api: (...args: unknown[]) =>
+      (getApiErrorHandlerMock() as unknown as (...args: unknown[]) => unknown)(...args),
     silent: vi.fn(),
   },
 }));
@@ -172,7 +181,7 @@ function installRouteFetchMock(userId = 'user-1') {
 
 beforeEach(() => {
   resetDbState();
-  apiErrorHandlerMock.mockReset();
+  getApiErrorHandlerMock().mockReset();
   vi.spyOn(console, 'error').mockImplementation(() => { });
 });
 
@@ -233,7 +242,7 @@ describe('legacy task update route', () => {
     ).rejects.toThrow(/Invalid field/);
 
     expect(dbState.taskUpdateSetArg).toBeNull();
-    expect(apiErrorHandlerMock).toHaveBeenCalledWith(
+    expect(getApiErrorHandlerMock()).toHaveBeenCalledWith(
       expect.any(Error),
       'Failed to update task',
     );
@@ -291,7 +300,7 @@ describe('subtask update route', () => {
     ).rejects.toThrow(/Invalid field/);
 
     expect(dbState.subtaskUpdateSetArg).toBeNull();
-    expect(apiErrorHandlerMock).toHaveBeenCalledWith(
+    expect(getApiErrorHandlerMock()).toHaveBeenCalledWith(
       expect.any(Error),
       'Failed to update subtask',
     );

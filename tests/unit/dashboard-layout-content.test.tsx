@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderComponent } from '../helpers/render-utils';
 import { ensureHappyDom } from '../helpers/runtime';
 
 const appSidebarMock = vi.fn((_props?: unknown) => null);
@@ -37,26 +36,6 @@ function getCourseListItemsFromCourses(
       overdueCount: course.overdueCount ?? 0,
     }))
     .sort((a, b) => a.code.localeCompare(b.code));
-}
-
-function renderComponent(ui: React.ReactElement) {
-  const container = document.createElement('div');
-  const root = createRoot(container);
-
-  return {
-    async render() {
-      // We mount through ReactDOM directly in this helper, so manual act is required.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        root.render(ui);
-      });
-    },
-    async unmount() {
-      await act(async () => {
-        root.unmount();
-      });
-    },
-  };
 }
 
 vi.mock('@/components/shared/Navigation/Navbar/Navbar', () => ({

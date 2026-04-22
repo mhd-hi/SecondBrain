@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderComponent } from '../helpers/render-utils';
 import { ROUTES } from '@/lib/page-routes';
 import { ensureHappyDom } from '../helpers/runtime';
 
@@ -29,26 +28,6 @@ vi.mock('@/components/ui/card', () => ({
   Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-
-function renderComponent(ui: React.ReactElement) {
-  const container = document.createElement('div');
-  const root = createRoot(container);
-
-  return {
-    async render() {
-      // We mount through ReactDOM directly in this helper, so manual act is required.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        root.render(ui);
-      });
-    },
-    async unmount() {
-      await act(async () => {
-        root.unmount();
-      });
-    },
-  };
-}
 
 describe('sign-in page callback URL handling', () => {
   beforeEach(() => {

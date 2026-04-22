@@ -1,8 +1,6 @@
 import type { Mock } from 'vitest';
 import * as nextNavigation from 'next/navigation';
 import * as React from 'react';
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AddCoursePage from '@/app/(dashboard)/courses/add/page';
 import * as courseInputFormModule from '@/components/shared/dialogs/CourseInputForm';
@@ -10,6 +8,7 @@ import * as addCourseHook from '@/hooks/course/use-add-course';
 import * as courseStoreHooks from '@/hooks/course/use-course-store';
 import * as termsHook from '@/hooks/use-terms';
 import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
+import { renderComponent } from '../helpers/render-utils';
 import { ensureHappyDom } from '../helpers/runtime';
 
 vi.mock('next/navigation', () => ({
@@ -44,25 +43,7 @@ vi.mock('@/components/shared/dialogs/ProcessingSteps', () => ({
 }));
 
 function renderPage() {
-  const container = document.createElement('div');
-  const root = createRoot(container);
-
-  return {
-    container,
-    root,
-    render: async () => {
-      // We mount through ReactDOM directly in this test helper, so manual act is required.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        root.render(<AddCoursePage />);
-      });
-    },
-    unmount: async () => {
-      await act(async () => {
-        root.unmount();
-      });
-    },
-  };
+  return renderComponent(<AddCoursePage />);
 }
 
 beforeEach(() => {

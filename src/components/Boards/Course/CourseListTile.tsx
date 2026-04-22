@@ -3,12 +3,14 @@
 import type { Course } from '@/types/course';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import * as React from 'react';
 import CourseCard from '@/components/Boards/Course/CourseCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCourseMutations, useCourses } from '@/hooks/course/use-course-store';
 import { getAddCoursePath } from '@/lib/page-routes';
 import { handleConfirm } from '@/lib/utils/dialog-util';
+import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 
 export function CourseListTile() {
   const router = useRouter();
@@ -16,20 +18,28 @@ export function CourseListTile() {
   const { deleteCourse } = useCourseMutations();
 
   const handleDeleteCourse = async (courseId: string) => {
-    await handleConfirm(
-      'Are you sure you want to delete this course? This action cannot be undone.',
-      async () => {
-        await deleteCourse(courseId);
-        await refreshCourses();
-      },
-      undefined,
-      {
-        title: 'Delete Course',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        variant: 'destructive',
-      },
-    );
+    try {
+      await handleConfirm(
+        'Are you sure you want to delete this course? This action cannot be undone.',
+        async () => {
+          await deleteCourse(courseId);
+          await refreshCourses();
+        },
+        undefined,
+        {
+          title: 'Delete Course',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          variant: 'destructive',
+        },
+      );
+    } catch (error) {
+      ErrorHandlers.api(
+        error,
+        CommonErrorMessages.COURSE_DELETE_FAILED,
+        'CourseListTile handleDeleteCourse',
+      );
+    }
   };
 
   return (

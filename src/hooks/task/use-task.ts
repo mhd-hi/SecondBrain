@@ -36,9 +36,13 @@ export const batchUpdateStatusTask = async (taskIds: string[], status: StatusTas
 };
 
 export function useUpdateTaskField() {
+  const getTask = useTaskStore(state => state.getTask);
   const updateTask = useTaskStore(state => state.updateTask);
 
   return useCallback(async (taskId: string, input: string, value: string) => {
+    const taskField = input as keyof Task;
+    const originalTask = getTask(taskId);
+
     updateTask(taskId, { [input]: value } as Partial<Task>);
 
     try {
@@ -50,10 +54,17 @@ export function useUpdateTaskField() {
       invalidateCalendarEvents();
       return true;
     } catch (error) {
+      if (originalTask) {
+        const currentTask = getTask(taskId);
+        if (currentTask?.[taskField] === value) {
+          updateTask(taskId, { [input]: originalTask[taskField] } as Partial<Task>);
+        }
+      }
+
       console.error('Failed to update task field', error);
       throw error;
     }
-  }, [updateTask]);
+  }, [getTask, updateTask]);
 }
 
 export async function updateTaskStatus(taskId: string, status: StatusTask) {

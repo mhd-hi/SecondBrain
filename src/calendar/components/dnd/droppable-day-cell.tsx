@@ -8,7 +8,7 @@ import { useDrop } from 'react-dnd';
 import { ItemTypes } from '@/calendar/components/dnd/item-types';
 import { useUpdateEvent } from '@/calendar/hooks/use-update-event';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type DroppableDayCellProps = {
   cell: TCalendarCell;

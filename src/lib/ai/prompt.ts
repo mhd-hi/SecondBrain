@@ -65,7 +65,7 @@ export function buildCoursePlanParsePrompt(
     : '';
 
   return `
-    You will receive HTML content of a university course plan page. The content is structured as tables or bullet points or any other format. Extract ONLY the course plan JSON array, strictly following these steps:
+    You will receive HTML content of a course plan page. The content is structured as tables or bullet points or any other format. Extract ONLY the course plan JSON array, strictly following these steps:
 
 1. **Table Detection**
    - Identify all <table> tags or ASCII-style tables (|, —, etc.).

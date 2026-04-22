@@ -2,11 +2,10 @@ import type { CustomLinkItem } from '@/types/custom-link';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCustomLinkStore } from '@/lib/stores/custom-link-store';
 
-const apiGetMock = vi.fn();
-
-vi.mock('@/lib/utils/api/api-client-util', () => ({
-  api: {
-    get: (...args: unknown[]) => apiGetMock(...args),
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
   },
 }));
 
@@ -24,6 +23,16 @@ function createCustomLink(overrides: Partial<CustomLinkItem> = {}): CustomLinkIt
   };
 }
 
+const originalFetch = globalThis.fetch;
+
+function setFetchMock(fetchMock: typeof fetch) {
+  Object.defineProperty(globalThis, 'fetch', {
+    value: fetchMock,
+    configurable: true,
+    writable: true,
+  });
+}
+
 describe('useCustomLinkStore.fetchCustomLinksByCourse', () => {
   beforeEach(() => {
     useCustomLinkStore.getState().reset();
@@ -32,6 +41,7 @@ describe('useCustomLinkStore.fetchCustomLinksByCourse', () => {
   });
 
   afterEach(() => {
+    setFetchMock(originalFetch);
     vi.restoreAllMocks();
     useCustomLinkStore.getState().reset();
   });
@@ -42,10 +52,13 @@ describe('useCustomLinkStore.fetchCustomLinksByCourse', () => {
     const freshCourseTwoLink = createCustomLink({ id: 'fresh-course-2-link', courseId: 'course-2' });
 
     useCustomLinkStore.getState().setCustomLinks([existingCourseOneLink, staleCourseTwoLink]);
-    apiGetMock.mockResolvedValueOnce({
-      success: true,
-      customLinks: [freshCourseTwoLink],
-    });
+    setFetchMock(vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        success: true,
+        customLinks: [freshCourseTwoLink],
+      }),
+    } as unknown as Response) as unknown as typeof fetch);
 
     await expect(
       useCustomLinkStore.getState().fetchCustomLinksByCourse('course-2'),

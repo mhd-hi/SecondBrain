@@ -3,7 +3,7 @@
 import type { Subtask } from '@/types/subtask';
 import { ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 type SubtasksPillProps = {
   subtasks: Subtask[];

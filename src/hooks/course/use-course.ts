@@ -6,10 +6,19 @@ import type { Course, Daypart } from '@/types/course';
 import type { StatusTask } from '@/types/status-task';
 import type { Task } from '@/types/task';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
+import { useCourseStore } from '@/lib/stores/course-store';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { withLoadingAndErrorHandling } from '@/lib/utils/api/loading-util';
 import { ErrorHandlers } from '@/lib/utils/errors/error';
+
+export type CourseUpdateField = 'color' | 'daypart';
+
+type CourseUpdateValueMap = {
+  color: TCourseColor;
+  daypart: Daypart;
+};
 
 export function useCourse(courseId: string) {
   const [course, setCourse] = useState<Course | null>(null);
@@ -50,7 +59,7 @@ export function useCourse(courseId: string) {
       setIsLoading,
       (error) => {
         setError('Failed to load course data');
-        ErrorHandlers.api(error, 'Failed to load course');
+        ErrorHandlers.silent(error, 'useCourse fetchCourse');
       },
     );
   }, [courseId]);
@@ -65,16 +74,7 @@ export function useCourse(courseId: string) {
   const updateCourseColor = useCallback(async (color: TCourseColor) => {
     await withLoadingAndErrorHandling(
       async () => {
-        const res = await fetch(API_ENDPOINTS.COURSES.DETAIL(courseId), {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ color }),
-        });
-        if (!res.ok) {
-          throw new Error('Failed to update course color');
-        }
+        await updateCourseFieldById(courseId, 'color', color);
 
         // Update the local course state with the new color
         setCourse(prevCourse =>
@@ -84,7 +84,7 @@ export function useCourse(courseId: string) {
       setIsLoading,
       (error) => {
         setError('Failed to update course color');
-        ErrorHandlers.api(error, 'Failed to update course color');
+        ErrorHandlers.silent(error, 'useCourse updateCourseColor');
       },
     );
   }, [courseId]);
@@ -92,24 +92,17 @@ export function useCourse(courseId: string) {
   const updateCourseDaypart = useCallback(async (daypart: Daypart) => {
     await withLoadingAndErrorHandling(
       async () => {
-        const res = await fetch(API_ENDPOINTS.COURSES.DETAIL(courseId), {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ daypart }),
-        });
-        if (!res.ok) {
-          throw new Error('Failed to update course daypart');
-        }
+        await updateCourseFieldById(courseId, 'daypart', daypart);
 
         // Update the local course state with the new daypart
-        setCourse(prevCourse => prevCourse ? { ...prevCourse, daypart } : prevCourse);
+        setCourse(prevCourse =>
+          prevCourse ? { ...prevCourse, daypart } : prevCourse,
+        );
       },
       setIsLoading,
       (error) => {
         setError('Failed to update course daypart');
-        ErrorHandlers.api(error, 'Failed to update course daypart');
+        ErrorHandlers.silent(error, 'useCourse updateCourseDaypart');
       },
     );
   }, [courseId]);
@@ -117,12 +110,14 @@ export function useCourse(courseId: string) {
   const deleteCourse = useCallback(async () => {
     await withLoadingAndErrorHandling(
       async () => {
-        await api.delete(API_ENDPOINTS.COURSES.DETAIL(courseId), 'Failed to delete course');
+        await deleteCourseById(courseId);
+        setCourse(null);
+        setTasks([]);
       },
       setIsLoading,
       (error) => {
         setError('Failed to delete course');
-        ErrorHandlers.api(error, 'Failed to delete course');
+        ErrorHandlers.silent(error, 'useCourse deleteCourse');
       },
     );
   }, [courseId]);
@@ -143,5 +138,74 @@ export function useCourse(courseId: string) {
 }
 
 export async function deleteCourseById(courseId: string) {
-  return api.delete(API_ENDPOINTS.COURSES.DETAIL(courseId), 'Failed to delete course');
+  const { getCourse, deleteCourse, addCourse } = useCourseStore.getState();
+  const originalCourse = getCourse(courseId);
+
+  if (originalCourse) {
+    deleteCourse(courseId);
+  }
+
+  try {
+    await api.delete(
+      API_ENDPOINTS.COURSES.DETAIL(courseId),
+      'Failed to delete course',
+    );
+    return true;
+  } catch (error) {
+    if (originalCourse) {
+      addCourse(originalCourse);
+    }
+
+    console.error('Failed to delete course', error);
+    throw error;
+  }
+}
+
+export async function updateCourseFieldById(
+  courseId: string,
+  field: 'color',
+  value: TCourseColor,
+): Promise<boolean>;
+export async function updateCourseFieldById(
+  courseId: string,
+  field: 'daypart',
+  value: Daypart,
+): Promise<boolean>;
+export async function updateCourseFieldById(
+  courseId: string,
+  field: CourseUpdateField,
+  value: CourseUpdateValueMap[CourseUpdateField],
+) {
+  const { getCourse, updateCourse } = useCourseStore.getState();
+  const originalCourse = getCourse(courseId);
+
+  if (!originalCourse) {
+    return false;
+  }
+
+  const updates = field === 'color'
+    ? { color: value as TCourseColor }
+    : { daypart: value as Daypart };
+
+  updateCourse(courseId, updates);
+
+  try {
+    await api.patch(
+      API_ENDPOINTS.COURSES.DETAIL(courseId),
+      updates,
+      'Failed to update course',
+    );
+    toast.success('Course updated successfully');
+    return true;
+  } catch (error) {
+    updateCourse(
+      courseId,
+      field === 'color'
+        ? { color: originalCourse.color }
+        : { daypart: originalCourse.daypart },
+    );
+
+    console.error('Failed to update course', error);
+    throw error;
+  }
 }

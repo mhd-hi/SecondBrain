@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 type EditableFieldProps = {
   value: string;
-  onSave: (newValue: string) => void;
+  onSave: (newValue: string) => void | Promise<void>;
   className?: string;
   inputType?: 'input' | 'textarea';
   placeholder?: string;
@@ -21,34 +21,63 @@ export const EditableField: React.FC<EditableFieldProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const isSavingRef = useRef(false);
+
+  const focusInput = () => {
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
 
   // Save and exit edit mode
-  const saveEdit = () => {
-    if (editValue !== value) {
-      onSave(editValue);
+  const saveEdit = async () => {
+    const nextValue = inputRef.current?.value ?? editValue;
+
+    if (nextValue !== editValue) {
+      setEditValue(nextValue);
     }
-    setIsEditing(false);
+
+    if (isSavingRef.current) {
+      return;
+    }
+
+    if (nextValue === value) {
+      setIsEditing(false);
+      return;
+    }
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+
+    try {
+      await onSave(nextValue);
+      setIsEditing(false);
+    } catch {
+      focusInput();
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   // Enter edit mode
   const startEdit = () => {
     setIsEditing(true);
     setEditValue(value);
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
+    focusInput();
   };
 
   // Save on blur
   const handleBlur = () => {
-    saveEdit();
+    void saveEdit();
   };
 
   // Save on Enter (for input)
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && inputType === 'input') {
-      saveEdit();
+      void saveEdit();
     }
     if (e.key === 'Escape') {
       setIsEditing(false);
@@ -103,7 +132,7 @@ export const EditableField: React.FC<EditableFieldProps> = ({
                 onBlur={handleBlur}
                 rows={3}
                 placeholder={placeholder}
-                disabled={disabled}
+                disabled={disabled || isSaving}
               />
             )
             : (
@@ -116,7 +145,7 @@ export const EditableField: React.FC<EditableFieldProps> = ({
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
-                disabled={disabled}
+                disabled={disabled || isSaving}
                 maxLength={120}
               />
             )
@@ -126,7 +155,7 @@ export const EditableField: React.FC<EditableFieldProps> = ({
             type="button"
             className="w-full max-w-full text-left pl-2 pr-0 py-1 rounded-md border border-transparent bg-transparent hover:border-muted-foreground/40 focus:border-muted-foreground/60 cursor-pointer transition-all overflow-hidden"
             onClick={startEdit}
-            disabled={disabled}
+            disabled={disabled || isSaving}
             style={{ minWidth: 0 }}
           >
             {getDisplayValue()}

@@ -39,14 +39,27 @@ vi.mock('@/server/db', () => ({
   },
 }));
 vi.mock('@/server/db/schema', () => ({
+  users: {},
+  accounts: {},
+  sessions: {},
+  terms: {},
+  courses: {},
+  tasks: {},
+  subtasks: {},
+  pomodoroDaily: {},
   customLinks: {
     id: Symbol('customLinks.id'),
     courseId: Symbol('customLinks.courseId'),
     userId: Symbol('customLinks.userId'),
   },
-  courses: {},
-  subtasks: {},
-  tasks: {},
+  usersRelations: {},
+  accountsRelations: {},
+  sessionsRelations: {},
+  coursesRelations: {},
+  customLinksRelations: {},
+  tasksRelations: {},
+  subtasksRelations: {},
+  deleteOldCourses: {},
 }));
 vi.mock('@/lib/auth/db', () => ({
   assertUserOwnsCourse: (...args: unknown[]) => assertUserOwnsCourseMock(...args),

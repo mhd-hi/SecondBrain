@@ -1,4 +1,4 @@
-import type { FetchStatus } from './fetch-status';
+import type { FetchStatus } from './helpers/fetch-status';
 import type { StatusTask } from '@/types/status-task';
 import type { Subtask } from '@/types/subtask';
 import type { Task, TaskType } from '@/types/task';
@@ -11,7 +11,7 @@ import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 import {
   getFetchStatusForKey,
   setFetchStatusForKey,
-} from './fetch-status';
+} from './helpers/fetch-status';
 
 function replaceTasksForCourse(
   existingTasks: ReadonlyMap<string, Task>,
@@ -40,6 +40,7 @@ type TaskStore = {
   error: string | null;
 
   setTasks: (tasks: Task[]) => void;
+  upsertTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   deleteTask: (taskId: string) => void;
@@ -65,9 +66,6 @@ type TaskStore = {
     type: TaskType;
     status: StatusTask;
   }) => Promise<boolean>;
-  updateTaskField: (taskId: string, field: string, value: unknown) => Promise<boolean>;
-  updateTaskStatus: (taskId: string, status: StatusTask) => Promise<boolean>;
-  updateTaskDueDate: (taskId: string, dueDate: Date) => Promise<boolean>;
   removeTask: (taskId: string) => Promise<boolean>;
 
   clearError: () => void;
@@ -86,6 +84,16 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       taskMap.set(task.id, task);
     }
     set({ tasks: taskMap });
+  },
+
+  upsertTasks: (tasks) => {
+    set((state) => {
+      const nextTasks = new Map(state.tasks);
+      for (const task of tasks) {
+        nextTasks.set(task.id, task);
+      }
+      return { tasks: nextTasks };
+    });
   },
 
   addTask: (task) => {
@@ -186,18 +194,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   fetchTask: async (taskId) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(API_ENDPOINTS.TASKS.DETAIL(taskId));
-      if (!response.ok) {
-        throw new Error(CommonErrorMessages.TASK_FETCH_FAILED);
-      }
-      const task = await response.json() as Task;
+      const task = await api.get<Task>(
+        API_ENDPOINTS.TASKS.DETAIL(taskId),
+        CommonErrorMessages.TASK_FETCH_FAILED,
+      );
       get().addTask(task);
       set({ isLoading: false });
       return task;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : CommonErrorMessages.TASK_FETCH_FAILED;
       set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
+      ErrorHandlers.silent(error, 'TaskStore fetchTask');
       return null;
     }
   },
@@ -209,11 +216,10 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'loading'),
     }));
     try {
-      const response = await fetch(API_ENDPOINTS.TASKS.LIST_BY_COURSE(courseId));
-      if (!response.ok) {
-        throw new Error(CommonErrorMessages.TASKS_FETCH_FAILED);
-      }
-      const tasks = await response.json() as Task[];
+      const tasks = await api.get<Task[]>(
+        API_ENDPOINTS.TASKS.LIST_BY_COURSE(courseId),
+        CommonErrorMessages.TASKS_FETCH_FAILED,
+      );
       set(state => ({
         tasks: replaceTasksForCourse(state.tasks, courseId, tasks),
         isLoading: false,
@@ -227,7 +233,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         error: errorMessage,
         fetchStatusByCourse: setFetchStatusForKey(state.fetchStatusByCourse, courseId, 'error'),
       }));
-      ErrorHandlers.api(error, errorMessage);
+      ErrorHandlers.silent(error, 'TaskStore fetchTasksByCourse');
       return [];
     }
   },
@@ -256,100 +262,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     } catch (error) {
       const errorMessage = 'Failed to add task';
       set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
-      return false;
-    }
-  },
-
-  updateTaskField: async (taskId, field, value) => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetch(API_ENDPOINTS.TASKS.DETAIL(taskId), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update task');
-      }
-
-      // Optimistically update the store
-      get().updateTask(taskId, { [field]: value } as Partial<Task>);
-
-      invalidateCalendarEvents();
-      set({ isLoading: false });
-      return true;
-    } catch (error) {
-      const errorMessage = 'Failed to update task';
-      set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
-      return false;
-    }
-  },
-
-  updateTaskStatus: async (taskId, status) => {
-    const originalTask = get().getTask(taskId);
-    set({ error: null });
-
-    if (originalTask) {
-      get().updateTask(taskId, { status });
-    }
-
-    try {
-      const response = await fetch(API_ENDPOINTS.TASKS.STATUS(taskId), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-
-      if (!response.ok) {
-        throw new Error(CommonErrorMessages.TASK_STATUS_UPDATE_FAILED);
-      }
-
-      invalidateCalendarEvents();
-      return true;
-    } catch (error) {
-      const errorMessage = CommonErrorMessages.TASK_STATUS_UPDATE_FAILED;
-
-      if (originalTask) {
-        const currentTask = get().getTask(taskId);
-        if (currentTask?.status === status) {
-          get().updateTask(taskId, { status: originalTask.status });
-        }
-      }
-
-      set({ error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
-      return false;
-    }
-  },
-
-  updateTaskDueDate: async (taskId, dueDate) => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetch(API_ENDPOINTS.TASKS.DETAIL(taskId), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dueDate: dueDate.toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(CommonErrorMessages.TASK_DUE_DATE_UPDATE_FAILED);
-      }
-
-      // Optimistically update the store
-      get().updateTask(taskId, { dueDate });
-
-      invalidateCalendarEvents();
-      set({ isLoading: false });
-      return true;
-    } catch (error) {
-      const errorMessage = CommonErrorMessages.TASK_DUE_DATE_UPDATE_FAILED;
-      set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
+      ErrorHandlers.silent(error, 'TaskStore createTask');
       return false;
     }
   },
@@ -357,7 +270,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   removeTask: async (taskId) => {
     set({ isLoading: true, error: null });
     try {
-      await api.delete(`/api/tasks/${taskId}`);
+      await api.delete(API_ENDPOINTS.TASKS.DETAIL(taskId), 'Failed to delete task');
 
       // Remove from store
       get().deleteTask(taskId);
@@ -369,7 +282,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     } catch (error) {
       const errorMessage = 'Failed to delete task';
       set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
+      ErrorHandlers.silent(error, 'TaskStore removeTask');
       return false;
     }
   },

@@ -4,10 +4,9 @@ import { redirect } from 'next/navigation';
 import * as React from 'react';
 import { isValidElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import DashboardLayout from '@/app/(dashboard)/layout';
 import { ROUTES } from '@/lib/page-routes';
-import { auth } from '@/server/auth';
 
+const authMock = vi.fn();
 const getUserCourseSummariesMock = vi.fn();
 
 vi.mock('@/lib/auth/db', () => ({
@@ -17,13 +16,15 @@ vi.mock('@/lib/auth/db', () => ({
   deleteUserCourse: vi.fn(),
   deleteUserTask: vi.fn(),
   getUserCourse: vi.fn(),
-  getUserCourseSummaries: (...args: unknown[]) => getUserCourseSummariesMock(...args),
   getUserCourseTasks: vi.fn(),
   getUserCourses: vi.fn(),
   getUserTask: vi.fn(),
   updateUserTask: vi.fn(),
 }));
-vi.mock('@/server/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/lib/auth/course-summaries', () => ({
+  getUserCourseSummaries: (...args: unknown[]) => getUserCourseSummariesMock(...args),
+}));
+vi.mock('@/server/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
   usePathname: vi.fn(() => '/dashboard'),
@@ -39,8 +40,9 @@ beforeEach(() => {
 
 describe('dashboard layout auth guard', () => {
   it('redirects unauthenticated users to the sign-in page', async () => {
+    const { default: DashboardLayout } = await import('@/app/(dashboard)/layout');
     const redirectError = new Error('redirect');
-    (auth as unknown as Mock).mockResolvedValue(null as any);
+    (authMock as unknown as Mock).mockResolvedValue(null as any);
     (redirect as unknown as Mock).mockImplementation(() => {
       throw redirectError;
     });
@@ -52,9 +54,10 @@ describe('dashboard layout auth guard', () => {
   });
 
   it('renders the dashboard shell for authenticated users', async () => {
+    const { default: DashboardLayout } = await import('@/app/(dashboard)/layout');
     const session = { user: { id: 'user-123' } };
     const initialCourses = [{ id: 'course-1', code: 'LOG210', name: 'Software Construction', color: 'blue', daypart: 'AM' }];
-    (auth as unknown as Mock).mockResolvedValue(session as any);
+    (authMock as unknown as Mock).mockResolvedValue(session as any);
     getUserCourseSummariesMock.mockResolvedValue(initialCourses as any);
 
     const result = await DashboardLayout({ children: <span>Private</span> });

@@ -12,6 +12,11 @@ export const isValidTermId = (termId: string): boolean => {
     return TERM_ID_REGEX.test(termId);
 };
 
+export const getNormalizedValidTermId = (termId: string): string | null => {
+    const normalizedTermId = termId.replace(/^0+/, '');
+    return isValidTermId(normalizedTermId) ? normalizedTermId : null;
+};
+
 // convert PlanETS numeric term code (e.g. '20252') to a localized label
 export const convertTermCodeToLabel = (code: string) => {
     // Expect format YYYY[1-3]

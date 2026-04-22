@@ -66,7 +66,7 @@ export function CalendarHeader() {
   const selectedDate = useCalendarViewStore(state => state.selectedDate);
   const setSelectedDate = useCalendarViewStore(state => state.setSelectedDate);
 
-  const { courses, isLoading } = useCourses();
+  const { isLoading } = useCourses();
   const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   // Compute weekDates based on selectedDate
@@ -148,10 +148,8 @@ export function CalendarHeader() {
           <AddTaskDialog
             open={addTaskOpen}
             onOpenChange={setAddTaskOpen}
-            courses={courses}
             dueDate={selectedDate}
             trigger={false}
-            onTaskAdded={() => setAddTaskOpen(false)}
           />
         </>
       </div>

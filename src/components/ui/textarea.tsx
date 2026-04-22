@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { cn } from '@/lib/utils/index';
+import { cn } from '@/lib/utils/colors-util';
 
 const Textarea = ({ ref, className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { ref?: React.RefObject<HTMLTextAreaElement | null> }) => {
   return (

@@ -1,5 +1,4 @@
 'use client';
-import type { Course } from '@/types/course';
 import type { TaskType } from '@/types/task';
 import { Plus } from 'lucide-react';
 import * as React from 'react';
@@ -19,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useCourses } from '@/hooks/course/use-course-store';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { buildDefaultTaskDraft } from '@/lib/utils/task/task-draft';
@@ -26,26 +26,21 @@ import { TASK_TYPES } from '@/types/task';
 
 type AddTaskDialogProps = {
   courseId?: string;
-  courseCode?: string;
   dueDate?: Date;
-  onTaskAdded: () => void;
-  trigger?: React.ReactNode;
-  courses: Course[];
+  trigger?: React.ReactNode | false;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 };
 
 export const AddTaskDialog = ({
   courseId,
-  courseCode,
   dueDate,
-  onTaskAdded,
   trigger,
-  courses,
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
 }: AddTaskDialogProps) => {
   // Get global selectedDate from store if dueDate prop not provided
+  const { courses } = useCourses();
   const globalSelectedDate = useCalendarViewStore(state => state.selectedDate);
   const effectiveDueDate = dueDate || globalSelectedDate;
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -63,15 +58,14 @@ export const AddTaskDialog = ({
     [effectiveDueDate],
   );
   const [newTask, setNewTask] = React.useState(createTaskDraft);
-  const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(courseId ?? null);
+  const [internalSelectedCourseId, setInternalSelectedCourseId] = React.useState<string | null>(null);
   const [createMore, setCreateMore] = React.useState(false);
   const titleInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Sync selectedCourseId with courseId prop
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
-    setSelectedCourseId(courseId ?? null);
-  }, [courseId]);
+  const activeCourseId = courseId ?? internalSelectedCourseId;
+  const activeCourse = React.useMemo(
+    () => courses.find(course => course.id === activeCourseId),
+    [activeCourseId, courses],
+  );
 
   // Sync newTask.dueDate with effectiveDueDate when dialog opens
   React.useEffect(() => {
@@ -85,15 +79,13 @@ export const AddTaskDialog = ({
   }, [isOpen, effectiveDueDate]);
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!courseId && !selectedCourseId) {
+    if (!activeCourseId) {
       toast.error('Please select a course.');
       return;
     }
-    const success = await createTask(courseId ?? selectedCourseId!, newTask);
+    const success = await createTask(activeCourseId, newTask);
     if (success) {
       toast.success('Task added successfully');
-      // Notify parent that a task was added (for any additional side effects)
-      onTaskAdded();
 
       // Reset form
       setNewTask(createTaskDraft());
@@ -112,31 +104,33 @@ export const AddTaskDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="lg">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Task
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== false && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="lg">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Task</DialogTitle>
           <DialogDescription>
-            {courseCode ? `Add a new task for ${courseCode}` : 'Add a new task'}
+            {activeCourse ? `Add a new task for ${activeCourse.code}` : 'Add a new task'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleAddTask}>
           <div className="grid gap-4 py-4">
-            {!courseId && courses && courses.length > 0 && (
+            {!courseId && courses.length > 0 && (
               <div className="grid gap-2">
                 <Label htmlFor="course">Course</Label>
                 <select
                   id="course"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={selectedCourseId ?? ''}
-                  onChange={e => setSelectedCourseId(e.target.value)}
+                  value={internalSelectedCourseId ?? ''}
+                  onChange={e => setInternalSelectedCourseId(e.target.value)}
                   required={!courseId}
                 >
                   <option value="" disabled>Select a course</option>

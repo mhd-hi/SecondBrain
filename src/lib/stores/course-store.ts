@@ -1,12 +1,11 @@
-import type { FetchStatus } from './fetch-status';
+import type { FetchStatus } from './helpers/fetch-status';
 import type { CourseListItem, CourseSummaryApiResponse } from '@/types/api/course';
 import type { Course } from '@/types/course';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { api } from '@/lib/utils/api/api-client-util';
 import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { ErrorHandlers } from '@/lib/utils/errors/error';
-import { getOverdueTasks } from '@/lib/utils/task';
+import { getOverdueTasks } from '@/lib/utils/task/task-util';
 
 type CourseStore = {
   courses: Map<string, Course>;
@@ -27,8 +26,6 @@ type CourseStore = {
 
   fetchCourses: () => Promise<void>;
   refreshCourses: () => Promise<void>;
-  updateCourseField: (courseId: string, field: string, value: unknown) => Promise<boolean>;
-  removeCourse: (courseId: string) => Promise<boolean>;
 
   clearError: () => void;
   reset: () => void;
@@ -142,80 +139,6 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
       const errorMessage = 'Failed to refresh courses';
       set({ fetchStatus: 'error', error: errorMessage });
       ErrorHandlers.silent(error, 'CourseStore refreshCourses');
-    }
-  },
-
-  updateCourseField: async (courseId, field, value) => {
-    // Store original value for rollback
-    const originalCourse = get().getCourse(courseId);
-    if (!originalCourse) {
-      return false;
-    }
-
-    // Optimistic update
-    get().updateCourse(courseId, { [field]: value } as Partial<Course>);
-
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetch(API_ENDPOINTS.COURSES.DETAIL(courseId), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update course');
-      }
-
-      set({ isLoading: false });
-      toast.success('Course updated successfully');
-      return true;
-    } catch (error) {
-      // Rollback optimistic update
-      if (Object.hasOwn(originalCourse, field)) {
-        get().updateCourse(courseId, { [field]: originalCourse[field as keyof Course] } as Partial<Course>);
-      }
-
-      const errorMessage = 'Failed to update course';
-      set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
-      toast.error(errorMessage);
-      return false;
-    }
-  },
-
-  removeCourse: async (courseId) => {
-    // Store original course for rollback
-    const originalCourse = get().getCourse(courseId);
-    if (!originalCourse) {
-      return false;
-    }
-
-    // Optimistic delete
-    get().deleteCourse(courseId);
-
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetch(API_ENDPOINTS.COURSES.DETAIL(courseId), {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete course');
-      }
-
-      set({ isLoading: false });
-      toast.success('Course deleted successfully');
-      return true;
-    } catch (error) {
-      // Rollback optimistic delete
-      get().addCourse(originalCourse);
-
-      const errorMessage = 'Failed to delete course';
-      set({ isLoading: false, error: errorMessage });
-      ErrorHandlers.api(error, errorMessage);
-      toast.error(errorMessage);
-      return false;
     }
   },
 

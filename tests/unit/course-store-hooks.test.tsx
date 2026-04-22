@@ -2,18 +2,17 @@ import type { Course } from '@/types/course';
 import type { Task } from '@/types/task';
 import * as React from 'react';
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/course-store';
-import { isPendingFetchStatus } from '@/lib/stores/fetch-status';
+import { isPendingFetchStatus } from '@/lib/stores/helpers/fetch-status';
 import { StatusTask } from '@/types/status-task';
+import { renderComponent } from '../helpers/render-utils';
 import { ensureHappyDom, restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
-const apiGetMock = vi.fn();
-
-vi.mock('@/lib/utils/api/api-client-util', () => ({
-  api: {
-    get: (...args: unknown[]) => apiGetMock(...args),
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
   },
 }));
 
@@ -25,6 +24,16 @@ function createDeferred<T>() {
   });
 
   return { promise, resolve };
+}
+
+const originalFetch = globalThis.fetch;
+
+function setFetchMock(fetchMock: typeof fetch) {
+  Object.defineProperty(globalThis, 'fetch', {
+    value: fetchMock,
+    configurable: true,
+    writable: true,
+  });
 }
 
 function createTask(overrides: Partial<Task> = {}): Task {
@@ -55,30 +64,13 @@ function createCourse(overrides: Partial<Course> = {}): Course {
 }
 
 function renderCourseLoadingProbe() {
-  const container = document.createElement('div');
-  const root = createRoot(container);
-
   function CourseLoadingProbe() {
     const fetchStatus = useCourseStore(state => state.fetchStatus);
     const isLoading = isPendingFetchStatus(fetchStatus);
     return <div>{isLoading ? 'loading' : 'ready'}</div>;
   }
 
-  return {
-    container,
-    render: async () => {
-      // We mount through ReactDOM directly in this test helper, so manual act is required.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        root.render(<CourseLoadingProbe />);
-      });
-    },
-    unmount: async () => {
-      await act(async () => {
-        root.unmount();
-      });
-    },
-  };
+  return renderComponent(<CourseLoadingProbe />);
 }
 
 beforeEach(() => {
@@ -92,6 +84,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setFetchMock(originalFetch);
   restoreSystemDate();
   vi.restoreAllMocks();
   useCourseStore.getState().reset();
@@ -150,10 +143,10 @@ describe('course list derivation', () => {
   });
 
   it('keeps the hook loading until the initial fetch succeeds', async () => {
-    const deferred = createDeferred<Course[]>();
+    const deferred = createDeferred<Response>();
     const fetchedCourse = createCourse({ id: 'course-2', code: 'MAT145', color: 'green' });
 
-    apiGetMock.mockReturnValueOnce(deferred.promise);
+    setFetchMock(vi.fn(() => deferred.promise) as unknown as typeof fetch);
     useCourseStore.getState().reset();
 
     const view = renderCourseLoadingProbe();
@@ -171,7 +164,10 @@ describe('course list derivation', () => {
       expect(view.container.textContent).toBe('loading');
 
       await act(async () => {
-        deferred.resolve([fetchedCourse]);
+        deferred.resolve({
+          ok: true,
+          json: vi.fn().mockResolvedValue([fetchedCourse]),
+        } as unknown as Response);
         await fetchPromise;
       });
 
@@ -184,7 +180,12 @@ describe('course list derivation', () => {
   });
 
   it('marks the course list fetch status as error and clears loading when the initial fetch fails', async () => {
-    apiGetMock.mockRejectedValueOnce(new Error('network down'));
+    setFetchMock(vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: vi.fn().mockResolvedValue('network down'),
+    } as unknown as Response) as unknown as typeof fetch);
     useCourseStore.getState().reset();
 
     const view = renderCourseLoadingProbe();

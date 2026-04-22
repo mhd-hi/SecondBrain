@@ -4,15 +4,13 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import * as React from 'react';
 import { ActionsDropdown } from '@/components/shared/atoms/actions-dropdown';
 import { useSubtaskActions } from '@/hooks/task/use-subtask-actions';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 import { EditableField } from '../shared/EditableField';
 
 type SubtasksListProps = {
   subtasks: Subtask[];
-  onEditSubtask?: (subtaskId: string, changes: Partial<Subtask>) => void;
-  onDeleteSubtask?: (subtaskId: string) => void;
   onTaskAdded?: () => void;
-  taskId?: string;
+  taskId: string;
   courseId?: string | null;
   courseIdDueDate?: Date | string | undefined;
   collapsible?: boolean;
@@ -23,8 +21,6 @@ type SubtasksListProps = {
 
 const SubtasksList = ({
   subtasks,
-  onEditSubtask,
-  onDeleteSubtask,
   onTaskAdded,
   taskId,
   courseId,
@@ -45,8 +41,6 @@ const SubtasksList = ({
   } = useSubtaskActions({
     courseId,
     courseIdDueDate,
-    onDeleteSubtask,
-    onEditSubtask,
     onTaskAdded,
     taskId,
   });

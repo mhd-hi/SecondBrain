@@ -8,7 +8,7 @@ import { DayPicker } from 'react-day-picker';
 
 import { buttonVariants } from '@/components/ui/button';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/colors-util';
 
 function IconLeft({ className, ...props }: { className?: string }) {
   return <ChevronLeft className={cn('h-4 w-4', className)} {...props} />;

@@ -1,5 +1,6 @@
 import type { Daypart } from '@/types/course';
 import type { AddCourseInputFormProps } from '@/types/dialog/add-course-dialog';
+import type { SchoolId } from '@/types/school';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useState } from 'react';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -13,32 +14,37 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
 import {
   getRemainingChars,
   MAX_USER_CONTEXT_LENGTH,
 } from '@/lib/utils/sanitize';
-import { UNIVERSITY, UNIVERSITY_INFO } from '@/types/university';
+import { getDatesForTerm, getNormalizedValidTermId } from '@/lib/utils/term-util';
+import { SCHOOL, SCHOOL_INFO } from '@/types/school';
 
 export function CourseInputForm({
-  courseCode,
-  setCourseCode,
-  term,
-  setTerm,
   availableTerms,
-  firstDayOfClass,
-  setFirstDayOfClass,
-  daypart,
-  setDaypart,
-  university,
-  setUniversity,
-  userContext,
-  setUserContext,
   isProcessing,
   currentStep,
   onSubmit,
-  showDaypartError = false,
-}: AddCourseInputFormProps & { showDaypartError?: boolean }) {
+}: AddCourseInputFormProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const courseCode = useAddCourseFormStore(state => state.courseCode);
+  const setCourseCode = useAddCourseFormStore(state => state.setCourseCode);
+  const term = useAddCourseFormStore(state => state.term);
+  const setTerm = useAddCourseFormStore(state => state.setTerm);
+  const storedFirstDayOfClass = useAddCourseFormStore(state => state.firstDayOfClass);
+  const setFirstDayOfClass = useAddCourseFormStore(state => state.setFirstDayOfClass);
+  const daypart = useAddCourseFormStore(state => state.daypart);
+  const setDaypart = useAddCourseFormStore(state => state.setDaypart);
+  const school = useAddCourseFormStore(state => state.school);
+  const setSchool = useAddCourseFormStore(state => state.setSchool);
+  const userContext = useAddCourseFormStore(state => state.userContext);
+  const setUserContext = useAddCourseFormStore(state => state.setUserContext);
+  const showDaypartError = useAddCourseFormStore(state => state.showDaypartError);
+  const normalizedTerm = getNormalizedValidTermId(term);
+  const firstDayOfClass
+    = storedFirstDayOfClass ?? (normalizedTerm ? getDatesForTerm(normalizedTerm).start : undefined);
 
   return (
     <form
@@ -51,7 +57,7 @@ export function CourseInputForm({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="courseCode">Course code :</Label>
+          <Label htmlFor="courseCode">Course code</Label>
           <div className="flex gap-2">
             <Input
               id="courseCode"
@@ -99,34 +105,36 @@ export function CourseInputForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="university">School (optional) :</Label>
+          <Label htmlFor="school" className="mb-0.5">
+            School
+          </Label>
           <Select
-            value={university}
-            onValueChange={setUniversity}
+            value={school}
+            onValueChange={value => setSchool(value as SchoolId)}
             disabled={isProcessing}
           >
-            <SelectTrigger aria-label="University">
-              <SelectValue placeholder="Select university" />
+            <SelectTrigger aria-label="School">
+              <SelectValue placeholder="Select school" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={UNIVERSITY.NONE}>
-                {UNIVERSITY_INFO[UNIVERSITY.NONE].label}
+              <SelectItem value={SCHOOL.NONE}>
+                {SCHOOL_INFO[SCHOOL.NONE].label}
               </SelectItem>
-              <SelectItem value={UNIVERSITY.ETS}>
-                {UNIVERSITY_INFO[UNIVERSITY.ETS].label}
+              <SelectItem value={SCHOOL.ETS}>
+                {SCHOOL_INFO[SCHOOL.ETS].label}
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="firstDayOfClass">First day of class :</Label>
+          <Label htmlFor="firstDayOfClass">First day of class</Label>
           <div className={isProcessing ? 'pointer-events-none opacity-50' : ''}>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <DatePicker
                   date={firstDayOfClass}
-                  onDateChange={setFirstDayOfClass}
+                  onDateChange={date => date && setFirstDayOfClass(date)}
                   className="w-full"
                 />
               </div>

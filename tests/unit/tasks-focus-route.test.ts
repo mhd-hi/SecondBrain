@@ -54,25 +54,20 @@ vi.mock('drizzle-orm', () => ({
   lt: (...args: unknown[]) => args,
   ne: (...args: unknown[]) => args,
   or: (...conditions: unknown[]) => conditions,
+  sql: vi.fn(),
 }));
 
 vi.mock('@/server/db/schema', () => ({
+  users: {},
+  accounts: {},
+  sessions: {},
+  terms: {},
   courses: {
     __table: 'courses',
     id: Symbol('courses.id'),
     code: Symbol('courses.code'),
     name: Symbol('courses.name'),
     color: Symbol('courses.color'),
-  },
-  customLinks: {
-    __table: 'customLinks',
-  },
-  subtasks: {
-    __table: 'subtasks',
-    id: Symbol('subtasks.id'),
-    taskId: Symbol('subtasks.taskId'),
-    title: Symbol('subtasks.title'),
-    notes: Symbol('subtasks.notes'),
   },
   tasks: {
     __table: 'tasks',
@@ -87,6 +82,25 @@ vi.mock('@/server/db/schema', () => ({
     actualEffort: Symbol('tasks.actualEffort'),
     dueDate: Symbol('tasks.dueDate'),
   },
+  subtasks: {
+    __table: 'subtasks',
+    id: Symbol('subtasks.id'),
+    taskId: Symbol('subtasks.taskId'),
+    title: Symbol('subtasks.title'),
+    notes: Symbol('subtasks.notes'),
+  },
+  pomodoroDaily: {},
+  customLinks: {
+    __table: 'customLinks',
+  },
+  usersRelations: {},
+  accountsRelations: {},
+  sessionsRelations: {},
+  coursesRelations: {},
+  customLinksRelations: {},
+  tasksRelations: {},
+  subtasksRelations: {},
+  deleteOldCourses: {},
 }));
 
 vi.mock('@/server/db', () => ({

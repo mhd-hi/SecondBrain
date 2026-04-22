@@ -137,9 +137,9 @@ export default function CommandPalette() {
             ].map(({ key, icon: Icon, label, action, dialog }) => {
               const shortcut = dialog
                 ? getShortcutForDialog(dialog)
-                : getShortcutForPath(
-                    key === 'add-course' ? getAddCoursePath() : '',
-                  );
+                : key === 'add-course'
+                  ? getShortcutForPath(getAddCoursePath())
+                  : undefined;
               return (
                 <CommandItem
                   key={key}
@@ -206,9 +206,7 @@ export default function CommandPalette() {
       <AddTaskDialog
         open={addTaskDialogOpen}
         onOpenChange={setAddTaskDialogOpen}
-        onTaskAdded={() => {}}
-        courses={courses}
-        trigger={<div style={{ display: 'none' }} />}
+        trigger={false}
       />
     </>
   );

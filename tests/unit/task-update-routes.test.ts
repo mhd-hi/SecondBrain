@@ -1,11 +1,33 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleSubtaskUpdatePost } from '@/app/api/subtasks/update/route';
 import { handleTaskUpdatePost } from '@/app/api/tasks/update/route';
+import { api } from '@/lib/utils/api/api-client-util';
+import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
+
+function getApiErrorHandlerMock() {
+  const testGlobal = globalThis as typeof globalThis & {
+    __taskUpdateApiErrorHandlerMock?: ReturnType<typeof vi.fn>;
+  };
+
+  if (!testGlobal.__taskUpdateApiErrorHandlerMock) {
+    testGlobal.__taskUpdateApiErrorHandlerMock = vi.fn();
+  }
+
+  return testGlobal.__taskUpdateApiErrorHandlerMock;
+}
 
 vi.mock('@/lib/auth/api', () => ({
   AuthorizationError: class AuthorizationError extends Error {},
   withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
+}));
+
+vi.mock('@/lib/utils/errors/error', () => ({
+  ErrorHandlers: {
+    api: (...args: unknown[]) =>
+      (getApiErrorHandlerMock() as unknown as (...args: unknown[]) => unknown)(...args),
+    silent: vi.fn(),
+  },
 }));
 
 type DbState = {
@@ -83,6 +105,7 @@ function getSchemaState(): SchemaState {
 }
 
 const dbState = getDbState();
+const originalFetch = globalThis.fetch;
 
 vi.mock('drizzle-orm', () => ({
   and: (...conditions: unknown[]) => conditions,
@@ -116,7 +139,9 @@ vi.mock('@/server/db', () => ({
         where: () => ({
           limit: async () => {
             const state = getDbState();
-            return (table as { __table?: string }).__table === 'subtasks' ? state.subtaskRows : state.parentTaskRows;
+            return (table as { __table?: string }).__table === 'subtasks'
+              ? state.subtaskRows
+              : state.parentTaskRows;
           },
         }),
       }),
@@ -124,98 +149,165 @@ vi.mock('@/server/db', () => ({
   },
 }));
 
-function createJsonRequest(url: string, body: unknown) {
-  return new Request(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+function setFetchMock(fetchMock: typeof fetch) {
+  Object.defineProperty(globalThis, 'fetch', {
+    value: fetchMock,
+    configurable: true,
+    writable: true,
   });
+}
+
+function installRouteFetchMock(userId = 'user-1') {
+  const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const request = input instanceof Request
+      ? input
+      : new Request(typeof input === 'string' ? input : input.toString(), init);
+    const pathname = new URL(request.url).pathname;
+
+    if (pathname === API_ENDPOINTS.TASKS.UPDATE) {
+      return handleTaskUpdatePost(request as never, { id: userId });
+    }
+
+    if (pathname === API_ENDPOINTS.TASKS.SUBTASK_UPDATE) {
+      return handleSubtaskUpdatePost(request as never, { id: userId });
+    }
+
+    throw new Error(`Unhandled route for test fetch mock: ${pathname}`);
+  });
+
+  setFetchMock(fetchMock as unknown as typeof fetch);
+  return fetchMock;
 }
 
 beforeEach(() => {
   resetDbState();
+  getApiErrorHandlerMock().mockReset();
+  vi.spyOn(console, 'error').mockImplementation(() => { });
 });
 
 describe('legacy task update route', () => {
-  it('updates supported task fields successfully', async () => {
-    const response = await handleTaskUpdatePost(
-      createJsonRequest('http://localhost/api/tasks/update', {
+  it('updates supported task fields successfully through api.post', async () => {
+    const fetchMock = installRouteFetchMock();
+
+    const response = await api.post<{
+      success: boolean;
+      taskId: string;
+      input: string;
+    }>(
+      `http://localhost${API_ENDPOINTS.TASKS.UPDATE}`,
+      {
         taskId: 'task-1',
         input: 'estimatedEffort',
         value: '2.5',
-      }) as never,
-      { id: 'user-1' },
+      },
+      'Failed to update task',
     );
 
-    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://localhost${API_ENDPOINTS.TASKS.UPDATE}`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: 'task-1',
+          input: 'estimatedEffort',
+          value: '2.5',
+        }),
+      }),
+    );
     expect(dbState.taskUpdateSetArg).toMatchObject({
       estimatedEffort: 2.5,
     });
     expect(dbState.taskUpdateSetArg?.updatedAt).toBeInstanceOf(Date);
-
-    await expect(response.json()).resolves.toMatchObject({
+    expect(response).toMatchObject({
       success: true,
       taskId: 'task-1',
       input: 'estimatedEffort',
     });
   });
 
-  it('rejects the removed week field', async () => {
-    const response = await handleTaskUpdatePost(
-      createJsonRequest('http://localhost/api/tasks/update', {
-        taskId: 'task-1',
-        input: 'week',
-        value: 4,
-      }) as never,
-      { id: 'user-1' },
-    );
+  it('surfaces invalid field failures through api.post', async () => {
+    installRouteFetchMock();
 
-    expect(response.status).toBe(400);
+    await expect(
+      api.post(
+        `http://localhost${API_ENDPOINTS.TASKS.UPDATE}`,
+        {
+          taskId: 'task-1',
+          input: 'week',
+          value: 4,
+        },
+        'Failed to update task',
+      ),
+    ).rejects.toThrow(/Invalid field/);
+
     expect(dbState.taskUpdateSetArg).toBeNull();
-    await expect(response.json()).resolves.toMatchObject({
-      success: false,
-      error: 'Invalid field',
-    });
+    expect(getApiErrorHandlerMock()).toHaveBeenCalledWith(
+      expect.any(Error),
+      'Failed to update task',
+    );
   });
 });
 
 describe('subtask update route', () => {
-  it('updates supported subtask fields successfully', async () => {
-    const response = await handleSubtaskUpdatePost(
-      createJsonRequest('http://localhost/api/subtasks/update', {
+  it('updates supported subtask fields successfully through api.post', async () => {
+    const fetchMock = installRouteFetchMock();
+
+    const response = await api.post<{ success: boolean }>(
+      `http://localhost${API_ENDPOINTS.TASKS.SUBTASK_UPDATE}`,
+      {
         id: 'subtask-1',
         input: 'notes',
         value: 'Updated subtask description',
-      }) as never,
-      { id: 'user-1' },
+      },
+      'Failed to update subtask',
     );
 
-    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://localhost${API_ENDPOINTS.TASKS.SUBTASK_UPDATE}`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 'subtask-1',
+          input: 'notes',
+          value: 'Updated subtask description',
+        }),
+      }),
+    );
     expect(dbState.subtaskUpdateSetArg).toMatchObject({
       notes: 'Updated subtask description',
     });
     expect(dbState.subtaskUpdateSetArg?.updatedAt).toBeInstanceOf(Date);
-
-    await expect(response.json()).resolves.toMatchObject({
+    expect(response).toMatchObject({
       success: true,
     });
   });
 
-  it('rejects the removed subtask due date field', async () => {
-    const response = await handleSubtaskUpdatePost(
-      createJsonRequest('http://localhost/api/subtasks/update', {
-        id: 'subtask-1',
-        input: 'dueDate',
-        value: '1.5',
-      }) as never,
-      { id: 'user-1' },
-    );
+  it('surfaces invalid subtask fields through api.post', async () => {
+    installRouteFetchMock();
 
-    expect(response.status).toBe(400);
+    await expect(
+      api.post(
+        `http://localhost${API_ENDPOINTS.TASKS.SUBTASK_UPDATE}`,
+        {
+          id: 'subtask-1',
+          input: 'dueDate',
+          value: '1.5',
+        },
+        'Failed to update subtask',
+      ),
+    ).rejects.toThrow(/Invalid field/);
+
     expect(dbState.subtaskUpdateSetArg).toBeNull();
-    await expect(response.json()).resolves.toMatchObject({
-      success: false,
-      error: 'Invalid field',
-    });
+    expect(getApiErrorHandlerMock()).toHaveBeenCalledWith(
+      expect.any(Error),
+      'Failed to update subtask',
+    );
   });
+});
+
+afterEach(() => {
+  setFetchMock(originalFetch);
+  vi.restoreAllMocks();
 });

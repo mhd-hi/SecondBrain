@@ -5,19 +5,12 @@ import { getCourseListItemsFromCourses, useCourseStore } from '@/lib/stores/cour
 import { isPendingFetchStatus } from '@/lib/stores/helpers/fetch-status';
 
 export function useCourseMutations() {
-  const updateCourseField = useCallback(
-    async (courseId: string, field: string, value: unknown) => {
-      return updateCourseFieldById(courseId, field, value);
-    },
-    [],
-  );
-
   const deleteCourse = useCallback(async (courseId: string) => {
     return deleteCourseById(courseId);
   }, []);
 
   return {
-    updateCourseField,
+    updateCourseField: updateCourseFieldById,
     deleteCourse,
   };
 }

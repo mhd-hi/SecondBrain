@@ -1,6 +1,6 @@
 import type { Task } from '@/types/task';
-import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useUpdateSubtaskField } from '@/hooks/task/use-subtask';
 import { updateTaskDueDate, updateTaskStatus, useUpdateTaskField } from '@/hooks/task/use-task';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { StatusTask } from '@/types/status-task';
@@ -190,7 +190,7 @@ describe('useUpdateTaskField', () => {
     useTaskStore.getState().setTasks([createTask()]);
 
     let updateTaskField!: ReturnType<typeof useUpdateTaskField>;
-    const view = renderHookHost(useUpdateTaskField, hookValue => {
+    const view = renderHookHost(useUpdateTaskField, (hookValue) => {
       updateTaskField = hookValue;
     });
 
@@ -210,6 +210,55 @@ describe('useUpdateTaskField', () => {
 
       await expect(updatePromise).rejects.toBeInstanceOf(Error);
       expect(useTaskStore.getState().getTask('task-1')?.title).toBe('Review lecture notes');
+    } finally {
+      await view.unmount();
+    }
+  });
+});
+
+describe('useUpdateSubtaskField', () => {
+  beforeEach(() => {
+    ensureHappyDom();
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    useTaskStore.getState().reset();
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => { });
+  });
+
+  afterEach(() => {
+    setFetchMock(originalFetch);
+    vi.restoreAllMocks();
+    useTaskStore.getState().reset();
+  });
+
+  it('rolls back the optimistic subtask field update when the request fails', async () => {
+    useTaskStore.getState().setTasks([
+      createTask({
+        subtasks: [{ id: 'subtask-1', title: 'Draft outline', notes: 'Initial notes' }],
+      }),
+    ]);
+
+    let updateSubtaskField!: ReturnType<typeof useUpdateSubtaskField>;
+    const view = renderHookHost(() => useUpdateSubtaskField('task-1'), (hookValue) => {
+      updateSubtaskField = hookValue;
+    });
+
+    try {
+      await view.render();
+
+      setFetchMock(vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: vi.fn().mockResolvedValue('subtask update failed'),
+      } as unknown as Response) as unknown as typeof fetch);
+
+      const updatePromise = updateSubtaskField('subtask-1', 'title', 'Updated outline');
+
+      expect(useTaskStore.getState().getTask('task-1')?.subtasks?.[0]?.title).toBe('Updated outline');
+
+      await expect(updatePromise).rejects.toBeInstanceOf(Error);
+      expect(useTaskStore.getState().getTask('task-1')?.subtasks?.[0]?.title).toBe('Draft outline');
     } finally {
       await view.unmount();
     }

@@ -13,6 +13,13 @@ import { API_ENDPOINTS } from '@/lib/utils/api/endpoints';
 import { withLoadingAndErrorHandling } from '@/lib/utils/api/loading-util';
 import { ErrorHandlers } from '@/lib/utils/errors/error';
 
+export type CourseUpdateField = 'color' | 'daypart';
+
+type CourseUpdateValueMap = {
+  color: TCourseColor;
+  daypart: Daypart;
+};
+
 export function useCourse(courseId: string) {
   const [course, setCourse] = useState<Course | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -156,8 +163,18 @@ export async function deleteCourseById(courseId: string) {
 
 export async function updateCourseFieldById(
   courseId: string,
-  field: string,
-  value: unknown,
+  field: 'color',
+  value: TCourseColor,
+): Promise<boolean>;
+export async function updateCourseFieldById(
+  courseId: string,
+  field: 'daypart',
+  value: Daypart,
+): Promise<boolean>;
+export async function updateCourseFieldById(
+  courseId: string,
+  field: CourseUpdateField,
+  value: CourseUpdateValueMap[CourseUpdateField],
 ) {
   const { getCourse, updateCourse } = useCourseStore.getState();
   const originalCourse = getCourse(courseId);
@@ -166,23 +183,27 @@ export async function updateCourseFieldById(
     return false;
   }
 
-  updateCourse(courseId, { [field]: value } as Partial<Course>);
+  const updates = field === 'color'
+    ? { color: value as TCourseColor }
+    : { daypart: value as Daypart };
+
+  updateCourse(courseId, updates);
 
   try {
     await api.patch(
       API_ENDPOINTS.COURSES.DETAIL(courseId),
-      { [field]: value },
+      updates,
       'Failed to update course',
     );
     toast.success('Course updated successfully');
     return true;
   } catch (error) {
-    if (Object.hasOwn(originalCourse, field)) {
-      updateCourse(
-        courseId,
-        { [field]: originalCourse[field as keyof Course] } as Partial<Course>,
-      );
-    }
+    updateCourse(
+      courseId,
+      field === 'color'
+        ? { color: originalCourse.color }
+        : { daypart: originalCourse.daypart },
+    );
 
     console.error('Failed to update course', error);
     throw error;

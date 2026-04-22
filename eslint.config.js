@@ -51,6 +51,7 @@ export default antfu(
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
       '@stylistic/indent': ['warn', 2],
+      'perfectionist/sort-imports': 'off',
     },
   },
   {

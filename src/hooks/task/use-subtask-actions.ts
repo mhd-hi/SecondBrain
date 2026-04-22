@@ -55,7 +55,12 @@ export function useSubtaskActions({
     input: 'title' | 'notes',
     value: string,
   ) => {
-    await updateSubtaskField(subtaskId, input, value);
+    try {
+      await updateSubtaskField(subtaskId, input, value);
+    } catch (error) {
+      toast.error('Failed to update subtask');
+      throw error;
+    }
   }, [updateSubtaskField]);
 
   const saveSubtaskTitle = React.useCallback(async (subtaskId: string, title: string) => {

@@ -4,13 +4,13 @@ import { createRoot } from 'react-dom/client';
 
 export function renderComponent(ui: React.ReactElement) {
   const container = document.createElement('div');
+  document.body.appendChild(container);
   const root = createRoot(container);
 
   return {
     container,
     async render() {
       // We mount through ReactDOM directly in this helper, so manual act is required.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
       await act(async () => {
         root.render(ui);
       });
@@ -19,6 +19,7 @@ export function renderComponent(ui: React.ReactElement) {
       await act(async () => {
         root.unmount();
       });
+      container.remove();
     },
   };
 }

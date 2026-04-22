@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderComponent } from '../helpers/render-utils';
 import { ROUTES } from '@/lib/page-routes';
+import { renderComponent } from '../helpers/render-utils';
 import { ensureHappyDom } from '../helpers/runtime';
 
 const routerPushMock = vi.fn();

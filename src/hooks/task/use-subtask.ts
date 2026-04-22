@@ -29,6 +29,7 @@ export async function deleteSubtask(taskId: string, subtaskId: string): Promise<
 }
 
 export function useUpdateSubtaskField(taskId: string) {
+  const getTask = useTaskStore(state => state.getTask);
   const updateSubtask = useTaskStore(state => state.updateSubtask);
 
   return useCallback(async (
@@ -36,6 +37,8 @@ export function useUpdateSubtaskField(taskId: string) {
     input: 'title' | 'notes',
     value: string,
   ) => {
+    const originalSubtask = getTask(taskId)?.subtasks?.find(subtask => subtask.id === subtaskId);
+
     updateSubtask(taskId, subtaskId, { [input]: value });
 
     try {
@@ -46,8 +49,15 @@ export function useUpdateSubtaskField(taskId: string) {
       );
       return true;
     } catch (error) {
+      if (originalSubtask) {
+        const currentSubtask = getTask(taskId)?.subtasks?.find(subtask => subtask.id === subtaskId);
+        if (currentSubtask?.[input] === value) {
+          updateSubtask(taskId, subtaskId, { [input]: originalSubtask[input] });
+        }
+      }
+
       console.error('Failed to update subtask field', error);
       throw error;
     }
-  }, [taskId, updateSubtask]);
+  }, [getTask, taskId, updateSubtask]);
 }

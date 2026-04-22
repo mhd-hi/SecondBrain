@@ -50,11 +50,21 @@ export function useTaskCard(task: Task) {
   }, [task.id, updateTaskField]);
 
   const saveTitle = React.useCallback(async (title: string) => {
-    await saveTaskField('title', title);
+    try {
+      await saveTaskField('title', title);
+    } catch (error) {
+      toast.error('Failed to update task');
+      throw error;
+    }
   }, [saveTaskField]);
 
   const saveDescription = React.useCallback(async (description: string) => {
-    await saveTaskField('notes', description);
+    try {
+      await saveTaskField('notes', description);
+    } catch (error) {
+      toast.error('Failed to update task');
+      throw error;
+    }
   }, [saveTaskField]);
 
   const saveType = React.useCallback(async (type: Task['type']) => {

@@ -11,6 +11,7 @@ import { useCourseMutations, useCourses } from '@/hooks/course/use-course-store'
 import { getAddCoursePath } from '@/lib/page-routes';
 import { handleConfirm } from '@/lib/utils/dialog-util';
 import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 export function CourseListTile() {
   const router = useRouter();
@@ -43,10 +44,10 @@ export function CourseListTile() {
   };
 
   return (
-    <div className="bg-muted/30 rounded-lg border p-6">
+    <div className="bg-muted/30 rounded-lg border p-6" data-testid={TEST_IDS.dashboard.courseList}>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-xl font-semibold">Courses</h2>
-        <Button onClick={() => router.push(getAddCoursePath())}>
+        <Button data-testid={TEST_IDS.dashboard.addCourseButton} onClick={() => router.push(getAddCoursePath())}>
           <Plus className="mr-2 h-4 w-4 rounded-sm" />
           Add Course
         </Button>
@@ -72,7 +73,7 @@ export function CourseListTile() {
           ))
         )
 : (
-          <div className="text-muted-foreground col-span-full text-center">
+          <div className="text-muted-foreground col-span-full text-center" data-testid={TEST_IDS.dashboard.courseListEmpty}>
             Add a new course to get started.
           </div>
         )}

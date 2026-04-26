@@ -17,9 +17,18 @@ type DatePickerProps = {
   onDateChange?: (date: Date | undefined) => void;
   className?: string;
   open?: boolean;
+  triggerTestId?: string;
+  calendarTestId?: string;
 };
 
-export function DatePicker({ date, onDateChange, className, open }: DatePickerProps) {
+export function DatePicker({
+  date,
+  onDateChange,
+  className,
+  open,
+  triggerTestId,
+  calendarTestId,
+}: DatePickerProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = open !== undefined;
   const popoverOpen = isControlled ? open : internalOpen;
@@ -39,7 +48,7 @@ export function DatePicker({ date, onDateChange, className, open }: DatePickerPr
             !date && 'text-muted-foreground',
             className,
           )}
-
+          data-testid={triggerTestId}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, 'PPP') : <span>Pick a date</span>}
@@ -47,6 +56,7 @@ export function DatePicker({ date, onDateChange, className, open }: DatePickerPr
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
+          data-testid={calendarTestId}
           mode="single"
           selected={date}
           onSelect={onDateChange}

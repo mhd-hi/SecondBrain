@@ -20,6 +20,7 @@ export const users = pgTable('user', {
     .$defaultFn(() => crypto.randomUUID()),
   name: text('name'),
   email: text('email').unique(),
+  emailVerified: timestamp('emailVerified'),
   image: text('image'),
   streakDays: integer('streak_days').notNull().default(0),
   lastCompletedPomodoroDate: timestamp('last_completed_pomodoro_date', {

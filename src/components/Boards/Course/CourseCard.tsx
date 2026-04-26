@@ -18,6 +18,7 @@ import {
   getTotalTasksCount,
   getUpcomingTask,
 } from '@/lib/utils/task/task-util';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 type CourseCardProps = {
   course: Course;
@@ -70,6 +71,8 @@ export default function CourseCard({ course, onDeleteCourse }: CourseCardProps) 
     <div
       className={`border-l-4 border-${displayColor} relative group flex flex-col rounded-lg border bg-card text-card-foreground shadow-sm p-4 gap-3 h-full min-h-55`}
       style={cardStyle}
+      data-course-code={course.code}
+      data-testid={TEST_IDS.dashboard.courseCard}
     >
       <div className="absolute -top-2.5 -right-2.5 z-10">
         <ActionsDropdown actions={dropdownActions} triggerClassName="absolute -right-[1px] z-10 opacity-0 group-hover:opacity-100 transition-opacity" />

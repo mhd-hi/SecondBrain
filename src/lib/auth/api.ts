@@ -1,5 +1,4 @@
 import type { NextRequest } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 import { auth } from '@/server/auth';
 
@@ -8,6 +7,21 @@ export type AuthenticatedUser = {
   email?: string;
   name?: string;
 };
+
+async function captureException(
+  error: unknown,
+  context?: {
+    tags?: Record<string, string>;
+    extra?: Record<string, unknown>;
+  },
+) {
+  if (process.env.NODE_ENV !== 'production') {
+    return;
+  }
+
+  const Sentry = await import('@sentry/core');
+  Sentry.captureException(error, context);
+}
 
 // Get the authenticated user from the server-side session.
 async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
@@ -33,7 +47,7 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
       || errorMessage.includes('ECONNREFUSED');
 
     console.error(errorMessage);
-    Sentry.captureException(error, {
+    await captureException(error, {
       tags: {
         context: 'auth',
         function: 'getAuthenticatedUser',
@@ -132,7 +146,7 @@ export function withAuth<TParams = Record<string, string>>(
       return await handler(request, { ...context, user });
     } catch (error) {
       console.error('Authentication error in API route:', error);
-      Sentry.captureException(error, {
+      await captureException(error, {
         tags: { context: 'auth', function: 'withAuth' },
         extra: { route: request.url },
       });

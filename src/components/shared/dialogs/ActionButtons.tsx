@@ -2,6 +2,7 @@ import type { ActionButtonsProps } from '@/types/dialog/add-course-dialog';
 import { Link as LinkIcon, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 function GoToCourseActions({
   onCancel,
@@ -15,7 +16,7 @@ function GoToCourseActions({
       <Button variant="outline" onClick={onCancel}>
         Cancel
       </Button>
-      <Button onClick={onGoToCourse}>
+      <Button onClick={onGoToCourse} data-testid={TEST_IDS.addCourse.goToCourseButton}>
         <LinkIcon className="mr-2 h-4 w-4" />
         Go to Course
       </Button>
@@ -44,6 +45,7 @@ export function ActionButtons({
           Cancel
         </Button>
         <Button
+          data-testid={TEST_IDS.addCourse.submitButton}
           onClick={onStartParsing}
           // No longer disable for userContext over limit
           disabled={!courseCode.trim() || isCheckingExistence}
@@ -84,7 +86,7 @@ export function ActionButtons({
         <Button variant="outline" onClick={() => onDialogClose(false)}>
           Cancel
         </Button>
-        <Button variant="outline" onClick={onRetry}>
+        <Button variant="outline" onClick={onRetry} data-testid={TEST_IDS.addCourse.retryButton}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Retry
         </Button>

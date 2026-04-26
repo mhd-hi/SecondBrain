@@ -2,7 +2,15 @@ import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  server: {
+    host: '127.0.0.1',
+  },
   test: {
+    api: {
+      host: '127.0.0.1',
+      port: 63315,
+      strictPort: true,
+    },
     globals: true,
     environment: 'happy-dom',
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],

@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils/colors-util';
 import { formatEffortTime } from '@/lib/utils/task/task-util';
 import { StatusTask } from '@/types/status-task';
 import { TASK_TYPE_OPTIONS } from '@/types/task';
+import { TEST_IDS } from '@/lib/testing/selectors';
 import { CourseCodeBadge } from '../shared/atoms/CourseCodeBadge';
 import { EditableField } from '../shared/EditableField';
 
@@ -102,15 +103,19 @@ export function TaskCard({
   const cardActions = actions ?? defaultActions;
 
   return (
-    <div className={cn(
-      'relative group p-2 rounded-lg border bg-card text-card-foreground shadow-sm transition-colors',
-      isCompleted && 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800',
-      className,
-    )}
+    <div
+      className={cn(
+        'relative group p-2 rounded-lg border bg-card text-card-foreground shadow-sm transition-colors',
+        isCompleted && 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800',
+        className,
+      )}
+      data-task-id={task.id}
+      data-testid={TEST_IDS.task.card}
     >
       <ActionsDropdown
         actions={cardActions}
         triggerClassName="absolute -top-[10px] -right-[10px] z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+        triggerTestId={TEST_IDS.task.actionsTrigger}
       />
       <AddSubtaskDialog
         taskId={task.id}
@@ -235,6 +240,7 @@ export function TaskCard({
                 <DueDateDisplay
                   date={task.dueDate ?? null}
                   onChange={d => saveDueDate(d ?? null)}
+                  triggerTestId={TEST_IDS.task.dueDateTrigger}
                 />
               </span>
             </Badge>
@@ -252,6 +258,8 @@ export function TaskCard({
               <StatusTaskChanger
                 currentStatus={task.status}
                 onStatusChange={newStatus => onUpdateStatusTask(task.id, newStatus)}
+                triggerTestId={TEST_IDS.task.statusTrigger}
+                cycleButtonTestId={TEST_IDS.task.nextStatusButton}
               />
             </div>
             {task.status === StatusTask.IN_PROGRESS && (

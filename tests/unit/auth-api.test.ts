@@ -11,7 +11,7 @@ vi.mock('@sentry/nextjs', () => ({ captureException: captureExceptionMock }));
 
 const { AuthorizationError, withAuth, withAuthSimple } = await import('../../src/lib/auth/api');
 
-const request = new Request('http://localhost/api/test') as any;
+const request = new Request('http://localhost/api/mock') as any;
 
 beforeEach(() => {
   vi.resetAllMocks();

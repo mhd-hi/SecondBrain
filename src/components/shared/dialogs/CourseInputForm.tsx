@@ -21,6 +21,7 @@ import {
 } from '@/lib/utils/sanitize';
 import { getDatesForTerm, getNormalizedValidTermId } from '@/lib/utils/term-util';
 import { SCHOOL, SCHOOL_INFO } from '@/types/school';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 export function CourseInputForm({
   availableTerms,
@@ -48,6 +49,7 @@ export function CourseInputForm({
 
   return (
     <form
+      data-testid={TEST_IDS.addCourse.form}
       onSubmit={(e) => {
         e.preventDefault();
         if (currentStep === 'idle' && courseCode.trim()) {
@@ -61,6 +63,7 @@ export function CourseInputForm({
           <div className="flex gap-2">
             <Input
               id="courseCode"
+              data-testid={TEST_IDS.addCourse.courseCodeInput}
               value={courseCode}
               onChange={(e) => {
                 const value = e.target.value.toUpperCase();
@@ -89,7 +92,7 @@ export function CourseInputForm({
                 onValueChange={setTerm}
                 disabled={isProcessing}
               >
-                <SelectTrigger aria-label="Term">
+                <SelectTrigger aria-label="Term" data-testid={TEST_IDS.addCourse.termTrigger}>
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent>
@@ -113,7 +116,7 @@ export function CourseInputForm({
             onValueChange={value => setSchool(value as SchoolId)}
             disabled={isProcessing}
           >
-            <SelectTrigger aria-label="School">
+            <SelectTrigger aria-label="School" data-testid={TEST_IDS.addCourse.schoolTrigger}>
               <SelectValue placeholder="Select school" />
             </SelectTrigger>
             <SelectContent>
@@ -136,6 +139,8 @@ export function CourseInputForm({
                   date={firstDayOfClass}
                   onDateChange={date => date && setFirstDayOfClass(date)}
                   className="w-full"
+                  triggerTestId={TEST_IDS.addCourse.firstDayTrigger}
+                  calendarTestId={TEST_IDS.addCourse.firstDayCalendar}
                 />
               </div>
               <div className="w-max">
@@ -146,6 +151,7 @@ export function CourseInputForm({
                 >
                   <SelectTrigger
                     aria-label="Daypart"
+                    data-testid={TEST_IDS.addCourse.daypartTrigger}
                     className={
                       showDaypartError && !daypart
                         ? 'border-red-500 ring-2 ring-red-500'
@@ -170,6 +176,7 @@ export function CourseInputForm({
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
             disabled={isProcessing}
+            data-testid={TEST_IDS.addCourse.additionalInfoToggle}
             className="bg-muted/30 hover:bg-muted/50 flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
@@ -194,6 +201,7 @@ export function CourseInputForm({
             <div className="animate-in fade-in slide-in-from-top-2 space-y-2 duration-200">
               <Textarea
                 id="userContext"
+                data-testid={TEST_IDS.addCourse.userContextInput}
                 value={userContext}
                 onChange={(e) => {
                   setUserContext(e.target.value);

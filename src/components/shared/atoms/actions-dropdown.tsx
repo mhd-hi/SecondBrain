@@ -32,6 +32,7 @@ type ActionsDropdownProps = {
   contentAlign?: 'start' | 'center' | 'end';
   className?: string;
   triggerText?: string;
+  triggerTestId?: string;
   // optional overdue dialog support (for bulk actions)
   overdueCount?: number;
   onCompleteAll?: () => void;
@@ -44,6 +45,7 @@ export function ActionsDropdown({
   contentAlign = 'end',
   className,
   triggerText,
+  triggerTestId,
   overdueCount,
   onCompleteAll,
   overdueTasks,
@@ -54,6 +56,7 @@ export function ActionsDropdown({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
+          data-testid={triggerTestId}
           className={cn(
             'rounded-full bg-accent p-1.5 hover:bg-muted hover:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground transition-opacity',
             triggerClassName,

@@ -13,7 +13,6 @@ import './src/env.js';
 const config = {
   typedRoutes: true,
   output: 'standalone',
-  transpilePackages: ['import-in-the-middle'],
   eslint: {
     // Fail build on any errors (0 threshold)
     // and fail on 2 or more warnings
@@ -50,6 +49,15 @@ const config = {
 
 const nextConfig = {
   ...config,
+  webpack(nextWebpackConfig) {
+    nextWebpackConfig.ignoreWarnings ??= [];
+    nextWebpackConfig.ignoreWarnings.push({
+      module: /@opentelemetry\/instrumentation\/build\/esm\/platform\/node\/instrumentation\.js/,
+      message: /Critical dependency: the request of a dependency is an expression/,
+    });
+
+    return nextWebpackConfig;
+  },
   async headers() {
     return [
       {

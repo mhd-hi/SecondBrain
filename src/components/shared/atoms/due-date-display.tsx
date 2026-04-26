@@ -13,9 +13,17 @@ type DueDateDisplayProps = {
   className?: string;
   // Optional callback when user selects a new date from the calendar
   onChange?: (date: Date | null) => void;
+  triggerTestId?: string;
+  calendarTestId?: string;
 };
 
-export const DueDateDisplay = ({ date, className, onChange }: DueDateDisplayProps) => {
+export const DueDateDisplay = ({
+  date,
+  className,
+  onChange,
+  triggerTestId,
+  calendarTestId,
+}: DueDateDisplayProps) => {
   // Convert incoming value to Date or null
   const initialDate = useMemo(() => {
     if (date == null) {
@@ -44,6 +52,7 @@ export const DueDateDisplay = ({ date, className, onChange }: DueDateDisplayProp
               'text-xs font-medium flex items-center gap-1 text-muted-foreground transition-colors duration-150 hover:text-foreground min-h-7 md:min-h-0',
               className,
             )}
+            data-testid={triggerTestId}
             title="Choose due date"
             onClick={e => e.stopPropagation()}
           >
@@ -53,6 +62,7 @@ export const DueDateDisplay = ({ date, className, onChange }: DueDateDisplayProp
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
+            data-testid={calendarTestId}
             mode="single"
             selected={displayedDate ?? undefined}
             onSelect={(d) => {
@@ -92,6 +102,7 @@ export const DueDateDisplay = ({ date, className, onChange }: DueDateDisplayProp
             isOverdue ? 'text-amber-500 hover:text-yellow-500 transition-all duration-300 ease-in-out' : 'text-muted-foreground hover:text-foreground',
             className,
           )}
+          data-testid={triggerTestId}
           title="Choose due date"
           onClick={e => e.stopPropagation()}
         >
@@ -103,6 +114,7 @@ export const DueDateDisplay = ({ date, className, onChange }: DueDateDisplayProp
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
+          data-testid={calendarTestId}
           mode="single"
           selected={displayedDate ?? undefined}
           onSelect={(d) => {

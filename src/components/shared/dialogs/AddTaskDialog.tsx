@@ -23,6 +23,7 @@ import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { buildDefaultTaskDraft } from '@/lib/utils/task/task-draft';
 import { TASK_TYPES } from '@/types/task';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 type AddTaskDialogProps = {
   courseId?: string;
@@ -114,7 +115,7 @@ export const AddTaskDialog = ({
           )}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent data-testid={TEST_IDS.addTaskDialog.dialog}>
         <DialogHeader>
           <DialogTitle>Add Task</DialogTitle>
           <DialogDescription>
@@ -128,6 +129,7 @@ export const AddTaskDialog = ({
                 <Label htmlFor="course">Course</Label>
                 <select
                   id="course"
+                  data-testid={TEST_IDS.addTaskDialog.courseSelect}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={internalSelectedCourseId ?? ''}
                   onChange={e => setInternalSelectedCourseId(e.target.value)}
@@ -148,6 +150,7 @@ export const AddTaskDialog = ({
               <Input
                 ref={titleInputRef}
                 id="title"
+                data-testid={TEST_IDS.addTaskDialog.titleInput}
                 value={newTask.title}
                 onChange={e => setNewTask({ ...newTask, title: e.target.value })}
                 required
@@ -157,6 +160,7 @@ export const AddTaskDialog = ({
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
+                data-testid={TEST_IDS.addTaskDialog.notesInput}
                 value={newTask.notes}
                 onChange={e => setNewTask({ ...newTask, notes: e.target.value })}
                 placeholder="(Optional) Add additional notes about the task"
@@ -166,6 +170,7 @@ export const AddTaskDialog = ({
               <Label htmlFor="type">Type</Label>
               <select
                 id="type"
+                data-testid={TEST_IDS.addTaskDialog.typeSelect}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newTask.type}
                 onChange={e => setNewTask({ ...newTask, type: e.target.value as TaskType })}
@@ -184,6 +189,8 @@ export const AddTaskDialog = ({
                 date={newTask.dueDate}
                 onChange={date => date && setNewTask({ ...newTask, dueDate: date })}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                triggerTestId={TEST_IDS.addTaskDialog.dueDateTrigger}
+                calendarTestId={TEST_IDS.addTaskDialog.dueDateCalendar}
               />
             </div>
             <div className="grid gap-2">
@@ -192,6 +199,7 @@ export const AddTaskDialog = ({
                 id="estimatedEffort"
                 type="number"
                 step="0.5"
+                data-testid={TEST_IDS.addTaskDialog.estimatedEffortInput}
                 value={newTask.estimatedEffort}
                 onChange={(e) => {
                   setNewTask({ ...newTask, estimatedEffort: Number.parseFloat(e.target.value) });
@@ -206,6 +214,7 @@ export const AddTaskDialog = ({
               <Checkbox
                 id="create-more"
                 className="size-4.5"
+                data-testid={TEST_IDS.addTaskDialog.createMoreCheckbox}
                 checked={createMore}
                 onCheckedChange={checked => setCreateMore(checked === true)}
               />
@@ -222,10 +231,11 @@ export const AddTaskDialog = ({
                 variant="outline"
                 onClick={() => setIsOpen(false)}
                 className="flex-1 sm:flex-initial"
+                data-testid={TEST_IDS.addTaskDialog.cancelButton}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading} className="flex-1 sm:flex-initial">
+              <Button type="submit" disabled={isLoading} className="flex-1 sm:flex-initial" data-testid={TEST_IDS.addTaskDialog.submitButton}>
                 {isLoading ? 'Adding...' : 'Add Task'}
               </Button>
             </div>

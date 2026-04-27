@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: bun install
       - name: Run lint
-        run: bun run lint
+        run: bun run ci:lint
 
   dependency-audit:
     name: Dependency Audit
@@ -101,6 +101,21 @@ jobs:
     needs: unit-test
     env:
       CI: true
+      DATABASE_URL: postgres://postgres:password@127.0.0.1:5432/second-brain
+    services:
+      postgres:
+        image: postgres:17
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: second-brain
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 2s
+          --health-retries 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -112,6 +127,18 @@ jobs:
         run: bun install
       - name: Prepare Playwright environment
         run: cp .env.example .env.test
+      - name: Wait for Postgres to be ready
+        run: |
+          set -euo pipefail
+          echo "⏳ Waiting for Postgres on localhost:5432…"
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5432 -U postgres && break
+            sleep 1
+          done
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres || (echo "❌ Postgres did not become ready in time" && exit 1)
+          echo "✅ Postgres is accepting connections!"
+      - name: Run migrations
+        run: bun run db:migrate
       - name: Install Playwright browsers
         run: bun run playwright install --with-deps chromium
       - name: Run end-to-end tests

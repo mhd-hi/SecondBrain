@@ -8,7 +8,7 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 // Only initialize Sentry in production
 if (process.env.NODE_ENV === 'production') {
   Sentry.init({
-    dsn: process.env.SENTRY_DSN || 'null',
+    dsn: process.env.SENTRY_DSN || undefined,
 
     integrations: [
       Sentry.consoleLoggingIntegration({

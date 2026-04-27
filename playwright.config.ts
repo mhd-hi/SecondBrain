@@ -15,11 +15,8 @@ if (!hasLoadedTestEnv) {
   throw new Error('Playwright requires a dedicated .env.test file.');
 }
 
-const PORT = Number(process.env.PORT ?? '3000');
-const baseURL = `http://127.0.0.1:${PORT}`;
-const webServerCommand = process.env.CI
-  ? `bun run build && bun run start:e2e -- --port ${PORT}`
-  : `bun run dev:e2e -- --port ${PORT}`;
+const baseURL = `http://127.0.0.1:3000`;
+const PORT = process.env.PORT || 3000;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -40,11 +37,11 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
   webServer: {
-    command: webServerCommand,
+    command: process.env.CI ? `bun run start -- -p ${PORT}` : 'bun run dev',
     url: baseURL,
     env: {
       ...process.env,
-      PORT: String(PORT),
+      PORT: String(3000),
     },
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

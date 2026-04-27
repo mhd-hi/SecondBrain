@@ -1,5 +1,4 @@
 import type { NextRequest } from 'next/server';
-import type { Mock } from 'vitest';
 import { NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

@@ -168,11 +168,13 @@ jobs:
           fi
 
           changed_files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
-          printf '%s\n' "$changed_files"
+          echo "Checking for database migration changes..."
 
           if printf '%s\n' "$changed_files" | grep -Eq '^(drizzle/|src/server/db/schema\.ts$|drizzle\.config\.ts$)'; then
+            echo "Database migration changes detected. The 'Test DB Migration' job will run."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
+            echo "No database migration changes detected. The 'Test DB Migration' job will be skipped."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi
 

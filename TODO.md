@@ -14,19 +14,16 @@ Once we selected a task, and completed (or partially completed, as long as we cl
 
 # Tests
 ### Task Management Testing
-- Test add task (1 point)
-- Test remove task (1 point)
-- Test edit task (change date, title, subtasks) (3 points)
-- Test change task status (2 points)
-- Test Pomodoro effort tracking (user and task tables) (3 points)
-- Test add subtasks (1 point)
-- Test remove subtasks (1 point)
-- Test edit subtasks (2 points)
+- Test remove task
+- Test Pomodoro effort tracking (user and task tables)
+- Test add subtasks 
+- Test remove subtasks 
+- Test convert subtask to task
 
 ### Story: API and Middleware Testing
-- Test cron API and `cron-secret` route for deleting courses (3 points)
-- Test middleware using sensitive API endpoints (2 points)
+- Test cron API and `cron-secret` route for deleting courses
+- Test middleware using sensitive API endpoints
 
 ### Story: Course Management Testing
-- Test remove course (1 point)
-- Test task creation upon course addition (2 points)
+- Test remove course
+- Test task creation upon course addition

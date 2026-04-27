@@ -126,7 +126,9 @@ jobs:
       - name: Install dependencies
         run: bun install
       - name: Prepare Playwright environment
-        run: cp .env.example .env.test
+        run: |
+          cp .env.example .env.test
+          cp .env.example .env
       - name: Wait for Postgres to be ready
         run: |
           set -euo pipefail

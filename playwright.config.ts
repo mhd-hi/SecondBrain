@@ -1,19 +1,6 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
-let hasLoadedTestEnv = false;
-
-const testEnvPath = resolve(process.cwd(), '.env.test');
-
-if (existsSync(testEnvPath)) {
-  process.loadEnvFile(testEnvPath);
-  hasLoadedTestEnv = true;
-}
-
-if (!hasLoadedTestEnv) {
-  throw new Error('Playwright requires a dedicated .env.test file.');
-}
+process.loadEnvFile();
 
 const baseURL = `http://127.0.0.1:3000`;
 const PORT = process.env.PORT || 3000;

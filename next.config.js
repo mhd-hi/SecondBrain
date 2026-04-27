@@ -50,7 +50,9 @@ const config = {
 const nextConfig = {
   ...config,
   webpack(nextWebpackConfig) {
-    nextWebpackConfig.ignoreWarnings ??= [];
+    if (!nextWebpackConfig.ignoreWarnings) {
+      nextWebpackConfig.ignoreWarnings = [];
+    }
     nextWebpackConfig.ignoreWarnings.push({
       module: /@opentelemetry\/instrumentation\/build\/esm\/platform\/node\/instrumentation\.js/,
       message: /Critical dependency: the request of a dependency is an expression/,
@@ -81,21 +83,21 @@ const hasSentryBuildConfig = Boolean(
 
 export default hasSentryBuildConfig
   ? withSentryConfig(nextConfig, {
-      // Skip Sentry release and sourcemap upload work unless CI is fully configured.
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
+    // Skip Sentry release and sourcemap upload work unless CI is fully configured.
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
 
-      // Only print logs for uploading source maps in CI
-      silent: !process.env.CI,
+    // Only print logs for uploading source maps in CI
+    silent: !process.env.CI,
 
-      // Upload a larger set of source maps for prettier stack traces (increases build time)
-      widenClientFileUpload: true,
+    // Upload a larger set of source maps for prettier stack traces (increases build time)
+    widenClientFileUpload: true,
 
-      // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-      // This can increase your server load as well as your hosting bill.
-      // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-      // side errors will fail.
-      tunnelRoute: '/miaow',
-    })
+    // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
+    // This can increase your server load as well as your hosting bill.
+    // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
+    // side errors will fail.
+    tunnelRoute: '/miaow',
+  })
   : nextConfig;

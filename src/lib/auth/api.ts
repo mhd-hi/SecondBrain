@@ -10,17 +10,17 @@ export type AuthenticatedUser = {
 
 async function captureException(
   error: unknown,
-  context?: {
+  _context?: {
     tags?: Record<string, string>;
     extra?: Record<string, unknown>;
   },
 ) {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV === 'development') {
     return;
   }
 
-  const Sentry = await import('@sentry/core');
-  Sentry.captureException(error, context);
+  const Sentry = await import('@sentry/nextjs');
+  Sentry.captureException(error);
 }
 
 // Get the authenticated user from the server-side session.

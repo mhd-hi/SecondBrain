@@ -1,38 +1,90 @@
 import type { NextRequest } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuthSimple } from '@/lib/auth/api';
 import { db } from '@/server/db';
 import { tasks } from '@/server/db/schema';
+import { StatusTask } from '@/types/status-task';
+import { TASK_TYPES } from '@/types/task';
+
+const numericEffort = z.preprocess((value) => {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : 0.5;
+}, z.number().min(0));
+
+const TaskTypeSchema = z.enum([
+  TASK_TYPES.THEORIE,
+  TASK_TYPES.PRATIQUE,
+  TASK_TYPES.EXAM,
+  TASK_TYPES.HOMEWORK,
+  TASK_TYPES.LAB,
+]);
+
+const taskUpdateSchema = z.discriminatedUnion('input', [
+  z.object({ taskId: z.string().min(1), input: z.literal('title'), value: z.string() }),
+  z.object({ taskId: z.string().min(1), input: z.literal('notes'), value: z.string() }),
+  z.object({ taskId: z.string().min(1), input: z.literal('status'), value: z.nativeEnum(StatusTask) }),
+  z.object({ taskId: z.string().min(1), input: z.literal('estimatedEffort'), value: numericEffort }),
+  z.object({ taskId: z.string().min(1), input: z.literal('actualEffort'), value: numericEffort }),
+  z.object({
+    taskId: z.string().min(1),
+    input: z.literal('dueDate'),
+    value: z.preprocess((value) => {
+      if (value instanceof Date) {
+        return value;
+      }
+      if (typeof value === 'string' || typeof value === 'number') {
+        return new Date(value);
+      }
+      return value;
+    }, z.date()),
+  }),
+  z.object({ taskId: z.string().min(1), input: z.literal('type'), value: TaskTypeSchema }),
+]);
 
 export async function handleTaskUpdatePost(req: NextRequest, user: { id: string }) {
   try {
-    const { taskId, input, value } = await req.json();
-    const allowedFields = ['title', 'notes', 'status', 'estimatedEffort', 'actualEffort', 'dueDate', 'type'];
+    const parsed = taskUpdateSchema.safeParse(await req.json());
 
-    if (!allowedFields.includes(input)) {
-      console.error('Invalid field while updating task, field: ', input);
-      return NextResponse.json({ success: false, error: 'Invalid field' }, { status: 400 });
+    if (!parsed.success) {
+      const invalidFieldIssue = parsed.error.issues.some(issue => issue.path[0] === 'input');
+      return NextResponse.json(
+        { success: false, error: invalidFieldIssue ? 'Invalid field' : 'Invalid request payload' },
+        { status: 400 },
+      );
     }
 
-    const updateObj: Partial<typeof tasks.$inferSelect> = {};
+    const { taskId, input, value } = parsed.data;
+    const updateObj: Partial<typeof tasks.$inferInsert> = { updatedAt: new Date() };
 
-    if (input === 'dueDate') {
-      (updateObj as unknown as Record<string, unknown>)[input] = new Date(value);
-    } else if (input === 'estimatedEffort' || input === 'actualEffort') {
-      // sanitize numeric fields: coerce to number; if negative default to 0.5, otherwise clamp to >= 0
-      const num = Number(value);
-      const safe = Number.isFinite(num) ? (num < 0 ? 0.5 : Math.max(0, num)) : 0.5;
-      (updateObj as unknown as Record<string, unknown>)[input] = safe;
-    } else {
-      (updateObj as unknown as Record<string, unknown>)[input] = value;
+    switch (input) {
+      case 'dueDate':
+        updateObj.dueDate = value;
+        break;
+      case 'estimatedEffort':
+        updateObj.estimatedEffort = value;
+        break;
+      case 'actualEffort':
+        updateObj.actualEffort = value;
+        break;
+      case 'status':
+        updateObj.status = value;
+        break;
+      case 'title':
+        updateObj.title = value;
+        break;
+      case 'notes':
+        updateObj.notes = value;
+        break;
+      case 'type':
+        updateObj.type = value;
+        break;
     }
-
-    updateObj.updatedAt = new Date();
 
     try {
       const result = await db.update(tasks)
-        .set(updateObj as Partial<typeof tasks.$inferInsert>)
+        .set(updateObj)
         .where(and(eq(tasks.id, taskId), eq(tasks.userId, user.id)))
         .returning();
 

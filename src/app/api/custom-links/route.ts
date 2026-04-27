@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 import { AuthorizationError, withAuth } from '@/lib/auth/api';
 import { assertUserOwnsCourse } from '@/lib/auth/db';
@@ -9,6 +10,23 @@ import { validateUrl } from '@/lib/utils/url-util';
 import { db } from '@/server/db';
 import { customLinks } from '@/server/db/schema';
 import { LINK_TYPES } from '@/types/custom-link';
+
+const linkTypeSchema = z.union([
+  z.literal(LINK_TYPES.PLANETS),
+  z.literal(LINK_TYPES.MOODLE),
+  z.literal(LINK_TYPES.NOTEBOOK_LM),
+  z.literal(LINK_TYPES.SPOTIFY),
+  z.literal(LINK_TYPES.YOUTUBE),
+  z.literal(LINK_TYPES.CHATGPT),
+  z.literal(LINK_TYPES.CUSTOM),
+]);
+
+const createCustomLinkSchema = z.object({
+  title: z.string().trim().min(1),
+  url: z.string().trim().min(1),
+  type: linkTypeSchema.default(LINK_TYPES.CUSTOM),
+  courseId: z.string().trim().min(1).optional(),
+});
 
 function validateAndNormalizeUrl(raw: unknown) {
   if (typeof raw !== 'string') {
@@ -52,14 +70,14 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 // POST: create a new link for the authenticated user
 export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
-    const body = await req.json();
-    const { title, url, type = LINK_TYPES.CUSTOM, courseId } = body ?? {};
-
-    if (!title || !url) {
-      return NextResponse.json({ success: false, error: 'Missing title or url' }, { status: 400 });
+    const parsed = createCustomLinkSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request body' }, { status: 400 });
     }
 
+    const { title, url, type, courseId } = parsed.data;
     let normalizedUrl: string;
+
     try {
       normalizedUrl = validateAndNormalizeUrl(url);
     } catch (err) {

@@ -21,9 +21,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCourses } from '@/hooks/course/use-course-store';
 import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
 import { useTaskStore } from '@/lib/stores/task-store';
-import { buildDefaultTaskDraft } from '@/lib/utils/task/task-draft';
+import {
+  buildDefaultTaskDraft,
+  getTaskEstimatedEffortInputValue,
+  isValidTaskEstimatedEffort,
+  MIN_TASK_ESTIMATED_EFFORT,
+  parseTaskEstimatedEffortInput,
+} from '@/lib/utils/task/task-draft';
 import { TASK_TYPES } from '@/types/task';
 import { TEST_IDS } from '@/lib/testing/selectors';
+
+const ADD_TASK_DESCRIPTION_ID = 'add-task-description';
 
 type AddTaskDialogProps = {
   courseId?: string;
@@ -59,6 +67,7 @@ export const AddTaskDialog = ({
     [effectiveDueDate],
   );
   const [newTask, setNewTask] = React.useState(createTaskDraft);
+  const [estimatedEffortInput, setEstimatedEffortInput] = React.useState(() => getTaskEstimatedEffortInputValue(createTaskDraft().estimatedEffort));
   const [internalSelectedCourseId, setInternalSelectedCourseId] = React.useState<string | null>(null);
   const [createMore, setCreateMore] = React.useState(false);
   const titleInputRef = React.useRef<HTMLInputElement>(null);
@@ -80,6 +89,10 @@ export const AddTaskDialog = ({
   }, [isOpen, effectiveDueDate]);
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidTaskEstimatedEffort(newTask.estimatedEffort)) {
+      toast.error('Estimated effort must be at least 0.5 hours.');
+      return;
+    }
     if (!activeCourseId) {
       toast.error('Please select a course.');
       return;
@@ -89,7 +102,9 @@ export const AddTaskDialog = ({
       toast.success('Task added successfully');
 
       // Reset form
-      setNewTask(createTaskDraft());
+      const resetTask = createTaskDraft();
+      setNewTask(resetTask);
+      setEstimatedEffortInput(getTaskEstimatedEffortInputValue(resetTask.estimatedEffort));
 
       if (!createMore) {
         // Close dialog after successful addition
@@ -115,10 +130,10 @@ export const AddTaskDialog = ({
           )}
         </DialogTrigger>
       )}
-      <DialogContent data-testid={TEST_IDS.addTaskDialog.dialog}>
+      <DialogContent aria-describedby={ADD_TASK_DESCRIPTION_ID} data-testid={TEST_IDS.addTaskDialog.dialog}>
         <DialogHeader>
           <DialogTitle>Add Task</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id={ADD_TASK_DESCRIPTION_ID}>
             {activeCourse ? `Add a new task for ${activeCourse.code}` : 'Add a new task'}
           </DialogDescription>
         </DialogHeader>
@@ -200,11 +215,17 @@ export const AddTaskDialog = ({
                 type="number"
                 step="0.5"
                 data-testid={TEST_IDS.addTaskDialog.estimatedEffortInput}
-                value={newTask.estimatedEffort}
+                value={estimatedEffortInput}
                 onChange={(e) => {
-                  setNewTask({ ...newTask, estimatedEffort: Number.parseFloat(e.target.value) });
+                  const { value } = e.target;
+                  setEstimatedEffortInput(value);
+
+                  const parsedEffort = parseTaskEstimatedEffortInput(value);
+                  if (parsedEffort !== null) {
+                    setNewTask({ ...newTask, estimatedEffort: parsedEffort });
+                  }
                 }}
-                min="0.5"
+                min={MIN_TASK_ESTIMATED_EFFORT}
                 required
               />
             </div>

@@ -241,6 +241,7 @@ export function TaskCard({
                   date={task.dueDate ?? null}
                   onChange={d => saveDueDate(d ?? null)}
                   triggerTestId={TEST_IDS.task.dueDateTrigger}
+                  calendarTestId={TEST_IDS.task.dueDateCalendar}
                 />
               </span>
             </Badge>

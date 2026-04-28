@@ -30,6 +30,7 @@ export type AppFixture = {
   addCoursePage: {
     create: (options: {
       code: string;
+      name: string;
       school: keyof typeof SCHOOL_LABELS;
       daypart: keyof typeof DAYPART_LABELS;
       firstDayOfClass?: Date;
@@ -47,6 +48,21 @@ export type AppFixture = {
     }) => Promise<void>;
     searchTasks: (query: string) => Promise<void>;
     changeTaskStatus: (title: string, statusLabel: string) => Promise<void>;
+    editCourse: (options: { name: string; code: string }) => Promise<void>;
+    deleteCourse: () => Promise<void>;
+    goTo: (courseId: string) => Promise<void>;
+    assertOnCoursePage: (courseName: string) => Promise<void>;
+    taskCard: (title: string) => import('@playwright/test').Locator;
+    createTask: (task: { title: string; notes: string; dueDate: Date }) => Promise<void>;
+  };
+  taskPage: {
+    assertOnTaskPage: (taskTitle: string) => Promise<void>;
+    editTask: (task: { title: string; notes: string; dueDate: Date }) => Promise<void>;
+    deleteTask: () => Promise<void>;
+    createSubtask: (title: string) => Promise<void>;
+    completeSubtask: (title: string) => Promise<void>;
+    deleteSubtask: (title: string) => Promise<void>;
+    subtask: (title: string) => import('@playwright/test').Locator;
   };
 };
 
@@ -137,6 +153,36 @@ export async function createAppFixture({
       },
     },
     coursePage: {
+      goTo: async (courseId: string) => {
+        await page.goto(`/courses/${courseId}`);
+      },
+      assertOnCoursePage: async (courseName: string) => {
+        await expect(
+          page.getByRole('heading', { name: courseName }),
+        ).toBeVisible();
+      },
+      taskCard: (title: string) => {
+        return page.getByRole('link', { name: title });
+      },
+      createTask: async (task: { title: string; notes: string; dueDate: Date }) => {
+        await page.getByRole('button', { name: 'Add Task' }).click();
+        await page.getByLabel('Title').fill(task.title);
+        await page.getByLabel('Notes').fill(task.notes);
+        await page.getByLabel('Due Date').fill(task.dueDate.toISOString().slice(0, 10));
+        await page.getByRole('button', { name: 'Create' }).click();
+      },
+      editCourse: async ({ name, code }) => {
+        await page.getByRole('button', { name: 'Actions' }).click();
+        await page.getByRole('menuitem', { name: 'Edit' }).click();
+        await page.getByLabel('Name').fill(name);
+        await page.getByLabel('Code').fill(code);
+        await page.getByRole('button', { name: 'Save' }).click();
+      },
+      deleteCourse: async () => {
+        await page.getByRole('button', { name: 'Actions' }).click();
+        await page.getByRole('menuitem', { name: 'Delete' }).click();
+        await page.getByRole('button', { name: 'Confirm' }).click();
+      },
       addTask: async ({ title, notes, type, dueDate, estimatedEffort }) => {
         await expect(page.getByTestId(TEST_IDS.coursePage.page)).toBeVisible();
 
@@ -191,6 +237,37 @@ export async function createAppFixture({
         await page.getByRole('menuitem', { name: statusLabel, exact: true }).click();
 
         await expect(taskCard.getByTestId(TEST_IDS.task.statusTrigger)).toContainText(statusLabel);
+      },
+    },
+    taskPage: {
+      assertOnTaskPage: async (taskTitle: string) => {
+        await expect(
+          page.getByRole('heading', { name: taskTitle }),
+        ).toBeVisible();
+      },
+      editTask: async (task: { title: string; notes: string; dueDate: Date }) => {
+        await page.getByRole('button', { name: 'Edit' }).click();
+        await page.getByLabel('Title').fill(task.title);
+        await page.getByLabel('Notes').fill(task.notes);
+        await page.getByLabel('Due Date').fill(task.dueDate.toISOString().slice(0, 10));
+        await page.getByRole('button', { name: 'Save' }).click();
+      },
+      deleteTask: async () => {
+        await page.getByRole('button', { name: 'Delete' }).click();
+        await page.getByRole('button', { name: 'Confirm' }).click();
+      },
+      createSubtask: async (title: string) => {
+        await page.getByPlaceholder('Add subtask...').fill(title);
+        await page.getByRole('button', { name: 'Add' }).click();
+      },
+      completeSubtask: async (title: string) => {
+        await page.getByTestId(`subtask-${title}`).getByRole('checkbox').check();
+      },
+      deleteSubtask: async (title: string) => {
+        await page.getByTestId(`subtask-${title}`).getByRole('button', { name: 'Delete' }).click();
+      },
+      subtask: (title: string) => {
+        return page.getByTestId(`subtask-${title}`);
       },
     },
   };

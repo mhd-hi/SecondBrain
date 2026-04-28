@@ -1,4 +1,5 @@
 import type { BrowserContext, Route } from '@playwright/test';
+import type { TCourseColor } from '@/types/colors';
 import type { Daypart } from '@/types/course';
 import type { StatusTask } from '@/types/status-task';
 import type { TaskType } from '@/types/task';
@@ -60,6 +61,61 @@ export async function installMockApiRoutes(context: BrowserContext, store: MockD
       return json(route, 200, { id: result.course.id });
     }
 
+    if (method === 'GET' && pathname.startsWith('/api/courses/')) {
+      const courseId = pathname.split('/')[3];
+
+      if (!courseId) {
+        return json(route, 400, { error: 'Course id is required' });
+      }
+
+      const course = store.getCourseDetail(courseId);
+
+      if (!course) {
+        return json(route, 404, { error: 'Course not found' });
+      }
+
+      return json(route, 200, course);
+    }
+
+    if (method === 'PATCH' && pathname.startsWith('/api/courses/')) {
+      const courseId = pathname.split('/')[3];
+
+      if (!courseId) {
+        return json(route, 400, { error: 'Course id is required' });
+      }
+
+      const body = request.postDataJSON() as Partial<{
+        code: string;
+        name: string;
+        color: TCourseColor;
+        daypart: Daypart;
+      }>;
+
+      const updated = store.updateCourse(courseId, body);
+
+      if (!updated) {
+        return json(route, 404, { error: 'Course not found or access denied' });
+      }
+
+      return json(route, 200, updated);
+    }
+
+    if (method === 'DELETE' && pathname.startsWith('/api/courses/')) {
+      const courseId = pathname.split('/')[3];
+
+      if (!courseId) {
+        return json(route, 400, { error: 'Course id is required' });
+      }
+
+      const deleted = store.deleteCourse(courseId);
+
+      if (!deleted) {
+        return json(route, 404, { error: 'Course not found or access denied' });
+      }
+
+      return json(route, 200, { success: true });
+    }
+
     if (method === 'GET' && pathname === '/api/tasks/focus') {
       return json(route, 200, []);
     }
@@ -85,6 +141,11 @@ export async function installMockApiRoutes(context: BrowserContext, store: MockD
           status?: StatusTask;
           estimatedEffort: number;
           dueDate: string;
+          subtasks?: Array<{
+            id?: string;
+            title?: string;
+            notes?: string;
+          }>;
         }>;
       };
 
@@ -95,6 +156,123 @@ export async function installMockApiRoutes(context: BrowserContext, store: MockD
       }
 
       return json(route, 200, store.createTasks(body.courseId, body.tasks));
+    }
+
+    if (method === 'GET' && /^\/api\/tasks\/[^/]+$/.test(pathname)) {
+      const taskId = pathname.split('/')[3];
+
+      if (!taskId) {
+        return json(route, 400, { error: 'Task id is required' });
+      }
+
+      const task = store.getTaskById(taskId);
+
+      if (!task) {
+        return json(route, 404, { error: 'Task not found' });
+      }
+
+      return json(route, 200, store.buildTaskResponse(task));
+    }
+
+    if (method === 'POST' && pathname === '/api/tasks/update') {
+      const body = request.postDataJSON() as {
+        taskId: string;
+        input: 'title' | 'notes' | 'status' | 'estimatedEffort' | 'actualEffort' | 'dueDate' | 'type';
+        value: string | number | StatusTask;
+      };
+
+      const updated = store.updateTaskField(body.taskId, body.input, body.value);
+
+      if (!updated) {
+        return json(route, 404, { error: 'Task not found or access denied' });
+      }
+
+      return json(route, 200, updated);
+    }
+
+    if (method === 'POST' && pathname === '/api/subtasks/update') {
+      const body = request.postDataJSON() as {
+        id: string;
+        input: 'title' | 'notes';
+        value: string;
+      };
+
+      const updated = store.updateSubtaskField(body.id, body.input, body.value);
+
+      if (!updated) {
+        return json(route, 404, { success: false, error: 'Subtask not found' });
+      }
+
+      return json(route, 200, { success: true, updated });
+    }
+
+    if (method === 'POST' && /^\/api\/tasks\/[^/]+\/subtasks$/.test(pathname)) {
+      const taskId = pathname.split('/')[3];
+
+      if (!taskId) {
+        return json(route, 400, { error: 'Task id is required' });
+      }
+
+      const body = request.postDataJSON() as {
+        id?: string;
+        title?: string;
+        notes?: string;
+      };
+
+      const created = store.createSubtask(taskId, body);
+
+      if (!created) {
+        return json(route, 404, { error: 'Task not found or unauthorized' });
+      }
+
+      return json(route, 200, created);
+    }
+
+    if (method === 'PATCH' && /^\/api\/tasks\/[^/]+$/.test(pathname)) {
+      const taskId = pathname.split('/')[3];
+
+      if (!taskId) {
+        return json(route, 400, { error: 'Task id is required' });
+      }
+
+      const body = request.postDataJSON() as {
+        title?: string;
+        notes?: string;
+        type?: TaskType;
+        status?: StatusTask;
+        estimatedEffort?: number;
+        actualEffort?: number;
+        dueDate?: string;
+        subtasks?: Array<{
+          id?: string;
+          title?: string;
+          notes?: string;
+        }>;
+      };
+
+      const updated = store.updateTask(taskId, body);
+
+      if (!updated) {
+        return json(route, 404, { error: 'Task not found or access denied' });
+      }
+
+      return json(route, 200, updated);
+    }
+
+    if (method === 'DELETE' && /^\/api\/tasks\/[^/]+$/.test(pathname)) {
+      const taskId = pathname.split('/')[3];
+
+      if (!taskId) {
+        return json(route, 400, { error: 'Task id is required' });
+      }
+
+      const deleted = store.deleteTask(taskId);
+
+      if (!deleted) {
+        return json(route, 404, { error: 'Task not found or access denied' });
+      }
+
+      return json(route, 200, { success: true });
     }
 
     if (method === 'PATCH' && pathname.startsWith('/api/tasks/') && pathname.endsWith('/status')) {
@@ -112,6 +290,22 @@ export async function installMockApiRoutes(context: BrowserContext, store: MockD
       }
 
       return json(route, 200, task);
+    }
+
+    if (method === 'DELETE' && /^\/api\/tasks\/[^/]+\/subtasks\/[^/]+$/.test(pathname)) {
+      const [, , , taskId, , subtaskId] = pathname.split('/');
+
+      if (!taskId || !subtaskId) {
+        return json(route, 400, { error: 'Task id and subtask id are required' });
+      }
+
+      const deleted = store.deleteSubtask(taskId, subtaskId);
+
+      if (!deleted) {
+        return json(route, 404, { error: 'Subtask not found' });
+      }
+
+      return json(route, 200, { success: true });
     }
 
     if (method === 'GET' && pathname === '/api/custom-links') {

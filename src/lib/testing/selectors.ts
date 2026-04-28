@@ -55,5 +55,6 @@ export const TEST_IDS = {
     statusTrigger: 'task-status-trigger',
     nextStatusButton: 'task-next-status-button',
     dueDateTrigger: 'task-due-date-trigger',
+    dueDateCalendar: 'task-due-date-calendar',
   },
 } as const;

@@ -11,12 +11,26 @@ function normalizeInternalPath(path: string | undefined, fallbackPath: string) {
   }
 
   const trimmedPath = path.trim();
+  const decodedPath = decodeSafe(trimmedPath);
 
-  if (!trimmedPath || !trimmedPath.startsWith('/') || trimmedPath.startsWith('//')) {
+  if (
+    !trimmedPath
+    || !trimmedPath.startsWith('/')
+    || trimmedPath.startsWith('//')
+    || decodedPath.startsWith('//')
+  ) {
     return fallbackPath;
   }
 
   return trimmedPath;
+}
+
+function decodeSafe(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 export function normalizeCallbackUrl(
@@ -39,7 +53,7 @@ export function normalizeCallbackUrl(
   }
 
   if (trimmedUrl.startsWith('/')) {
-    return trimmedUrl.startsWith('//') ? fallbackPath : trimmedUrl;
+    return normalizeInternalPath(trimmedUrl, fallbackPath);
   }
 
   if (!options.baseUrl) {

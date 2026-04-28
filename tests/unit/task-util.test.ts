@@ -5,15 +5,16 @@ import * as taskUtil from '@/lib/utils/task/task-util';
 import * as termUtil from '@/lib/utils/term-util';
 import { StatusTask } from '@/types/status-task';
 import { TASK_TYPES } from '@/types/task';
+import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
 describe('task-util', () => {
   beforeEach(() => {
     // Freeze time so overdue calculations are deterministic
-    vi.setSystemTime(new Date(2026, 1, 14, 12, 0, 0)); // 2026-02-14
+    setSystemDate(new Date(2026, 1, 14, 12, 0, 0)); // 2026-02-14
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    restoreSystemDate();
   });
 
   it('calculateDueDateTaskForTerm: week 1 and week offsets, clamps to term end', () => {

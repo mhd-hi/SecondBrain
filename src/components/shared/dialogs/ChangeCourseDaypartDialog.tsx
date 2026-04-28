@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCourse } from '@/hooks/course/use-course';
 
+const CHANGE_COURSE_DAYPART_DESCRIPTION_ID = 'change-course-daypart-description';
+
 type Props = {
   courseId: string;
   open: boolean;
@@ -47,9 +49,12 @@ export const ChangeCourseDaypartDialog = ({ courseId, open, onOpenChange, curren
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent aria-describedby={CHANGE_COURSE_DAYPART_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Change lecture daypart</DialogTitle>
+          <p id={CHANGE_COURSE_DAYPART_DESCRIPTION_ID} className="text-sm text-muted-foreground">
+            Update when this course usually happens.
+          </p>
         </DialogHeader>
         <div className="mt-2">
           <Select value={value} onValueChange={(v: string) => setValue(v as Daypart)}>

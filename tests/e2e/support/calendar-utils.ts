@@ -37,10 +37,9 @@ export async function pickCalendarDate(trigger: Locator, calendar: Locator, date
 
   await goToCalendarMonth(calendar, date);
 
-  const dayButton = calendar.getByRole('button', {
-    name: format(date, 'do MMMM (EEEE)'),
-    exact: true,
-  });
+  const dayButton = calendar.locator('tbody button:not(.day-outside)').filter({
+    hasText: new RegExp(`^${date.getDate()}$`),
+  }).first();
 
   await dayButton.click();
 

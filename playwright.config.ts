@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.e2e.ts'],
   timeout: 60_000,
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? 'github' : 'list',

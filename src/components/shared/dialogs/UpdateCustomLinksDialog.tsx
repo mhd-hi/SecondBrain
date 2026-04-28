@@ -16,6 +16,7 @@ import { normalizeUrl, validateUrl } from '@/lib/utils/url-util';
 import { LINK_TYPES } from '@/types/custom-link';
 
 type EditingEntry = { title: string; url: string; type: CustomLink };
+const UPDATE_CUSTOM_LINKS_DESCRIPTION_ID = 'update-custom-links-description';
 
 type UpdateCustomLinksDialogProps = {
   courseId: string;
@@ -126,9 +127,12 @@ const UpdateCustomLinksDialog = ({ courseId, open, onOpenChange }: UpdateCustomL
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent>
+      <DialogContent aria-describedby={UPDATE_CUSTOM_LINKS_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Update Links</DialogTitle>
+          <p id={UPDATE_CUSTOM_LINKS_DESCRIPTION_ID} className="text-sm text-muted-foreground">
+            Edit or remove the saved links for this course.
+          </p>
         </DialogHeader>
 
         <div className="space-y-4 max-h-[60vh] overflow-auto py-2">

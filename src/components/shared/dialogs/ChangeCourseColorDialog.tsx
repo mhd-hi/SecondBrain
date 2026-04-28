@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCourse } from '@/hooks/course/use-course';
 import { COURSE_COLORS } from '@/lib/utils/colors-util';
 
+const CHANGE_COURSE_COLOR_DESCRIPTION_ID = 'change-course-color-description';
+
 type Props = {
   courseId: string;
   open: boolean;
@@ -40,9 +42,12 @@ export const ChangeCourseColorDialog = ({ courseId, open, onOpenChange, currentC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent aria-describedby={CHANGE_COURSE_COLOR_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Change Course Color</DialogTitle>
+          <p id={CHANGE_COURSE_COLOR_DESCRIPTION_ID} className="text-sm text-muted-foreground">
+            Choose a new color for this course.
+          </p>
         </DialogHeader>
         <div className="flex flex-col gap-4 mt-2">
           <div className="flex flex-col gap-2">

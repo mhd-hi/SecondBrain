@@ -17,6 +17,7 @@ import { isValidCourseCode, normalizeCourseCode } from '@/lib/utils/course/cours
 import { PipelineErrorHandlers } from '@/lib/utils/errors/error';
 import { MAX_USER_CONTEXT_LENGTH } from '@/lib/utils/sanitize';
 import { getDatesForTerm, getNormalizedValidTermId } from '@/lib/utils/term-util';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 export default function AddCoursePage() {
   const router = useRouter();
@@ -160,7 +161,7 @@ export default function AddCoursePage() {
   };
 
   return (
-    <main className="container mx-auto mt-2 mb-3.5 flex min-h-screen flex-col gap-6 px-8">
+    <main className="container mx-auto mt-2 mb-3.5 flex min-h-screen flex-col gap-6 px-8" data-testid={TEST_IDS.addCourse.page}>
       <div>
         <h1 className="text-foreground text-3xl font-bold">
           <NotebookText className="align-text-middle mr-2 inline-block h-7 w-7" />
@@ -184,7 +185,7 @@ export default function AddCoursePage() {
 
         {/* Success Display */}
         {currentStep === 'completed' && createdCourseId && (
-          <Alert>
+          <Alert data-testid={TEST_IDS.addCourse.successAlert}>
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Course Created Successfully!</AlertTitle>
             <AlertDescription>

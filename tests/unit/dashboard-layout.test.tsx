@@ -1,13 +1,12 @@
-/* eslint-disable ts/no-explicit-any */
-import type { Mock } from 'vitest';
-import { redirect } from 'next/navigation';
 import * as React from 'react';
 import { isValidElement } from 'react';
+import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROUTES } from '@/lib/page-routes';
 
 const authMock = vi.fn();
 const getUserCourseSummariesMock = vi.fn();
+const redirectMock = vi.fn();
 
 vi.mock('@/lib/auth/db', () => ({
   assertUserOwnsCourse: vi.fn(),
@@ -26,7 +25,12 @@ vi.mock('@/lib/auth/course-summaries', () => ({
 }));
 vi.mock('@/server/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({
-  redirect: vi.fn(),
+  redirect: (...args: unknown[]) => redirectMock(...args),
+  usePathname: vi.fn(() => '/dashboard'),
+  useRouter: vi.fn(),
+}));
+vi.mock('next/navigation.js', () => ({
+  redirect: (...args: unknown[]) => redirectMock(...args),
   usePathname: vi.fn(() => '/dashboard'),
   useRouter: vi.fn(),
 }));
@@ -42,14 +46,14 @@ describe('dashboard layout auth guard', () => {
   it('redirects unauthenticated users to the sign-in page', async () => {
     const { default: DashboardLayout } = await import('@/app/(dashboard)/layout');
     const redirectError = new Error('redirect');
-    (authMock as unknown as Mock).mockResolvedValue(null as any);
-    (redirect as unknown as Mock).mockImplementation(() => {
+    authMock.mockResolvedValue(null);
+    (redirectMock as unknown as Mock).mockImplementation(() => {
       throw redirectError;
     });
 
     await expect(DashboardLayout({ children: <div>Private</div> })).rejects.toBe(redirectError);
 
-    expect(redirect).toHaveBeenCalledWith(ROUTES.SIGNIN);
+    expect(redirectMock).toHaveBeenCalledWith(ROUTES.SIGNIN);
     expect(getUserCourseSummariesMock).not.toHaveBeenCalled();
   });
 
@@ -57,12 +61,12 @@ describe('dashboard layout auth guard', () => {
     const { default: DashboardLayout } = await import('@/app/(dashboard)/layout');
     const session = { user: { id: 'user-123' } };
     const initialCourses = [{ id: 'course-1', code: 'LOG210', name: 'Software Construction', color: 'blue', daypart: 'AM' }];
-    (authMock as unknown as Mock).mockResolvedValue(session as any);
-    getUserCourseSummariesMock.mockResolvedValue(initialCourses as any);
+    authMock.mockResolvedValue(session);
+    getUserCourseSummariesMock.mockResolvedValue(initialCourses);
 
     const result = await DashboardLayout({ children: <span>Private</span> });
 
-    expect(redirect).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
     expect(getUserCourseSummariesMock).toHaveBeenCalledWith('user-123');
     expect(result.props).toMatchObject({
       initialCourses,

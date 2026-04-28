@@ -1,5 +1,5 @@
-/* eslint-disable ts/no-explicit-any */
 import type { Mock } from 'vitest';
+import type { TEvent } from '@/calendar/types';
 import * as dateFns from 'date-fns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getEventEnd, getEventStart } from '../../src/calendar/date-utils';
@@ -30,6 +30,7 @@ vi.mock('date-fns', () => {
 });
 
 const createLocalDate = (year: number, month: number, day: number) => new Date(year, month - 1, day, 12);
+type ParsedEvent = TEvent & { startDateObj?: Date; endDateObj?: Date };
 
 describe('date-util', () => {
   beforeEach(() => {
@@ -96,7 +97,7 @@ describe('date-util', () => {
 
   describe('calendar date-utils', () => {
     it('parses ISO start/end and caches the Date objects', () => {
-      const ev: any = {
+      const ev: ParsedEvent = {
         id: '1',
         startDate: '2026-02-14',
         endDate: '2026-02-15',
@@ -110,8 +111,8 @@ describe('date-util', () => {
 
       expect(s).toBeInstanceOf(Date);
       expect(e).toBeInstanceOf(Date);
-      expect((ev as any).startDateObj).toBe(s);
-      expect((ev as any).endDateObj).toBe(e);
+      expect(ev.startDateObj).toBe(s);
+      expect(ev.endDateObj).toBe(e);
       expect(s.getFullYear()).toBe(2026);
       expect(s.getMonth()).toBe(1);
       expect(s.getDate()).toBe(14);
@@ -124,7 +125,7 @@ describe('date-util', () => {
       const start = new Date(2020, 0, 1);
       const end = new Date(2020, 0, 2);
 
-      const ev: any = {
+      const ev: ParsedEvent = {
         id: '2',
         startDate: '2020-01-01',
         endDate: '2020-01-02',
@@ -144,7 +145,7 @@ describe('date-util', () => {
         throw new Error('boom');
       });
 
-      const ev: any = {
+      const ev: ParsedEvent = {
         id: '3',
         startDate: '02/14/2026',
         endDate: '02/15/2026',

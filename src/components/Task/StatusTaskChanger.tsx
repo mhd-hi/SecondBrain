@@ -14,6 +14,8 @@ import { StatusTask } from '@/types/status-task';
 type StatusTaskChangerProps = {
   currentStatus: StatusTask;
   onStatusChange: (newStatus: StatusTask) => void;
+  triggerTestId?: string;
+  cycleButtonTestId?: string;
 };
 
 const USER_STATUS_ORDER = [
@@ -22,7 +24,12 @@ const USER_STATUS_ORDER = [
   StatusTask.COMPLETED,
 ] as const;
 
-const StatusTaskChanger = ({ currentStatus, onStatusChange }: StatusTaskChangerProps) => {
+const StatusTaskChanger = ({
+  currentStatus,
+  onStatusChange,
+  triggerTestId,
+  cycleButtonTestId,
+}: StatusTaskChangerProps) => {
   const handleArrowClick = () => {
     onStatusChange(getNextStatusTask(currentStatus));
   };
@@ -56,6 +63,7 @@ const StatusTaskChanger = ({ currentStatus, onStatusChange }: StatusTaskChangerP
               getStatusTextClass(validStatus),
             )}
             aria-label="Change task status"
+            data-testid={triggerTestId}
           >
             {config.label}
           </button>
@@ -102,6 +110,7 @@ const StatusTaskChanger = ({ currentStatus, onStatusChange }: StatusTaskChangerP
           getStatusTextClass(validStatus),
         )}
         aria-label="Cycle to next status"
+        data-testid={cycleButtonTestId}
       >
         <ChevronRight className="w-3 h-3" />
       </button>

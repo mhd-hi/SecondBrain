@@ -13,6 +13,9 @@
     /* Path Aliases */
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "types": [
+      "node"
+    ],
     "paths": {
       "@/*": [
         "./src/*"
@@ -36,6 +39,8 @@
   },
   "include": [
     "next-env.d.ts",
+    "playwright.config.ts",
+    "vitest.config.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.js",

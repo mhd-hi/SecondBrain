@@ -48,6 +48,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getAddCoursePath, getCoursePath, ROUTES } from '@/lib/page-routes';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 type SidebarProps = {
   courses: CourseListItem[];
@@ -62,7 +63,7 @@ export function AppSidebar({ courses, isLoading = false }: SidebarProps) {
   const isMobile = useIsMobile();
 
   return (
-    <Sidebar collapsible="icon" className="h-screen">
+    <Sidebar collapsible="icon" className="h-screen" data-testid={TEST_IDS.shell.sidebar}>
       <SidebarHeader>
         <AppLogo />
       </SidebarHeader>
@@ -121,7 +122,7 @@ export function AppSidebar({ courses, isLoading = false }: SidebarProps) {
                       return (
                         <SidebarMenuItem key={course.id}>
                           <SidebarMenuButton asChild isActive={isActive}>
-                            <Link href={getCoursePath(course.id)}>
+                            <Link href={getCoursePath(course.id)} data-testid={TEST_IDS.shell.sidebarCourseLink}>
                               <NotebookText
                                 className="size-4"
                                 style={{ color: course.color }}
@@ -161,7 +162,7 @@ export function AppSidebar({ courses, isLoading = false }: SidebarProps) {
 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton className="group/user-menu h-12 w-full">
+                  <SidebarMenuButton className="group/user-menu h-12 w-full" data-testid={TEST_IDS.shell.authMenuTrigger}>
                     {session.user?.image && (
                       <Image
                         src={session.user.image}

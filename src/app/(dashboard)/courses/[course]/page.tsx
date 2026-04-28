@@ -33,6 +33,7 @@ import { handleConfirm } from '@/lib/utils/dialog-util';
 import { CommonErrorMessages, ErrorHandlers } from '@/lib/utils/errors/error';
 import { getOverdueTasks } from '@/lib/utils/task/task-util';
 import { StatusTask } from '@/types/status-task';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 type CoursePageProps = {
   params: Promise<{
@@ -259,7 +260,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   }
 
   return (
-    <main className="container mx-auto px-8 flex min-h-screen flex-col mt-6 mb-8">
+    <main className="container mx-auto px-8 flex min-h-screen flex-col mt-6 mb-8" data-testid={TEST_IDS.coursePage.page}>
 
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-4">
@@ -283,6 +284,7 @@ export default function CoursePage({ params }: CoursePageProps) {
             overdueTasks={overdueTasks.map(task => ({ id: task.id, title: task.title, dueDate: task.dueDate ? String(task.dueDate) : undefined }))}
             triggerText="Actions"
             contentAlign="end"
+            triggerTestId={TEST_IDS.coursePage.actionsTrigger}
           />
             <UpdateCustomLinksDialog open={showManageLinks} onOpenChange={setShowManageLinks} courseId={course.id} />
           <CourseUpdateDialog
@@ -337,11 +339,12 @@ export default function CoursePage({ params }: CoursePageProps) {
                 value={searchQuery}
                 onChange={setSearchQuery}
                 className="flex-1"
+                inputTestId={TEST_IDS.coursePage.searchInput}
               />
               <AddTaskDialog
                 courseId={course.id}
                 trigger={(
-                  <Button>
+                  <Button data-testid={TEST_IDS.coursePage.addTaskButton}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Task
                   </Button>
@@ -366,7 +369,7 @@ export default function CoursePage({ params }: CoursePageProps) {
 
             {filteredTasks.length > 0
               ? (
-                <div className="space-y-5 will-change-scroll mt-7">
+                <div className="space-y-5 will-change-scroll mt-7" data-testid={TEST_IDS.coursePage.taskList}>
                   {Object.entries(tasksByWeek)
                     .sort(([a], [b]) => Number(a) - Number(b))
                     .map(([week, weekTasks]) => (
@@ -396,14 +399,14 @@ export default function CoursePage({ params }: CoursePageProps) {
               )
               : searchQuery.trim()
                 ? (
-                  <div className="text-center text-muted-foreground py-12">
+                  <div className="text-center text-muted-foreground py-12" data-testid={TEST_IDS.coursePage.emptyState}>
                     No tasks found matching &quot;
                     {searchQuery}
                     &quot;. Try a different search term.
                   </div>
                 )
                 : (
-                  <div className="text-center text-muted-foreground py-12">
+                  <div className="text-center text-muted-foreground py-12" data-testid={TEST_IDS.coursePage.emptyState}>
                     No tasks found. Add a task to get started.
                   </div>
                 )}

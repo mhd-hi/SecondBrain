@@ -16,13 +16,13 @@ export async function parseContentWithAI(
   userContext?: string,
 ): Promise<ParseAIResult> {
   const prompt = buildCoursePlanParsePrompt(html, userContext);
-  Sentry.logger.info('Reporting OpenAI payload to Sentry', {
+  await Sentry.logger.info('Reporting OpenAI payload to Sentry', {
     htmlLength: html.length,
     userContextLength: userContext?.length ?? 0,
     userContextPreview: userContext?.slice(0, 500) ?? '',
     promptLength: prompt.length,
   });
-  Sentry.captureException(new Error('OpenAI payload sent'), {
+  await Sentry.captureException(new Error('OpenAI payload sent'), {
     htmlLength: html.length,
     userContextLength: userContext?.length ?? 0,
     userContextPreview: userContext?.slice(0, 500) ?? '',

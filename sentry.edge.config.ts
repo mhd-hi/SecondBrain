@@ -4,16 +4,17 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs';
-import { consoleLoggingConfig } from '@/lib/sentry-utils';
 
 // Only initialize Sentry in production
 if (process.env.NODE_ENV === 'production') {
   Sentry.init({
-    dsn: process.env.SENTRY_DSN || 'null',
+    dsn: process.env.SENTRY_DSN || undefined,
 
     // Add optional integrations for additional features
     integrations: [
-      consoleLoggingConfig,
+      Sentry.consoleLoggingIntegration({
+        levels: ['log', 'warn', 'error'],
+      }),
     ],
 
     // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.

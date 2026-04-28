@@ -4,6 +4,10 @@ import {
   buildTaskFromSubtask,
   DEFAULT_TASK_ESTIMATED_EFFORT,
   getDefaultTaskDueDate,
+  getTaskEstimatedEffortInputValue,
+  isValidTaskEstimatedEffort,
+  MIN_TASK_ESTIMATED_EFFORT,
+  parseTaskEstimatedEffortInput,
 } from '@/lib/utils/task/task-draft';
 import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
@@ -65,5 +69,24 @@ describe('task draft utils', () => {
 
     expect(draft.dueDate.toISOString()).toBe('2026-05-20T12:00:00.000Z');
     expect(draft.estimatedEffort).toBe(DEFAULT_TASK_ESTIMATED_EFFORT);
+  });
+
+  it('formats estimated effort values for numeric inputs', () => {
+    expect(getTaskEstimatedEffortInputValue(DEFAULT_TASK_ESTIMATED_EFFORT)).toBe('3');
+    expect(getTaskEstimatedEffortInputValue(1.5)).toBe('1.5');
+  });
+
+  it('parses estimated effort input strings and rejects invalid numbers', () => {
+    expect(parseTaskEstimatedEffortInput('2.5')).toBe(2.5);
+    expect(parseTaskEstimatedEffortInput(' 1 ')).toBe(1);
+    expect(parseTaskEstimatedEffortInput('')).toBeNull();
+    expect(parseTaskEstimatedEffortInput('abc')).toBeNull();
+  });
+
+  it('validates estimated effort against the shared minimum', () => {
+    expect(isValidTaskEstimatedEffort(MIN_TASK_ESTIMATED_EFFORT)).toBe(true);
+    expect(isValidTaskEstimatedEffort(2)).toBe(true);
+    expect(isValidTaskEstimatedEffort(0.25)).toBe(false);
+    expect(isValidTaskEstimatedEffort(Number.NaN)).toBe(false);
   });
 });

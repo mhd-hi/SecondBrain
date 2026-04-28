@@ -4,15 +4,16 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import { consoleLoggingConfig } from '@/lib/sentry-utils';
 
 // Only initialize Sentry in production
 if (process.env.NODE_ENV === 'production') {
   Sentry.init({
-    dsn: process.env.SENTRY_DSN || 'null',
+    dsn: process.env.SENTRY_DSN || undefined,
 
     integrations: [
-      consoleLoggingConfig,
+      Sentry.consoleLoggingIntegration({
+        levels: ['log', 'warn', 'error'],
+      }),
       nodeProfilingIntegration(),
     ],
 

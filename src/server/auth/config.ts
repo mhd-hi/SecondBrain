@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/server/db';
+import { AUTH_SESSION_MAX_AGE_SECONDS } from './session-contract';
 import { sharedAuthConfig } from './shared-config';
 
 /**
@@ -11,7 +12,7 @@ export const authConfig = {
   adapter: DrizzleAdapter(db),
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
   },
   debug: process.env.NODE_ENV === 'development',
 } satisfies NextAuthConfig;

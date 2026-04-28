@@ -162,6 +162,13 @@
       "when": 1776752787090,
       "tag": "0022_oval_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1776918454968,
+      "tag": "0023_clever_nextwave",
+      "breakpoints": true
     }
   ]
 }

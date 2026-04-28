@@ -10,6 +10,7 @@ type SearchBarProps = {
   name: string;
   onChange: (value: string) => void;
   className?: string;
+  inputTestId?: string;
 };
 
 export function SearchBar({
@@ -19,6 +20,7 @@ export function SearchBar({
   name,
   onChange,
   className = '',
+  inputTestId,
 }: SearchBarProps) {
   return (
     <div className={`relative ${className}`}>
@@ -26,6 +28,7 @@ export function SearchBar({
       <Input
         id={id}
         name={name}
+        data-testid={inputTestId}
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}

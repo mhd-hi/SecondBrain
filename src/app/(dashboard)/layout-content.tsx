@@ -8,6 +8,7 @@ import { AppSidebar } from '@/components/shared/Navigation/Sidebar/sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { useCourseOperations } from '@/hooks/course/use-course-store';
 import { getCourseListItemsFromCourses } from '@/lib/stores/course-store';
+import { TEST_IDS } from '@/lib/testing/selectors';
 
 export default function DashboardLayoutContent({
   children,
@@ -29,7 +30,7 @@ export default function DashboardLayoutContent({
 
   return (
     <SidebarProvider>
-      <div className="flex w-full">
+      <div className="flex w-full" data-testid={TEST_IDS.shell.layout}>
         <AppSidebar courses={sidebarCourses} isLoading={sidebarIsLoading} onCourseAdded={refreshCourses} />
         <SidebarInset className="flex flex-1 flex-col">
           <Navbar />

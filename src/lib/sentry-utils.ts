@@ -1,16 +1,29 @@
-import * as Sentry from '@sentry/nextjs';
+async function getSentry() {
+  if (process.env.NODE_ENV !== 'production') {
+    return null;
+  }
 
-export const consoleLoggingConfig = Sentry.consoleLoggingIntegration({
-  levels: ['log', 'warn', 'error'],
-});
+  return import('@sentry/core');
+}
 
-// Logger instance
-export const { logger } = Sentry;
+export const logger = {
+  async info(message: string, context?: Record<string, unknown>) {
+    const Sentry = await getSentry();
+
+    Sentry?.logger.info(message, context);
+  },
+};
 
 /**
  * Wrapper for Sentry.captureException with additional context
  */
-export function captureException(error: Error, context?: Record<string, unknown>) {
+export async function captureException(error: Error, context?: Record<string, unknown>) {
+  const Sentry = await getSentry();
+
+  if (!Sentry) {
+    return;
+  }
+
   if (context) {
     Sentry.withScope((scope) => {
       Object.entries(context).forEach(([key, value]) => {

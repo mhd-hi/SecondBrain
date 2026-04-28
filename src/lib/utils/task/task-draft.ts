@@ -15,6 +15,7 @@ export type TaskDraft = {
 
 const DEFAULT_TASK_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
 export const DEFAULT_TASK_ESTIMATED_EFFORT = 3;
+export const MIN_TASK_ESTIMATED_EFFORT = 0.5;
 
 function parseTaskDueDate(dueDate?: Date | string | null) {
   if (dueDate instanceof Date) {
@@ -31,6 +32,19 @@ function parseTaskDueDate(dueDate?: Date | string | null) {
 
 export function getDefaultTaskDueDate(referenceDate = new Date()) {
   return new Date(referenceDate.getTime() + DEFAULT_TASK_OFFSET_MS);
+}
+
+export function getTaskEstimatedEffortInputValue(estimatedEffort: number) {
+  return String(estimatedEffort);
+}
+
+export function parseTaskEstimatedEffortInput(input: string) {
+  const parsedEffort = Number.parseFloat(input);
+  return Number.isFinite(parsedEffort) ? parsedEffort : null;
+}
+
+export function isValidTaskEstimatedEffort(estimatedEffort: number) {
+  return Number.isFinite(estimatedEffort) && estimatedEffort >= MIN_TASK_ESTIMATED_EFFORT;
 }
 
 export function buildDefaultTaskDraft({

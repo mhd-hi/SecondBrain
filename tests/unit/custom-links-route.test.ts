@@ -1,5 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
-import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthorizationError } from '@/lib/auth/api';
 
@@ -19,7 +17,7 @@ vi.mock('@/lib/auth/api', () => ({
       try {
         return await handler(req, context);
       } catch (error) {
-        if (error instanceof AuthorizationError) {
+        if (error instanceof Error && error.name === 'AuthorizationError') {
           return Response.json(
             { code: 'UNAUTHORIZED', error: error.message },
             { status: 403 },
@@ -81,7 +79,7 @@ describe('custom links route authorization', () => {
   });
 
   it('returns 403 when creating a course-scoped link for a course the user does not own', async () => {
-    (authMock as unknown as Mock).mockResolvedValue({ user: { id: 'user-1' } } as any);
+    authMock.mockResolvedValue({ user: { id: 'user-1' } });
     assertUserOwnsCourseMock.mockRejectedValue(new AuthorizationError('Course not found'));
 
     const { POST } = await import('@/app/api/custom-links/route');

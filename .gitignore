@@ -8,11 +8,6 @@
 # testing
 /coverage
 
-# database
-/prisma/db.sqlite
-/prisma/db.sqlite-journal
-db.sqlite
-
 # next.js
 /.next/
 /out/
@@ -65,3 +60,10 @@ sprints.md
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+
+# playwright
+/playwright-report
+/playwright-report.zip
+.playwright
+test-results/

@@ -1,11 +1,33 @@
-/* eslint-disable ts/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as taskUtil from '@/lib/utils/task/task-util';
 import * as termUtil from '@/lib/utils/term-util';
 import { StatusTask } from '@/types/status-task';
 import { TASK_TYPES } from '@/types/task';
+import type { Task } from '@/types/task';
 import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
+
+type LooseTask = Omit<Task, 'dueDate'> & { dueDate: Date | string | null };
+
+const createTask = (overrides: Partial<LooseTask> = {}): LooseTask => ({
+  id: 'task-1',
+  courseId: 'course-1',
+  title: 'Task',
+  notes: 'Notes',
+  type: TASK_TYPES.HOMEWORK,
+  status: StatusTask.TODO,
+  estimatedEffort: 1,
+  actualEffort: 0,
+  dueDate: new Date('2026-02-14T12:00:00.000Z'),
+  course: {
+    id: 'course-1',
+    code: 'LOG530',
+    name: 'Reengineering',
+    daypart: 'PM',
+    color: 'blue',
+  },
+  ...overrides,
+});
 
 describe('task-util', () => {
   beforeEach(() => {
@@ -20,7 +42,7 @@ describe('task-util', () => {
   it('calculateDueDateTaskForTerm: week 1 and week offsets, clamps to term end', () => {
     const start = new Date(2026, 0, 1); // Jan 1 2026
     const end = new Date(2026, 0, 31); // Jan 31 2026
-    const spy = vi.spyOn(termUtil as any, 'getDatesForTerm').mockReturnValue({ start, end });
+    const spy = vi.spyOn(termUtil, 'getDatesForTerm').mockReturnValue({ start, end, weeks: 4 });
 
     const dueWeek1 = taskUtil.calculateDueDateTaskForTerm('term-x', 1);
 
@@ -42,35 +64,35 @@ describe('task-util', () => {
   });
 
   it('getNextTask returns earliest non-completed task with valid dueDate', () => {
-    const tasks: any[] = [
-      { id: 1, status: StatusTask.TODO, dueDate: new Date(2026, 1, 20) },
-      { id: 2, status: StatusTask.COMPLETED, dueDate: new Date(2026, 1, 10) },
-      { id: 3, status: StatusTask.TODO, dueDate: new Date(2026, 1, 18) },
-      { id: 4, status: StatusTask.TODO, dueDate: null },
+    const tasks: LooseTask[] = [
+      createTask({ id: '1', dueDate: new Date(2026, 1, 20) }),
+      createTask({ id: '2', status: StatusTask.COMPLETED, dueDate: new Date(2026, 1, 10) }),
+      createTask({ id: '3', dueDate: new Date(2026, 1, 18) }),
+      createTask({ id: '4', dueDate: null }),
     ];
 
-    const next = taskUtil.getNextTask(tasks as any);
+    const next = taskUtil.getNextTask(tasks as unknown as Task[]);
 
-    expect(next?.id).toBe(3);
+    expect(next?.id).toBe('3');
   });
 
   it('getUpcomingTask finds first exam/homework by due date', () => {
-    const tasks: any[] = [
-      { id: 1, status: StatusTask.TODO, type: 'note', dueDate: new Date(2026, 1, 12) },
-      { id: 2, status: StatusTask.TODO, type: TASK_TYPES.EXAM, dueDate: new Date(2026, 1, 16) },
-      { id: 3, status: StatusTask.TODO, type: TASK_TYPES.HOMEWORK, dueDate: new Date(2026, 1, 18) },
+    const tasks: LooseTask[] = [
+      createTask({ id: '1', type: TASK_TYPES.THEORIE, dueDate: new Date(2026, 1, 12) }),
+      createTask({ id: '2', type: TASK_TYPES.EXAM, dueDate: new Date(2026, 1, 16) }),
+      createTask({ id: '3', type: TASK_TYPES.HOMEWORK, dueDate: new Date(2026, 1, 18) }),
     ];
 
-    const upcoming = taskUtil.getUpcomingTask(tasks as any);
+    const upcoming = taskUtil.getUpcomingTask(tasks as unknown as Task[]);
 
-    expect(upcoming?.id).toBe(2);
+    expect(upcoming?.id).toBe('2');
   });
 
   it('calculateProgress and counters', () => {
-    const tasks: any[] = [
-      { id: 1, status: StatusTask.COMPLETED },
-      { id: 2, status: StatusTask.TODO },
-      { id: 3, status: StatusTask.COMPLETED },
+    const tasks: Task[] = [
+      createTask({ id: '1', status: StatusTask.COMPLETED }) as Task,
+      createTask({ id: '2', status: StatusTask.TODO }) as Task,
+      createTask({ id: '3', status: StatusTask.COMPLETED }) as Task,
     ];
 
     expect(taskUtil.getCompletedTasksCount(tasks)).toBe(2);
@@ -84,7 +106,7 @@ describe('task-util', () => {
 
     // isValidStatusTask
     expect(taskUtil.isValidStatusTask(StatusTask.TODO)).toBe(true);
-    expect(taskUtil.isValidStatusTask('INVALID' as any)).toBe(false);
+    expect(taskUtil.isValidStatusTask('INVALID' as StatusTask)).toBe(false);
 
     // parseStatusTask
     expect(taskUtil.parseStatusTask(StatusTask.IN_PROGRESS)).toBe(StatusTask.IN_PROGRESS);
@@ -105,16 +127,16 @@ describe('task-util', () => {
     const overdue = new Date(2026, 1, 10); // Feb 10 -> overdue
     const future = new Date(2026, 1, 20);
 
-    const tasks: any[] = [
-      { id: 1, status: StatusTask.TODO, dueDate: overdue },
-      { id: 2, status: StatusTask.COMPLETED, dueDate: overdue },
-      { id: 3, status: StatusTask.TODO, dueDate: future },
-      { id: 4, status: StatusTask.TODO, dueDate: 'invalid-date' },
+    const tasks: LooseTask[] = [
+      createTask({ id: '1', dueDate: overdue }),
+      createTask({ id: '2', status: StatusTask.COMPLETED, dueDate: overdue }),
+      createTask({ id: '3', dueDate: future }),
+      createTask({ id: '4', dueDate: 'invalid-date' }),
     ];
 
-    const list = taskUtil.getOverdueTasks(tasks);
+    const list = taskUtil.getOverdueTasks(tasks as unknown as Task[]);
 
-    expect(list.map(t => t.id)).toEqual([1]);
+    expect(list.map(t => t.id)).toEqual(['1']);
   });
 
   it('formatEffortTime formats correctly', () => {

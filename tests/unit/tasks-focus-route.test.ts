@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { StatusTask } from '@/types/status-task';
+import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
 vi.mock('@/lib/auth/api', () => ({
   AuthorizationError: class AuthorizationError extends Error {},
@@ -128,6 +130,7 @@ vi.mock('@/server/db', () => ({
 describe('tasks focus route cache headers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setSystemDate(new Date('2026-04-27T12:00:00.000Z'));
     Object.assign(getDbState(), createDbState());
   });
 
@@ -148,5 +151,95 @@ describe('tasks focus route cache headers', () => {
       'private, no-store, no-cache, must-revalidate, max-age=0',
     );
     await expect(response.json()).resolves.toEqual([]);
+  });
+
+  it('maps course metadata, normalizes statuses, and attaches subtasks to matching tasks', async () => {
+    Object.assign(getDbState(), {
+      taskRows: [
+        {
+          id: 'task-1',
+          courseId: 'course-1',
+          title: 'Overdue task',
+          notes: null,
+          type: 'homework',
+          status: 'TODO',
+          estimatedEffort: 2,
+          actualEffort: 0,
+          dueDate: new Date('2026-04-24T12:00:00.000Z'),
+          courseCode: 'LOG430',
+          courseName: 'Testing',
+          courseColor: 'blue',
+        },
+        {
+          id: 'task-2',
+          courseId: 'course-2',
+          title: 'Unknown status task',
+          notes: 'Has notes',
+          type: 'exam',
+          status: 'BROKEN_STATUS',
+          estimatedEffort: 3,
+          actualEffort: 1,
+          dueDate: new Date('2026-04-29T12:00:00.000Z'),
+          courseCode: 'LOG530',
+          courseName: 'Reengineering',
+          courseColor: 'red',
+        },
+      ],
+      subtaskRows: [
+        {
+          id: 'subtask-1',
+          taskId: 'task-2',
+          title: 'Draft outline',
+          notes: null,
+        },
+      ],
+    });
+
+    const { GET } = await import('@/app/api/tasks/focus/route');
+    const response = await GET(
+      new Request('http://localhost/api/tasks/focus?filter=month') as never,
+      { id: 'user-1' } as never,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual([
+      expect.objectContaining({
+        id: 'task-1',
+        userId: 'user-1',
+        status: StatusTask.TODO,
+        subtasks: [],
+        course: expect.objectContaining({
+          id: 'course-1',
+          code: 'LOG430',
+          name: 'Testing',
+          color: 'blue',
+          userId: 'user-1',
+        }),
+      }),
+      expect.objectContaining({
+        id: 'task-2',
+        userId: 'user-1',
+        status: StatusTask.TODO,
+        notes: 'Has notes',
+        subtasks: [
+          {
+            id: 'subtask-1',
+            title: 'Draft outline',
+          },
+        ],
+        course: expect.objectContaining({
+          id: 'course-2',
+          code: 'LOG530',
+          name: 'Reengineering',
+          color: 'red',
+          userId: 'user-1',
+        }),
+      }),
+    ]);
+  });
+
+  afterEach(() => {
+    restoreSystemDate();
   });
 });

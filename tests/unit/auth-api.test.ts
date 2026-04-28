@@ -97,7 +97,45 @@ describe('auth API wrappers', () => {
     const body = await (res as Response).json();
 
     expect(res.status).toBe(401);
-    expect(body).toMatchObject({ code: 'UNAUTHENTICATED', error: 'Authentication required' });
+    expect(body).toMatchObject({
+      code: 'UNAUTHENTICATED',
+      error: 'Database is warming up. Please wait a moment and try again.',
+      retry: true,
+    });
     expect(captureExceptionMock).toHaveBeenCalled();
+  });
+
+  it('returns 500 for unexpected handler failures', async () => {
+    authMock.mockResolvedValue({ user: { id: 'user-123' } });
+    const handler = withAuth(async () => {
+      throw new Error('Unexpected failure');
+    });
+
+    const res = await handler(request, { params: Promise.resolve({}) } as { params: Promise<Record<string, never>> });
+    const body = await (res as Response).json();
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({
+      code: 'INTERNAL_ERROR',
+      error: 'Internal server error',
+      retry: false,
+    });
+  });
+
+  it('returns 500 with retry when a wrapped handler throws a database connectivity error', async () => {
+    authMock.mockResolvedValue({ user: { id: 'user-123' } });
+    const handler = withAuth(async () => {
+      throw new Error('connect ECONNREFUSED');
+    });
+
+    const res = await handler(request, { params: Promise.resolve({}) } as { params: Promise<Record<string, never>> });
+    const body = await (res as Response).json();
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({
+      code: 'INTERNAL_ERROR',
+      error: 'Database connection issue. Please try again in a moment.',
+      retry: true,
+    });
   });
 });

@@ -6,6 +6,7 @@ type RouteDbState = {
   createdRows: Array<Record<string, unknown>>;
   parentTaskRows: Array<Record<string, unknown>>;
   deletedRows: Array<Record<string, unknown>>;
+  insertedValues: Record<string, unknown> | null;
 };
 
 function createRouteDbState(): RouteDbState {
@@ -13,6 +14,7 @@ function createRouteDbState(): RouteDbState {
     createdRows: [{ id: 'subtask-1', taskId: 'task-1', title: 'Draft outline', notes: 'Initial notes' }],
     parentTaskRows: [{ id: 'task-1', userId: 'user-1' }],
     deletedRows: [{ id: 'subtask-1' }],
+    insertedValues: null,
   };
 }
 
@@ -31,19 +33,41 @@ function resetRouteDbState() {
 }
 
 vi.mock('@/lib/auth/api', () => ({
+  AuthorizationError: class AuthorizationError extends Error {},
   withAuth: vi.fn((handler: unknown) => handler),
+  withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
 
 vi.mock('drizzle-orm', () => ({
   and: (...conditions: unknown[]) => conditions,
   eq: (...args: unknown[]) => args,
+  gte: (...args: unknown[]) => args,
+  inArray: (...args: unknown[]) => args,
+  lt: (...args: unknown[]) => args,
+  ne: (...args: unknown[]) => args,
+  or: (...conditions: unknown[]) => conditions,
+  sql: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/db', () => ({
+  assertUserOwnsCourse: vi.fn(),
+  createUserCourse: vi.fn(),
+  createUserTask: vi.fn(),
+  deleteUserCourse: vi.fn(),
+  deleteUserTask: vi.fn(),
+  getUserCourse: vi.fn(),
+  getUserCourseSummaries: vi.fn(),
+  getUserCourseTasks: vi.fn(),
+  getUserCourses: vi.fn(),
   getUserTask: (...args: unknown[]) => getUserTaskMock(...args),
+  updateUserTask: vi.fn(),
 }));
 
 vi.mock('@/server/db/schema', () => ({
+  users: {},
+  accounts: {},
+  sessions: {},
+  terms: {},
   subtasks: {
     __table: 'subtasks',
     id: Symbol('subtasks.id'),
@@ -56,14 +80,37 @@ vi.mock('@/server/db/schema', () => ({
     userId: Symbol('tasks.userId'),
     $inferInsert: {},
   },
+  courses: {
+    __table: 'courses',
+    id: Symbol('courses.id'),
+    code: Symbol('courses.code'),
+    name: Symbol('courses.name'),
+    color: Symbol('courses.color'),
+    daypart: Symbol('courses.daypart'),
+    createdAt: Symbol('courses.createdAt'),
+    updatedAt: Symbol('courses.updatedAt'),
+  },
+  pomodoroDaily: {},
+  customLinks: { __table: 'customLinks' },
+  usersRelations: {},
+  accountsRelations: {},
+  sessionsRelations: {},
+  coursesRelations: {},
+  customLinksRelations: {},
+  tasksRelations: {},
+  subtasksRelations: {},
+  deleteOldCourses: {},
 }));
 
 vi.mock('@/server/db', () => ({
   db: {
     insert: () => ({
-      values: () => ({
-        returning: async () => getRouteDbState().createdRows,
-      }),
+      values: (value: Record<string, unknown>) => {
+        getRouteDbState().insertedValues = value;
+        return {
+          returning: async () => getRouteDbState().createdRows,
+        };
+      },
     }),
     select: () => ({
       from: () => ({
@@ -86,6 +133,7 @@ const { DELETE } = await import('@/app/api/tasks/[taskId]/subtasks/[subtaskId]/r
 beforeEach(() => {
   resetRouteDbState();
   vi.resetAllMocks();
+  getUserTaskMock.mockResolvedValue({ id: 'task-1', userId: 'user-1' });
 });
 
 describe('task subtask routes authorization', () => {
@@ -103,6 +151,38 @@ describe('task subtask routes authorization', () => {
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Task not found or unauthorized' });
+  });
+
+  it('creates a subtask with default title and notes when omitted', async () => {
+    const randomUuidSpy = vi.spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('generated-subtask-id');
+
+    const response = await POST(
+      new Request('http://localhost/api/tasks/task-1/subtasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }) as never,
+      { params: Promise.resolve({ taskId: 'task-1' }), user: { id: 'user-1' } } as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getRouteDbState().insertedValues).toEqual(
+      expect.objectContaining({
+        id: 'generated-subtask-id',
+        taskId: 'task-1',
+        title: '',
+        notes: null,
+      }),
+    );
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({
+      id: 'subtask-1',
+      taskId: 'task-1',
+      title: 'Draft outline',
+      notes: 'Initial notes',
+    }));
+
+    randomUuidSpy.mockRestore();
   });
 
   it('returns 404 when deleting a subtask from a parent task the user does not own', async () => {

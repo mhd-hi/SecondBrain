@@ -242,7 +242,8 @@ describe('e2e mock route contract', () => {
       status: 400,
     });
     expect(JSON.parse(route.getFulfilled()!.body)).toEqual({
-      error: 'courseId is required',
+      error: 'courseId parameter is required',
+      code: 'MISSING_PARAMETER',
     });
   });
 });

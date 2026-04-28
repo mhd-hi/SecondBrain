@@ -1,18 +1,24 @@
 import type { Task } from '@/types/task';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import * as daypartUtils from '@/lib/utils/course/daypart';
 import { StatusTask } from '@/types/status-task';
 import { taskToEvent } from '../../../src/calendar/event-utils';
+
+type MockDaypartResult = {
+  startDate: Date;
+  endDate: Date;
+};
+
+const getDaypartTimesMock = vi.fn(() => ({
+  startDate: new Date('2026-02-14T08:00:00.000Z'),
+  endDate: new Date('2026-02-14T09:00:00.000Z'),
+})) as ReturnType<typeof vi.fn<(date: Date, daypart: string) => MockDaypartResult>>;
 
 vi.mock('@/lib/utils/task/task-util', () => ({
   getStatusBgClass: vi.fn(() => 'mock-secondary'),
 }));
 
 vi.mock('@/lib/utils/course/daypart', () => ({
-  getDaypartTimes: vi.fn(() => ({
-    startDate: new Date('2026-02-14T08:00:00.000Z'),
-    endDate: new Date('2026-02-14T09:00:00.000Z'),
-  })),
+  getDaypartTimes: (date: Date, daypart: string) => getDaypartTimesMock(date, daypart),
 }));
 
 describe('taskToEvent', () => {
@@ -64,10 +70,16 @@ describe('taskToEvent', () => {
 
     taskToEvent(task);
 
-    expect(daypartUtils.getDaypartTimes).toHaveBeenCalled();
+    expect(getDaypartTimesMock).toHaveBeenCalled();
 
-    // eslint-disable-next-line ts/no-explicit-any
-    const calledWith = (daypartUtils.getDaypartTimes as any).mock.calls[0][0] as Date;
+    const firstCall = getDaypartTimesMock.mock.calls[0];
+    const calledWith: Date | undefined = firstCall?.[0];
+
+    expect(calledWith).toBeInstanceOf(Date);
+
+    if (calledWith === undefined || !(calledWith instanceof Date)) {
+      throw new TypeError('Expected getDaypartTimes to receive a Date');
+    }
 
     expect(calledWith.getHours()).toBe(0);
     expect(calledWith.getMinutes()).toBe(0);

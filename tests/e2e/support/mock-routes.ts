@@ -124,7 +124,10 @@ export async function installMockApiRoutes(context: BrowserContext, store: MockD
       const courseId = searchParams.get('courseId');
 
       if (!courseId) {
-        return json(route, 400, { error: 'courseId is required' });
+        return json(route, 400, {
+          error: 'courseId parameter is required',
+          code: 'MISSING_PARAMETER',
+        });
       }
 
       const tasks = store.getTasksForCourse(courseId).map(task => store.buildTaskResponse(task));

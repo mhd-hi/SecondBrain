@@ -1,5 +1,5 @@
 import type { Subtask } from '@/types/subtask';
-import { and, eq, gte, inArray, lt, ne, or } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuthSimple } from '@/lib/auth/api';
 import { parseStatusTask } from '@/lib/utils/task/task-util';
@@ -60,7 +60,7 @@ export const GET = withAuthSimple(
             // Overdue tasks (not completed)
             and(
               lt(tasks.dueDate, now),
-              ne(tasks.status, StatusTask.COMPLETED),
+              sql`${tasks.status} <> ${StatusTask.COMPLETED}`,
             ),
             // Tasks due within filter range that are actionable
             and(

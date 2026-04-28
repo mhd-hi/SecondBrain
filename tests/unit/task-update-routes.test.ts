@@ -110,6 +110,12 @@ const originalFetch = globalThis.fetch;
 vi.mock('drizzle-orm', () => ({
   and: (...conditions: unknown[]) => conditions,
   eq: (...args: unknown[]) => args,
+  gte: (...args: unknown[]) => args,
+  inArray: (...args: unknown[]) => args,
+  lt: (...args: unknown[]) => args,
+  ne: (...args: unknown[]) => args,
+  or: (...conditions: unknown[]) => conditions,
+  sql: vi.fn(),
 }));
 
 vi.mock('@/server/db/schema', () => getSchemaState());
@@ -226,6 +232,33 @@ describe('legacy task update route', () => {
     });
   });
 
+  it('converts due date payloads into Date instances before updating', async () => {
+    installRouteFetchMock();
+
+    const response = await api.post<{
+      success: boolean;
+      taskId: string;
+      input: string;
+    }>(
+      `http://localhost${API_ENDPOINTS.TASKS.UPDATE}`,
+      {
+        taskId: 'task-1',
+        input: 'dueDate',
+        value: '2026-05-01T12:00:00.000Z',
+      },
+      'Failed to update task',
+    );
+
+    expect(dbState.taskUpdateSetArg).toMatchObject({
+      dueDate: new Date('2026-05-01T12:00:00.000Z'),
+    });
+    expect(response).toMatchObject({
+      success: true,
+      taskId: 'task-1',
+      input: 'dueDate',
+    });
+  });
+
   it('surfaces invalid field failures through api.post', async () => {
     installRouteFetchMock();
 
@@ -246,6 +279,23 @@ describe('legacy task update route', () => {
       expect.any(Error),
       'Failed to update task',
     );
+  });
+
+  it('surfaces not found failures when no task row is updated', async () => {
+    installRouteFetchMock();
+    dbState.taskReturning = [];
+
+    await expect(
+      api.post(
+        `http://localhost${API_ENDPOINTS.TASKS.UPDATE}`,
+        {
+          taskId: 'missing-task',
+          input: 'title',
+          value: 'Missing task',
+        },
+        'Failed to update task',
+      ),
+    ).rejects.toThrow(/Task not found or access denied/);
   });
 });
 
@@ -304,6 +354,40 @@ describe('subtask update route', () => {
       expect.any(Error),
       'Failed to update subtask',
     );
+  });
+
+  it('surfaces unauthorized subtask update failures through api.post', async () => {
+    installRouteFetchMock('user-2');
+    dbState.parentTaskRows = [{ id: 'task-1', userId: 'user-1' }];
+
+    await expect(
+      api.post(
+        `http://localhost${API_ENDPOINTS.TASKS.SUBTASK_UPDATE}`,
+        {
+          id: 'subtask-1',
+          input: 'title',
+          value: 'Blocked update',
+        },
+        'Failed to update subtask',
+      ),
+    ).rejects.toThrow(/Unauthorized/);
+  });
+
+  it('returns a 400 response for malformed subtask update payloads', async () => {
+    const response = await handleSubtaskUpdatePost(
+      new Request('http://localhost/api/subtasks/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }) as never,
+      { id: 'user-1' },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: expect.any(String),
+    });
   });
 });
 

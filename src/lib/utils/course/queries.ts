@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { courses, subtasks, tasks } from '@/server/db/schema';
 import { StatusTask } from '@/types/status-task';
@@ -76,7 +76,7 @@ export async function findUserCourseSummaryCandidateTasks(userId: string) {
       type: tasks.type,
     })
     .from(tasks)
-    .where(and(eq(tasks.userId, userId), ne(tasks.status, StatusTask.COMPLETED)))
+    .where(and(eq(tasks.userId, userId), sql`${tasks.status} <> ${StatusTask.COMPLETED}`))
     .orderBy(asc(tasks.courseId), asc(tasks.dueDate));
 }
 

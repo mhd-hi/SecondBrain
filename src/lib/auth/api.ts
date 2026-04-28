@@ -8,6 +8,13 @@ export type AuthenticatedUser = {
   name?: string;
 };
 
+function isDatabaseConnectivityIssue(errorMessage: string) {
+  return errorMessage.includes('timeout')
+    || errorMessage.includes('ETIMEDOUT')
+    || errorMessage.includes('connect')
+    || errorMessage.includes('ECONNREFUSED');
+}
+
 async function captureException(
   error: unknown,
   _context?: {
@@ -41,10 +48,7 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
 
     // Check if it's a database connection issue
     const errorMessage = error instanceof Error ? error.message : '';
-    const isDatabaseIssue = errorMessage.includes('timeout')
-      || errorMessage.includes('ETIMEDOUT')
-      || errorMessage.includes('connect')
-      || errorMessage.includes('ECONNREFUSED');
+    const isDatabaseIssue = isDatabaseConnectivityIssue(errorMessage);
 
     console.error(errorMessage);
     await captureException(error, {
@@ -54,6 +58,11 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
         isDatabaseIssue: isDatabaseIssue ? 'yes' : 'no',
       },
     });
+
+    if (isDatabaseIssue) {
+      throw new AuthenticationError(errorMessage);
+    }
+
     return null;
   }
 }
@@ -93,10 +102,7 @@ export class AuthorizationError extends Error {
  */
 function createAuthErrorResponse(error: Error): NextResponse {
   const errorMessage = error.message || '';
-  const isDatabaseIssue = errorMessage.includes('timeout')
-    || errorMessage.includes('ETIMEDOUT')
-    || errorMessage.includes('connect')
-    || errorMessage.includes('ECONNREFUSED');
+  const isDatabaseIssue = isDatabaseConnectivityIssue(errorMessage);
 
   if (error instanceof AuthenticationError) {
     // Provide better error message if database is likely paused

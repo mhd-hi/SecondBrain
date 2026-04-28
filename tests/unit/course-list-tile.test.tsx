@@ -9,6 +9,10 @@ const handleConfirmMock = vi.fn();
 const deleteCourseMock = vi.fn();
 const refreshCoursesMock = vi.fn();
 const toastErrorMock = vi.fn();
+const errorHandlersApiMock = vi.fn((error: unknown, userMessage: string) => {
+  toastErrorMock(userMessage);
+  return error instanceof Error ? error.message : 'Unknown error';
+}) as ReturnType<typeof vi.fn<(error: unknown, userMessage: string) => string>>;
 let lastDeleteCourseHandler: ((courseId: string) => Promise<void>) | null = null;
 
 vi.mock('sonner', () => ({
@@ -55,6 +59,15 @@ vi.mock('@/hooks/course/use-course-store', () => ({
 }));
 vi.mock('@/lib/utils/dialog-util', () => ({
   handleConfirm: (...args: unknown[]) => handleConfirmMock(...args),
+}));
+vi.mock('@/lib/utils/errors/error', () => ({
+  CommonErrorMessages: {
+    COURSE_DELETE_FAILED: 'Failed to delete course. Please try again.',
+  },
+  ErrorHandlers: {
+    api: (error: unknown, userMessage: string) => errorHandlersApiMock(error, userMessage),
+    silent: vi.fn(),
+  },
 }));
 
 describe('CourseListTile', () => {

@@ -1,19 +1,21 @@
-/* eslint-disable ts/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   getCurrentTrimesterInfoWithDeps,
   getCurrentTrimesterPositionWithDeps,
 } from '../../src/lib/utils/trimester-util';
+import { TRIMESTER } from '../../src/types/term';
 import { restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
-function createDeps() {
+type TrimesterDeps = NonNullable<Parameters<typeof getCurrentTrimesterInfoWithDeps>[0]>;
+
+function createDeps(): TrimesterDeps {
   return {
-    getCurrentOrUpcomingTerm: () => ({ trimester: 'winter', year: 2026 } as any),
+    getCurrentOrUpcomingTerm: () => ({ trimester: TRIMESTER.WINTER, year: 2026 }),
     getDatesForTerm: () => ({
       start: new Date('2026-02-01'),
       end: new Date('2026-02-28'),
       weeks: 4,
-    } as any),
+    }),
   };
 }
 
@@ -40,8 +42,8 @@ describe('trimester-util', () => {
   });
 
   it('falls back to default dates when getDatesForTerm throws', () => {
-    const deps = {
-      getCurrentOrUpcomingTerm: () => ({ trimester: 'summer', year: 2026 } as any),
+    const deps: TrimesterDeps = {
+      getCurrentOrUpcomingTerm: () => ({ trimester: TRIMESTER.SUMMER, year: 2026 }),
       getDatesForTerm: () => {
         throw new Error('no data');
       },
@@ -58,13 +60,13 @@ describe('trimester-util', () => {
 
   it('computes current trimester position as a percentage (0-100)', () => {
     // Make term start Feb 10 and end Feb 20 so current Feb 14 is 4/10 = 40%
-    const deps = {
-      getCurrentOrUpcomingTerm: () => ({ trimester: 'winter', year: 2026 } as any),
+    const deps: TrimesterDeps = {
+      getCurrentOrUpcomingTerm: () => ({ trimester: TRIMESTER.WINTER, year: 2026 }),
       getDatesForTerm: () => ({
         start: new Date('2026-02-10'),
         end: new Date('2026-02-20'),
         weeks: 2,
-      } as any),
+      }),
     };
 
     const pos = getCurrentTrimesterPositionWithDeps(deps, new Date('2026-02-14T12:00:00Z'));

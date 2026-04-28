@@ -105,13 +105,13 @@ export const PATCH = withAuthSimple(
     const updates = await request.json() as UpdateTaskInput;
 
     const payload = {
+      ...updates,
       status: updates.status ?? StatusTask.TODO,
       subtasks: updates.subtasks?.map(subtask => ({
         ...subtask,
         id: subtask.id ?? crypto.randomUUID(),
       })),
       notes: updates.notes,
-      ...updates,
     } as Partial<typeof import('@/server/db/schema').tasks.$inferInsert> & { subtasks?: Partial<typeof import('@/server/db/schema').subtasks.$inferInsert>[] };
 
     const updatedTask = await updateUserTask(id, user.id, payload);

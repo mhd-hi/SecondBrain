@@ -34,13 +34,13 @@ describe('api client util', () => {
     setFetchMock(vi.fn().mockResolvedValue({
       ok: false,
       status: 418,
-      statusText: "I'm a teapot",
+      statusText: 'I\'m a teapot',
       text: vi.fn().mockResolvedValue('brewing failed'),
     } as unknown as Response) as unknown as typeof fetch);
 
     await expect(
       api.get('/api/test', 'Fetch failed'),
-    ).rejects.toThrow("API request failed: 418 I'm a teapot. brewing failed");
+    ).rejects.toThrow('API request failed: 418 I\'m a teapot. brewing failed');
 
     expect(apiErrorHandlerMock).toHaveBeenCalledWith(expect.any(Error), 'Fetch failed');
   });

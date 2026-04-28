@@ -8,6 +8,7 @@ test('creates, filters, and updates a task from the course page', async ({ app, 
 
   await app.addCoursePage.create({
     code: courseCode,
+    name: courseCode,
     school: 'none',
     daypart: 'PM',
   });

@@ -93,5 +93,4 @@ describe('task route authorization', () => {
     expect(getUserCourseTasksMock).not.toHaveBeenCalled();
     expect(captureExceptionMock).toHaveBeenCalledTimes(1);
   });
-
 });

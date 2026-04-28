@@ -104,7 +104,7 @@ vi.mock('@/server/db/schema', () => ({
 vi.mock('@/server/db', () => ({
   db: {
     select: (shape?: Record<string, unknown>) => ({
-      from: (table: { __table?: string }) => {
+      from: (_table: { __table?: string }) => {
         if (shape) {
           return {
             innerJoin: () => ({
@@ -214,7 +214,7 @@ describe('task queries', () => {
 
   it('maps calendar query rows to events with taskToEvent', async () => {
     const eventUtils = await import('@/calendar/event-utils');
-    const taskToEventSpy = vi.spyOn(eventUtils, 'taskToEvent').mockImplementation((task) => ({
+    const taskToEventSpy = vi.spyOn(eventUtils, 'taskToEvent').mockImplementation(task => ({
       id: `event-${task.id}`,
       title: task.title,
       startDate: '2026-05-02T08:00:00.000Z',
@@ -275,6 +275,7 @@ describe('task queries', () => {
       type: 'task',
       color: 'blue',
     }]);
+
     taskToEventSpy.mockRestore();
   });
 

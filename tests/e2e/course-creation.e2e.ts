@@ -7,6 +7,7 @@ test('creates a course through the add-course page and opens it', async ({ app, 
 
   await app.addCoursePage.create({
     code: courseCode,
+    name: courseCode,
     school: 'none',
     daypart: 'AM',
   });

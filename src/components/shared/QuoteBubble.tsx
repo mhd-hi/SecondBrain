@@ -1,8 +1,10 @@
 'use client';
 
 import type { Quote } from '@/lib/util/quotes';
+import { RefreshCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { nextQuote } from '@/lib/util/quotes';
 
 type Props = {
@@ -29,37 +31,32 @@ export function QuoteBubble({ className }: Props) {
 
   return (
     <div className={className}>
-      <div className="relative w-full max-w-full mx-auto md:max-w-md md:mx-0 rounded-xl border bg-background/95 shadow-lg backdrop-blur px-4 py-3 space-y-2 text-sm">
-        <span
-          aria-hidden
-          className="flex pointer-events-none absolute left-0 -top-1 w-1/3 items-center gap-2 -translate-y-4 px-4
-          text-6xl font-semibold tracking-[0.14em] text-foreground/70 select-none"
-        >
-          "
-        </span>
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1 w-full">
-            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Quote  of the day</p>
-            <p className="leading-relaxed text-base text-foreground">
-              {quote.content}
-            </p>
-            <p className="flex justify-end text-sm text-muted-foreground italic">
-              —
-              {quote.author}
-            </p>
-          </div>
+      <Card className="w-full overflow-hidden rounded-2xl border-border/70 bg-card shadow-sm">
+        <CardHeader className="flex flex-row items-start justify-between px-5 pb-1 sm:px-6">
+            <CardTitle className="text-base font-semibold">
+              Daily Quote
+            </CardTitle>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className="h-8 w-8 shrink-0 text-muted-foreground"
             onClick={refresh}
             aria-label="Refresh quote"
             title="New quote"
           >
-            ↻
+            <RefreshCcw className="h-4 w-4" />
           </Button>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="pt-0 px-5 pb-5 sm:px-6">
+          <p className="max-w-3xl text-sm leading-7 text-foreground/90 sm:text-base">
+            {quote.content}
+          </p>
+          <p className="text-sm italic text-muted-foreground">
+            —
+            {quote.author}
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

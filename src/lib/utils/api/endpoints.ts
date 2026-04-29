@@ -44,7 +44,6 @@ export const API_ENDPOINTS = {
   POMODORO: {
     BASE: '/api/pomodoro',
     COMPLETE: '/api/pomodoro/complete',
-    STREAK: '/api/pomodoro/streak',
   },
 
   // Terms

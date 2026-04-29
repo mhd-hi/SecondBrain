@@ -7,7 +7,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import LinkFields from '@/components/CustomLinks/LinkFields';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useCustomLinkStore } from '@/lib/stores/custom-link-store';
 import { api } from '@/lib/utils/api/api-client-util';
@@ -130,9 +130,9 @@ const UpdateCustomLinksDialog = ({ courseId, open, onOpenChange }: UpdateCustomL
       <DialogContent aria-describedby={UPDATE_CUSTOM_LINKS_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Update Links</DialogTitle>
-          <p id={UPDATE_CUSTOM_LINKS_DESCRIPTION_ID} className="text-sm text-muted-foreground">
+          <DialogDescription id={UPDATE_CUSTOM_LINKS_DESCRIPTION_ID}>
             Edit or remove the saved links for this course.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 max-h-[60vh] overflow-auto py-2">

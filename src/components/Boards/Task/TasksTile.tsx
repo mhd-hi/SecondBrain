@@ -253,20 +253,6 @@ export const TodaysFocusTile = () => {
     });
   };
 
-  const sortTasksByPriority = (tasks: Task[]): Task[] => {
-    const priorityOrder = {
-      [StatusTask.IN_PROGRESS]: 1,
-      [StatusTask.TODO]: 2,
-      [StatusTask.COMPLETED]: 3,
-    };
-
-    return tasks.sort((a, b) => {
-      const aPriority = priorityOrder[a.status as keyof typeof priorityOrder] ?? 999;
-      const bPriority = priorityOrder[b.status as keyof typeof priorityOrder] ?? 999;
-      return aPriority - bPriority;
-    });
-  };
-
   const groupTasksByDate = (tasks: Task[]): GroupedTasks => {
     const now = new Date();
     const today = new Date(now);
@@ -303,14 +289,7 @@ export const TodaysFocusTile = () => {
     });
   };
 
-  const groupedTasksRaw = groupTasksByDate(tasks);
-  const groupedTasks = {
-    overdue: sortTasksByPriority(groupedTasksRaw.overdue),
-    today: sortTasksByPriority(groupedTasksRaw.today),
-    tomorrow: sortTasksByPriority(groupedTasksRaw.tomorrow),
-    thisWeek: sortTasksByPriority(groupedTasksRaw.thisWeek),
-    later: sortTasksByPriority(groupedTasksRaw.later),
-  };
+  const groupedTasks = groupTasksByDate(tasks);
 
   const GROUP_CONFIGS: Record<TodaysFocusGroup, GroupConfig> = {
     overdue: { title: 'Overdue', tasks: groupedTasks.overdue },

@@ -22,10 +22,6 @@ export const users = pgTable('user', {
   email: text('email').unique(),
   emailVerified: timestamp('emailVerified'),
   image: text('image'),
-  streakDays: integer('streak_days').notNull().default(0),
-  lastCompletedPomodoroDate: timestamp('last_completed_pomodoro_date', {
-    mode: 'date',
-  }),
 });
 
 export const accounts = pgTable(
@@ -146,11 +142,7 @@ export const pomodoroDaily = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     day: date('day', { mode: 'date' }).notNull(),
-    totalMinutes: integer('total_minutes').notNull().default(0),
-    taskIds: uuid('task_ids')
-      .array()
-      .notNull()
-      .default(sql`ARRAY[]::uuid[]`),
+    totalMinutes: real('total_minutes').notNull().default(0),
   },
   t => [uniqueIndex('pomodoro_daily_user_day_uq').on(t.userId, t.day)],
 );

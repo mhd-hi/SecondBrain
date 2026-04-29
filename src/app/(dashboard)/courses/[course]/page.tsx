@@ -1,24 +1,21 @@
 'use client';
 import type { Task } from '@/types/task';
 
-import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CourseProgressTile } from '@/components/Boards/Progress/TaskCompletionProgressTile';
+import { CourseTaskToolbar } from '@/components/Boards/Course/CourseTaskToolbar';
 import CourseCustomLinks from '@/components/CustomLinks/CourseCustomLinks';
 import { ActionsDropdown } from '@/components/shared/atoms/actions-dropdown';
 import { getCourseActions } from '@/components/shared/atoms/get-course-actions';
-import { SearchBar } from '@/components/shared/atoms/SearchBar';
 
-import { AddTaskDialog } from '@/components/shared/dialogs/AddTaskDialog';
 import { CourseUpdateDialog } from '@/components/shared/dialogs/UpdateCourseDialog';
 import UpdateCustomLinksDialog from '@/components/shared/dialogs/UpdateCustomLinksDialog';
 import { CourseSkeleton } from '@/components/shared/skeletons/CourseSkeleton';
 
 import { TaskCard } from '@/components/Task/TaskCard';
 
-import { Button } from '@/components/ui/button';
 import { useCourseMutations, useCourses } from '@/hooks/course/use-course-store';
 import { batchUpdateStatusTask, updateTaskStatus } from '@/hooks/task/use-task';
 import { useCourseTasksStore } from '@/hooks/task/use-task-store';
@@ -51,6 +48,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   const { deleteCourse, updateCourseField } = useCourseMutations();
   const course = useCourseStore(state => state.courses.get(courseId));
   const [searchQuery, setSearchQuery] = useState('');
+  const [hideCompleted, setHideCompleted] = useState(true);
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const addTaskButtonRef = useRef<HTMLDivElement>(null);
 
@@ -156,6 +154,17 @@ export default function CoursePage({ params }: CoursePageProps) {
     });
   }, [courseTasks, searchQuery]);
 
+  const visibleTasks = useMemo(() => {
+    if (!hideCompleted) {
+      return filteredTasks;
+    }
+
+    return filteredTasks.filter(task => task.status !== StatusTask.COMPLETED);
+  }, [filteredTasks, hideCompleted]);
+
+  const isSearchActive = searchQuery.trim().length > 0;
+  const hasHiddenCompletedTasks = hideCompleted && filteredTasks.length > 0 && visibleTasks.length === 0;
+
   const handleUpdateStatusTask = async (taskId: string, newStatus: StatusTask) => {
     try {
       await updateTaskStatus(taskId, newStatus);
@@ -230,7 +239,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   };
 
   // Group tasks by week calculated from dueDate
-  const tasksByWeek = filteredTasks.reduce((acc, task) => {
+  const tasksByWeek = visibleTasks.reduce((acc, task) => {
     const week = getWeekNumberFromDueDate(task.dueDate);
     acc[week] ??= [];
     acc[week]?.push(task);
@@ -331,43 +340,17 @@ export default function CoursePage({ params }: CoursePageProps) {
             <section>
               <CourseProgressTile tasks={courseTasks} />
             </section>
-            <div ref={addTaskButtonRef} className="flex items-center gap-4 mb-2">
-              <SearchBar
-                id="course-tasks-search-bar"
-                name="course-tasks-search-bar"
-                placeholder="Search tasks by title, notes, or subtasks..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-                className="flex-1"
-                inputTestId={TEST_IDS.coursePage.searchInput}
-              />
-              <AddTaskDialog
-                courseId={course.id}
-                trigger={(
-                  <Button data-testid={TEST_IDS.coursePage.addTaskButton}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                )}
-              />
-            </div>
+            <CourseTaskToolbar
+              courseId={course.id}
+              addTaskButtonRef={addTaskButtonRef}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              hideCompleted={hideCompleted}
+              onHideCompletedChange={setHideCompleted}
+              showFloatingButton={showFloatingButton}
+            />
 
-            {/* Floating Add Task Button */}
-            {showFloatingButton && (
-              <div className="fixed top-20 z-40 animate-in slide-in-from-top duration-200 ease-out" style={{ right: '2rem' }}>
-                <AddTaskDialog
-                  courseId={course.id}
-                  trigger={(
-                    <Button className="shadow-lg hover:shadow-xl transition-all w-30">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Task
-                    </Button>
-                  )}
-                />
-              </div>
-            )}
-
-            {filteredTasks.length > 0
+            {visibleTasks.length > 0
               ? (
                 <div className="space-y-5 will-change-scroll mt-7" data-testid={TEST_IDS.coursePage.taskList}>
                   {Object.entries(tasksByWeek)
@@ -397,7 +380,23 @@ export default function CoursePage({ params }: CoursePageProps) {
                     ))}
                 </div>
               )
-              : searchQuery.trim()
+              : hasHiddenCompletedTasks
+                ? (
+                  <div className="text-center text-muted-foreground py-12" data-testid={TEST_IDS.coursePage.emptyState}>
+                    {isSearchActive
+                      ? (
+                        <>
+                          Completed tasks matching &quot;
+                          {searchQuery}
+                          &quot; are hidden. Use the filter to show them.
+                        </>
+                      )
+                      : (
+                        <>Completed tasks are hidden. Use the filter to show them.</>
+                      )}
+                  </div>
+                )
+                : isSearchActive
                 ? (
                   <div className="text-center text-muted-foreground py-12" data-testid={TEST_IDS.coursePage.emptyState}>
                     No tasks found matching &quot;

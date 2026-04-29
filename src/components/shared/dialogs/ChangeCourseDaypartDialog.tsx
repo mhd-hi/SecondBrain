@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCourse } from '@/hooks/course/use-course';
 
@@ -52,9 +52,9 @@ export const ChangeCourseDaypartDialog = ({ courseId, open, onOpenChange, curren
       <DialogContent aria-describedby={CHANGE_COURSE_DAYPART_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Change lecture daypart</DialogTitle>
-          <p id={CHANGE_COURSE_DAYPART_DESCRIPTION_ID} className="text-sm text-muted-foreground">
+          <DialogDescription id={CHANGE_COURSE_DAYPART_DESCRIPTION_ID}>
             Update when this course usually happens.
-          </p>
+          </DialogDescription>
         </DialogHeader>
         <div className="mt-2">
           <Select value={value} onValueChange={(v: string) => setValue(v as Daypart)}>

@@ -34,6 +34,8 @@ export function SignInCard({
           alt="Pochita Bread"
           width={120}
           height={120}
+          loading="eager"
+          unoptimized
         />
       </div>
       <CardHeader className="text-center space-y-3 pt-20 pb-8">

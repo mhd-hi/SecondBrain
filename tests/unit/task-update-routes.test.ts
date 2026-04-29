@@ -118,7 +118,24 @@ vi.mock('drizzle-orm', () => ({
   sql: vi.fn(),
 }));
 
-vi.mock('@/server/db/schema', () => getSchemaState());
+vi.mock('@/server/db/schema', () => ({
+  users: {},
+  accounts: {},
+  sessions: {},
+  terms: {},
+  courses: {},
+  pomodoroDaily: {},
+  customLinks: {},
+  usersRelations: {},
+  accountsRelations: {},
+  sessionsRelations: {},
+  coursesRelations: {},
+  customLinksRelations: {},
+  tasksRelations: {},
+  subtasksRelations: {},
+  deleteOldCourses: {},
+  ...getSchemaState(),
+}));
 
 vi.mock('@/server/db', () => ({
   db: {

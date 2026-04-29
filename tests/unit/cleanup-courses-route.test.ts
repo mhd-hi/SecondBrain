@@ -41,6 +41,7 @@ describe('cleanup courses cron route', () => {
     }));
 
     expect(response.status).toBe(200);
+
     const body = await response.json();
 
     expect(cleanupOldCoursesMock).toHaveBeenCalledTimes(1);

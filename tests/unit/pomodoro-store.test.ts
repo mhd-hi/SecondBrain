@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureHappyDom } from '../helpers/runtime';
+import { ensureHappyDom, restoreSystemDate, setSystemDate } from '../helpers/runtime';
 
-const postMock = vi.fn();
 const playSelectedNotificationSoundMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
+const originalFetch = globalThis.fetch;
 
 vi.mock('sonner', () => ({
   toast: {
@@ -26,21 +26,26 @@ vi.mock('@/lib/utils/audio-util', () => ({
   playSelectedNotificationSound: playSelectedNotificationSoundMock,
 }));
 
-vi.mock('@/lib/utils/api/api-client-util', () => ({
-  api: {
-    post: postMock,
-  },
-}));
-
 const { API_ENDPOINTS } = await import('@/lib/utils/api/endpoints');
 const { usePomodoroStore } = await import('@/lib/stores/pomodoro-store');
+
+function setFetchMock(fetchMock: typeof fetch) {
+  Object.defineProperty(globalThis, 'fetch', {
+    value: fetchMock,
+    configurable: true,
+    writable: true,
+  });
+}
 
 describe('pomodoro store completion handling', () => {
   beforeEach(() => {
     ensureHappyDom();
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-04-28T16:00:00.000Z'));
-    postMock.mockResolvedValue({ success: true });
+    setSystemDate(new Date('2026-04-28T16:00:00.000Z'));
+    setFetchMock(vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ success: true }),
+    } as unknown as Response) as unknown as typeof fetch);
     playSelectedNotificationSoundMock.mockResolvedValue(undefined);
     vi.clearAllMocks();
     usePomodoroStore.getState().reset();
@@ -48,6 +53,8 @@ describe('pomodoro store completion handling', () => {
 
   afterEach(() => {
     usePomodoroStore.getState().reset();
+    setFetchMock(originalFetch);
+    restoreSystemDate();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -65,10 +72,20 @@ describe('pomodoro store completion handling', () => {
     usePomodoroStore.getState().tick();
     usePomodoroStore.getState().switchToPomodoroStage('shortBreak');
 
-    await vi.runAllTimersAsync();
+    vi.runAllTimers();
+    await Promise.resolve();
+    await Promise.resolve();
 
-    expect(postMock).toHaveBeenCalledWith(API_ENDPOINTS.POMODORO.COMPLETE, {
-      durationHours: 25 / 60,
-    });
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_ENDPOINTS.POMODORO.COMPLETE,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          durationHours: 25 / 60,
+        }),
+      }),
+    );
   });
 });

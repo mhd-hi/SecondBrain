@@ -7,10 +7,23 @@ vi.mock('@/lib/auth/api', () => ({
 }));
 vi.mock('@/server/db', () => ({ db: {} }));
 vi.mock('@/server/db/schema', () => ({
+  users: {},
+  accounts: {},
+  sessions: {},
+  terms: {},
   courses: {},
-  customLinks: {},
-  subtasks: {},
   tasks: {},
+  subtasks: {},
+  pomodoroDaily: {},
+  customLinks: {},
+  usersRelations: {},
+  accountsRelations: {},
+  sessionsRelations: {},
+  coursesRelations: {},
+  customLinksRelations: {},
+  tasksRelations: {},
+  subtasksRelations: {},
+  deleteOldCourses: {},
 }));
 
 const getUserCourseSummariesMock = vi.fn();

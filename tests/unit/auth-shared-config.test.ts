@@ -49,7 +49,7 @@ describe('shared auth config', () => {
       {
         id: 'discord',
         options: {
-          clientId: '123456789012345678',
+          clientId: 'discord-client-id',
           clientSecret: 'discord-client-secret',
         },
       },

@@ -52,6 +52,13 @@ vi.mock('drizzle-orm', () => ({
 }));
 
 vi.mock('@/server/db/schema', () => ({
+  users: {},
+  accounts: {},
+  sessions: {},
+  terms: {},
+  courses: {},
+  tasks: {},
+  subtasks: {},
   pomodoroDaily: {
     __table: 'pomodoro_daily',
     id: Symbol('pomodoroDaily.id'),
@@ -59,6 +66,15 @@ vi.mock('@/server/db/schema', () => ({
     day: Symbol('pomodoroDaily.day'),
     totalMinutes: Symbol('pomodoroDaily.totalMinutes'),
   },
+  customLinks: {},
+  usersRelations: {},
+  accountsRelations: {},
+  sessionsRelations: {},
+  coursesRelations: {},
+  customLinksRelations: {},
+  tasksRelations: {},
+  subtasksRelations: {},
+  deleteOldCourses: {},
 }));
 
 vi.mock('@/server/db', () => ({

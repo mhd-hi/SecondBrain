@@ -26,10 +26,6 @@ vi.mock('@/hooks/course/use-course-store', () => ({
   useCourses: vi.fn(),
 }));
 
-vi.mock('@/hooks/course/use-add-course', () => ({
-  useAddCourse: vi.fn(),
-}));
-
 vi.mock('@/components/shared/dialogs/CourseInputForm', () => ({
   CourseInputForm: vi.fn(() => null),
 }));
@@ -61,7 +57,7 @@ beforeEach(() => {
     getCourse: vi.fn(),
     getCourseByCode: vi.fn(),
   });
-  (addCourseHook.useAddCourse as unknown as Mock).mockReturnValue({
+  vi.spyOn(addCourseHook, 'useAddCourse').mockReturnValue({
     currentStep: 'idle',
     stepStatus: {
       'planets': 'pending',
@@ -81,7 +77,7 @@ beforeEach(() => {
 
 afterEach(() => {
   useAddCourseFormStore.getState().reset();
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe('add course page terms flow', () => {

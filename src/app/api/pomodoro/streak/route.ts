@@ -15,7 +15,7 @@ export const GET = withAuthSimple(
         })
         .from(pomodoroDaily)
         .where(eq(pomodoroDaily.userId, user.id));
-      const { streakDays, lastCompletedPomodoroDate } = calculatePomodoroStreak(rows);
+      const { streakDays, lastCompletedPomodoroDate } = calculatePomodoroStreak(rows, new Date(Date.now()));
 
       return NextResponse.json({
         streakDays,

@@ -142,7 +142,7 @@ export const pomodoroDaily = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     day: date('day', { mode: 'date' }).notNull(),
-    totalMinutes: integer('total_minutes').notNull().default(0),
+    totalMinutes: real('total_minutes').notNull().default(0),
   },
   t => [uniqueIndex('pomodoro_daily_user_day_uq').on(t.userId, t.day)],
 );

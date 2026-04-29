@@ -183,6 +183,20 @@
       "when": 1777365030780,
       "tag": "0025_fair_eddie_brock",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1777366000000,
+      "tag": "0026_golden_amber_hawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1777428944783,
+      "tag": "0027_eager_hitman",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,11 @@ type PomodoroSettings = {
   notificationSound: SoundStorageKey;
 };
 
+type CompletedSessionSnapshot = {
+  pomodoroStage: PomodoroStage;
+  totalTimeSec: number;
+};
+
 type PomodoroStore = {
   pomodoroStage: PomodoroStage;
   isPomodoroActive: boolean;
@@ -46,7 +51,7 @@ type PomodoroStore = {
   updateSessionDuration: (type: 'work' | 'shortBreak' | 'longBreak', duration: number) => void;
   updateSettings: (settings: Partial<PomodoroSettings>) => void;
   tick: () => void;
-  handleTimerComplete: () => Promise<void>;
+  handleTimerComplete: (completedSession?: CompletedSessionSnapshot) => Promise<void>;
   setStreak: (streak: number) => void;
   fetchStreak: () => Promise<void>;
   startTimerInterval: () => void;
@@ -274,16 +279,23 @@ export const usePomodoroStore = create<PomodoroStore>()(
             return;
           }
 
+          const completedSession: CompletedSessionSnapshot = {
+            pomodoroStage: state.pomodoroStage,
+            totalTimeSec: state.totalTimeSec,
+          };
+
           set({ timeLeftSec: 0, isRunning: false, endsAtMs: null });
           get().stopTimerInterval();
           // Clear the scheduled completion timeout immediately to avoid stale timers
           clearCompletionTimeout();
-          setTimeout(() => get().handleTimerComplete(), 0);
+          setTimeout(() => get().handleTimerComplete(completedSession), 0);
         },
 
-        handleTimerComplete: async () => {
+        handleTimerComplete: async (completedSession) => {
           clearCompletionTimeout();
           const state = get();
+          const completedStage = completedSession?.pomodoroStage ?? state.pomodoroStage;
+          const completedTotalTimeSec = completedSession?.totalTimeSec ?? state.totalTimeSec;
 
           const sound = state.settings.notificationSound;
           const volume = Math.max(0, Math.min(1, state.settings.soundVolume / 100));
@@ -297,8 +309,8 @@ export const usePomodoroStore = create<PomodoroStore>()(
           if (typeof window !== 'undefined' && document.visibilityState !== 'visible') {
             if ('Notification' in window && Notification.permission === 'granted') {
               try {
-                const title = state.pomodoroStage === 'work' ? 'Pomodoro complete' : 'Break finished';
-                const body = state.pomodoroStage === 'work' ? 'Time for a break.' : 'Back to work!';
+                const title = completedStage === 'work' ? 'Pomodoro complete' : 'Break finished';
+                const body = completedStage === 'work' ? 'Time for a break.' : 'Back to work!';
                 void new Notification(title, { body });
               } catch {
                 // ignore
@@ -306,24 +318,27 @@ export const usePomodoroStore = create<PomodoroStore>()(
             }
           }
 
-          if (state.pomodoroStage === 'work' && state.totalTimeSec > 0) {
-            const completedMinutes = state.totalTimeSec / 60;
+          if (completedStage === 'work' && completedTotalTimeSec > 0) {
+            const completedMinutes = completedTotalTimeSec / 60;
             const durationHours = completedMinutes / 60;
+            const completionDescription = completedMinutes < 1
+              ? `You've worked for ${completedTotalTimeSec} seconds!`
+              : `You've worked for ${completedMinutes.toFixed(0)} minutes!`;
             try {
               const data = await api.post<{ streakDays?: number }>(API_ENDPOINTS.POMODORO.COMPLETE, {
                 durationHours,
               });
               const streakDays = data && typeof data.streakDays === 'number' ? data.streakDays : 0;
               set({ streak: streakDays });
-              toast.success('Pomodoro completed!', { description: `You've worked for ${completedMinutes.toFixed(0)} minutes!` });
+              toast.success('Pomodoro completed!', { description: completionDescription });
             } catch (error) {
               console.error('Failed to complete Pomodoro:', error);
               toast.error(error instanceof Error ? error.message : 'Failed to complete Pomodoro');
             }
           }
 
-          if (state.pomodoroStage === 'work' && state.totalTimeSec > 0) {
-            const workMinutes = state.totalTimeSec / 60;
+          if (completedStage === 'work' && completedTotalTimeSec > 0) {
+            const workMinutes = completedTotalTimeSec / 60;
             const nextBreakType = workMinutes >= LONG_BREAK_THRESHOLD ? 'longBreak' : 'shortBreak';
             get().switchToPomodoroStage(nextBreakType);
           } else {

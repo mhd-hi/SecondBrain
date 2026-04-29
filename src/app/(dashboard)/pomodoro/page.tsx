@@ -6,7 +6,7 @@ import { getPreferencesPath } from '@/lib/page-routes';
 
 export default function PomodoroPage() {
   return (
-    <main className="container mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-4 sm:gap-6 mt-2 mb-3.5">
+    <main className="container mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-4 sm:gap-3 mt-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">

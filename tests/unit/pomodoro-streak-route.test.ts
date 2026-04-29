@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type PomodoroDailyRow = {
   day: Date;
@@ -15,7 +15,7 @@ function setPomodoroRows(rows: PomodoroDailyRow[]) {
 }
 
 vi.mock('@/lib/auth/api', () => ({
-  AuthorizationError: class AuthorizationError extends Error {},
+  AuthorizationError: class AuthorizationError extends Error { },
   withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
@@ -45,10 +45,13 @@ vi.mock('@/server/db', () => ({
 const { GET } = await import('@/app/api/pomodoro/streak/route');
 
 beforeEach(() => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date('2026-04-28T16:00:00.000Z'));
+  vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-28T16:00:00.000Z').getTime());
   setPomodoroRows([]);
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('pomodoro streak route', () => {

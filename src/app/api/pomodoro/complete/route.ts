@@ -22,8 +22,8 @@ export const POST = withAuthSimple(
         );
       }
 
-      const today = startOfPomodoroDay(new Date());
-      const sessionMinutes = Math.max(1, Math.round(durationHours * 60));
+      const today = startOfPomodoroDay(new Date(Date.now()));
+      const sessionMinutes = Math.round(durationHours * 3600) / 60;
       await db
         .insert(pomodoroDaily)
         .values({

@@ -1,0 +1,1 @@
+ALTER TABLE "pomodoro_daily" ALTER COLUMN "total_minutes" SET DATA TYPE real;

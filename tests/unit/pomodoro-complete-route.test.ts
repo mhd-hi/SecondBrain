@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type PomodoroDbState = {
   dailyRows: Array<{
@@ -39,7 +39,7 @@ function resetPomodoroDbState() {
 }
 
 vi.mock('@/lib/auth/api', () => ({
-  AuthorizationError: class AuthorizationError extends Error {},
+  AuthorizationError: class AuthorizationError extends Error { },
   withAuth: vi.fn((handler: unknown) => handler),
   withAuthSimple: vi.fn((handler: unknown) => handler),
 }));
@@ -111,10 +111,13 @@ vi.mock('@/server/db', () => ({
 const { POST } = await import('@/app/api/pomodoro/complete/route');
 
 beforeEach(() => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date('2026-04-28T16:00:00.000Z'));
+  vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-28T16:00:00.000Z').getTime());
   resetPomodoroDbState();
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('pomodoro complete route', () => {
@@ -134,11 +137,14 @@ describe('pomodoro complete route', () => {
   });
 
   it('creates a row for today and returns the derived streak', async () => {
+    const threeSecondsInHours = 3 / 3600;
+    const threeSecondsInMinutes = 3 / 60;
+
     const response = await POST(
       new Request('http://localhost/api/pomodoro/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ durationHours: 1.5 }),
+        body: JSON.stringify({ durationHours: threeSecondsInHours }),
       }) as never,
       { id: 'user-1' } as never,
     );
@@ -147,8 +153,8 @@ describe('pomodoro complete route', () => {
     expect(getPomodoroDbState().insertCalls).toBe(1);
     expect(getPomodoroDbState().insertValues).toMatchObject({
       userId: 'user-1',
-      totalMinutes: 90,
     });
+    expect(getPomodoroDbState().insertValues?.totalMinutes).toBeCloseTo(threeSecondsInMinutes, 6);
     expect(getPomodoroDbState().onConflictArgs).toMatchObject({
       target: expect.any(Array),
       set: expect.objectContaining({
@@ -162,7 +168,7 @@ describe('pomodoro complete route', () => {
     });
   });
 
-  it('adds minutes to the current day when a pomodoro was already completed today', async () => {
+  it('adds hours to the current day when a pomodoro was already completed today', async () => {
     getPomodoroDbState().dailyRows = [
       { id: 'day-0', userId: 'user-1', day: new Date('2026-04-28T12:00:00.000Z'), totalMinutes: 25 },
       { id: 'day-1', userId: 'user-1', day: new Date('2026-04-27T12:00:00.000Z'), totalMinutes: 25 },

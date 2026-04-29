@@ -236,6 +236,12 @@ export async function createAppFixture({
         await taskCard.getByTestId(TEST_IDS.task.statusTrigger).click();
         await page.getByRole('menuitem', { name: statusLabel, exact: true }).click();
 
+        if (statusLabel === 'DONE') {
+          await expect(taskCard).not.toBeVisible();
+
+          return;
+        }
+
         await expect(taskCard.getByTestId(TEST_IDS.task.statusTrigger)).toContainText(statusLabel);
       },
     },

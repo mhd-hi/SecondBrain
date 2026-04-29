@@ -165,6 +165,6 @@ test.describe('Task Management', () => {
 
     await expect(getTaskCard(page, 'Alpha task')).toBeVisible();
     await expect(getTaskCard(page, 'Beta task')).toBeVisible();
-    await expect(getTaskCard(page, 'Gamma task')).toBeVisible();
+    await expect(getTaskCard(page, 'Gamma task')).not.toBeVisible();
   });
 });

@@ -85,7 +85,7 @@ export function TaskCard({
   };
 
   const handleStartPomodoro = () => {
-    router.push(getPomodoroPath(task.id));
+    router.push(getPomodoroPath());
   };
 
   const defaultActions = [
@@ -147,7 +147,7 @@ export function TaskCard({
             className={cn('text-sm text-muted-foreground', isCompleted && 'opacity-70')}
             placeholder="Task description"
           />
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-2 mt-2">
             <SubtasksPill
               subtasks={subtasks}
               isExpanded={isSubtasksExpanded}

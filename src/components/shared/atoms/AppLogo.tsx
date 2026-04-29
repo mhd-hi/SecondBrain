@@ -24,7 +24,8 @@ export function AppLogo({ className }: AppLogoProps) {
           alt="Favicon"
           width={isCollapsed ? 24 : 35}
           height={isCollapsed ? 24 : 35}
-          priority={true}
+          loading="eager"
+          unoptimized
           className="object-contain shrink-0"
         />
         {!isCollapsed && <span>SecondBrain ETS</span>}

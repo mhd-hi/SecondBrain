@@ -1,8 +1,9 @@
 import type { TEvent } from '@/calendar/types';
-import type { StatusTask } from '@/types/status-task';
+import { StatusTask } from '@/types/status-task';
 import type { Task } from '@/types/task';
 import type { FilterType } from '@/types/todays-focus';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 import { invalidateCalendarEvents } from '@/lib/stores/calendar-view-store';
 import { useTaskStore } from '@/lib/stores/task-store';
 import { api } from '@/lib/utils/api/api-client-util';
@@ -71,6 +72,10 @@ export async function updateTaskStatus(taskId: string, status: StatusTask) {
   const { getTask, updateTask } = useTaskStore.getState();
   const originalTask = getTask(taskId);
 
+  if (originalTask?.status === status) {
+    return true;
+  }
+
   if (originalTask) {
     updateTask(taskId, { status });
   }
@@ -83,6 +88,11 @@ export async function updateTaskStatus(taskId: string, status: StatusTask) {
     );
 
     invalidateCalendarEvents();
+
+    if (status === StatusTask.COMPLETED) {
+      toast.success('Task completed');
+    }
+
     return true;
   } catch (error) {
     if (originalTask) {

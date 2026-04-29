@@ -1,6 +1,5 @@
 import type { SoundStorageKey } from '@/lib/sound-manager';
 import type { PomodoroStage } from '@/types/pomodoro';
-import type { Task } from '@/types/task';
 import { toast } from 'sonner';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -27,7 +26,6 @@ type PomodoroSettings = {
 };
 
 type PomodoroStore = {
-  currentTask: Task | null;
   pomodoroStage: PomodoroStage;
   isPomodoroActive: boolean;
   isRunning: boolean;
@@ -39,7 +37,7 @@ type PomodoroStore = {
   streak: number;
   isLoaded: boolean;
 
-  startPomodoro: (task: Task | null, duration?: number, autoStart?: boolean, userGesture?: boolean) => void;
+  startPomodoro: (duration?: number, autoStart?: boolean, userGesture?: boolean) => void;
   toggleTimer: () => void;
   stopPomodoro: () => void;
   addFiveMinutes: () => void;
@@ -81,7 +79,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
       }
 
       return {
-        currentTask: null,
         pomodoroStage: 'work',
         isPomodoroActive: false,
         isRunning: false,
@@ -100,7 +97,7 @@ export const usePomodoroStore = create<PomodoroStore>()(
         streak: 0,
         isLoaded: true,
 
-        startPomodoro: (task, duration, autoStart = false, userGesture = false) => {
+        startPomodoro: (duration, autoStart = false, userGesture = false) => {
           // Prevent overlapping timers from previous runs
           get().stopTimerInterval();
           clearCompletionTimeout();
@@ -116,7 +113,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
           const endsAt = shouldAutoStart ? Date.now() + durationInSeconds * 1000 : null;
 
           set({
-            currentTask: task,
             pomodoroStage: 'work',
             sessionDurations: duration ? { ...state.sessionDurations, work: duration } : state.sessionDurations,
             timeLeftSec: durationInSeconds,
@@ -188,7 +184,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
             isRunning: false,
             isPomodoroActive: false,
             endsAtMs: null,
-            currentTask: null,
             pomodoroStage: 'work',
             timeLeftSec: durationInSeconds,
             totalTimeSec: durationInSeconds,
@@ -317,7 +312,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
             try {
               const data = await api.post<{ streakDays?: number }>(API_ENDPOINTS.POMODORO.COMPLETE, {
                 durationHours,
-                taskId: state.currentTask?.id,
               });
               const streakDays = data && typeof data.streakDays === 'number' ? data.streakDays : 0;
               set({ streak: streakDays });
@@ -368,7 +362,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
           get().stopTimerInterval();
           clearCompletionTimeout();
           set({
-            currentTask: null,
             pomodoroStage: 'work',
             isPomodoroActive: false,
             isRunning: false,

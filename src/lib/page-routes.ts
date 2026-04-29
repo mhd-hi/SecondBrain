@@ -14,8 +14,7 @@ export const getCoursePath = (id: string | number) => `${ROUTES.COURSES}/${id}`;
 export const getCourseTaskPath = (courseId: string | number, taskId: string | number) =>
   `${getCoursePath(courseId)}#task-${taskId}`;
 export const getAddCoursePath = () => ROUTES.ADD_COURSE;
-export const getPomodoroPath = (taskId?: string | number) =>
-  taskId ? `${ROUTES.POMODORO}?taskId=${taskId}` : ROUTES.POMODORO;
+export const getPomodoroPath = () => ROUTES.POMODORO;
 export const getCalendarPath = (view?: string) => (view ? `${ROUTES.CALENDAR}?view=${view}` : ROUTES.CALENDAR);
 export const getPreferencesPath = (view?: 'profile' | 'pomodoro') =>
   view ? `${ROUTES.PREFERENCES}?view=${view}` : ROUTES.PREFERENCES;

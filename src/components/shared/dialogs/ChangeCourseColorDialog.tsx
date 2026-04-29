@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCourse } from '@/hooks/course/use-course';
 import { COURSE_COLORS } from '@/lib/utils/colors-util';
@@ -45,9 +45,9 @@ export const ChangeCourseColorDialog = ({ courseId, open, onOpenChange, currentC
       <DialogContent aria-describedby={CHANGE_COURSE_COLOR_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Change Course Color</DialogTitle>
-          <p id={CHANGE_COURSE_COLOR_DESCRIPTION_ID} className="text-sm text-muted-foreground">
+          <DialogDescription id={CHANGE_COURSE_COLOR_DESCRIPTION_ID}>
             Choose a new color for this course.
-          </p>
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 mt-2">
           <div className="flex flex-col gap-2">

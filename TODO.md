@@ -11,19 +11,3 @@ Once we selected a task, and completed (or partially completed, as long as we cl
 - use pomodoroDaily table instead of attributes in user table to track daily pomodoro count
 ### Kanban Board
 - Implement GitHub-like Kanban board (TODO, IN PROGRESS, COMPLETED) (5 points)
-
-# Tests
-### Task Management Testing
-- Test remove task
-- Test Pomodoro effort tracking (user and task tables)
-- Test add subtasks 
-- Test remove subtasks 
-- Test convert subtask to task
-
-### Story: API and Middleware Testing
-- Test cron API and `cron-secret` route for deleting courses
-- Test middleware using sensitive API endpoints
-
-### Story: Course Management Testing
-- Test remove course
-- Test task creation upon course addition

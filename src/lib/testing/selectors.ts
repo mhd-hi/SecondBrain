@@ -32,6 +32,7 @@ export const TEST_IDS = {
     page: 'course-page',
     actionsTrigger: 'course-page-actions-trigger',
     searchInput: 'course-page-search-input',
+    hideCompletedToggle: 'course-page-hide-completed-toggle',
     addTaskButton: 'course-page-add-task-button',
     taskList: 'course-page-task-list',
     emptyState: 'course-page-empty-state',

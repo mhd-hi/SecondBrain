@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { createCustomLinkAPI } from '@/hooks/use-custom-link';
 
+const ADD_CUSTOM_LINK_DESCRIPTION_ID = 'add-custom-link-description';
+
 type AddCustomLinkDialogProps = {
   courseId?: string;
   open?: boolean;
@@ -48,10 +50,10 @@ export const AddCustomLinkDialog = ({ courseId, open, onOpenChange, onLinkCreate
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent>
+      <DialogContent aria-describedby={ADD_CUSTOM_LINK_DESCRIPTION_ID}>
         <DialogHeader>
           <DialogTitle>Add Custom Link</DialogTitle>
-          <DialogDescription>Add a custom link for this course</DialogDescription>
+          <DialogDescription id={ADD_CUSTOM_LINK_DESCRIPTION_ID}>Add a custom link for this course</DialogDescription>
         </DialogHeader>
         <div className="py-2">
           <CustomLinkForm onCreate={handleCreate} initialCourseId={courseId} />

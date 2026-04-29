@@ -17,7 +17,6 @@ export function PomodoroContainer() {
     timeLeftSec,
     totalTimeSec,
     pomodoroStage,
-    currentTask,
     sessionDurations,
     isPomodoroActive,
     streak,
@@ -90,20 +89,11 @@ export function PomodoroContainer() {
   };
 
   return (
-    <div className="relative max-w-3xl mx-auto space-y-6 pb-32">
+    <div className="relative max-w-3xl mx-auto space-y-6">
       {/* Main Pomodoro Session Card */}
       <div className="relative">
         <Card className="border-2">
-
           <CardContent className="space-y-6 mt-7">
-          {/* Task Display */}
-          {currentTask && (
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium text-muted-foreground">Working on:</p>
-              <p className="text-lg font-medium">{currentTask.title}</p>
-            </div>
-          )}
-
           {/* Pomodoro Stage Tabs */}
           <div className="flex justify-center px-2">
             <Tabs value={pomodoroStage} onValueChange={value => switchToPomodoroStage(value as PomodoroStage)}>

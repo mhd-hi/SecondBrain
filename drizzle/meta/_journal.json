@@ -169,6 +169,20 @@
       "when": 1776918454968,
       "tag": "0023_clever_nextwave",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1777364653138,
+      "tag": "0024_jittery_scarlet_witch",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1777365030780,
+      "tag": "0025_fair_eddie_brock",
+      "breakpoints": true
     }
   ]
 }

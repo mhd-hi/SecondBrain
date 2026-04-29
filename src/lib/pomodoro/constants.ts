@@ -16,3 +16,24 @@ export const formatTime = (minutes: number) => {
   const secs = Math.round((minutes - mins) * 60);
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
+
+export const POMODORO_HISTORY_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+export const POMODORO_HISTORY_DAY_LABEL_ROWS = new Set([1, 3, 5]);
+
+export const POMODORO_HISTORY_LEVEL_STYLES: Record<0 | 1 | 2 | 3 | 4, string> = {
+  0: 'bg-[#ebe5ff] dark:bg-[#312847]',
+  1: 'bg-[#d8c8ff] dark:bg-[#4a3270]',
+  2: 'bg-[#b99af7] dark:bg-[#6742a3]',
+  3: 'bg-[#915ee8] dark:bg-[#8b5cf6]',
+  4: 'bg-[#6425d0] dark:bg-[#c084fc]',
+};
+
+export function formatPomodoroHistoryMinutes(totalMinutes: number) {
+  if (totalMinutes >= 60) {
+    const hours = totalMinutes / 60;
+    return `${hours % 1 === 0 ? hours.toFixed(0) : hours.toFixed(1)}h`;
+  }
+
+  return `${Math.round(totalMinutes)}m`;
+}

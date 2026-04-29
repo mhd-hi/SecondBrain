@@ -1,7 +1,7 @@
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuthSimple } from '@/lib/auth/api';
-import { calculatePomodoroStreak, startOfPomodoroDay } from '@/lib/pomodoro/streak';
+import { startOfPomodoroDay } from '@/lib/pomodoro/date';
 import { db } from '@/server/db';
 import { pomodoroDaily } from '@/server/db/schema';
 
@@ -38,18 +38,8 @@ export const POST = withAuthSimple(
           },
         });
 
-      const streakRows = await db
-        .select({
-          day: pomodoroDaily.day,
-        })
-        .from(pomodoroDaily)
-        .where(eq(pomodoroDaily.userId, user.id));
-      const { streakDays, lastCompletedPomodoroDate } = calculatePomodoroStreak(streakRows, today);
-
       return NextResponse.json({
         success: true,
-        streakDays,
-        lastCompletedPomodoroDate,
       });
     } catch (error) {
       console.error('Failed to complete Pomodoro session:', error);

@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureHappyDom } from '../helpers/runtime';
 
 const postMock = vi.fn();
-const getMock = vi.fn();
 const playSelectedNotificationSoundMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
@@ -30,7 +29,6 @@ vi.mock('@/lib/utils/audio-util', () => ({
 vi.mock('@/lib/utils/api/api-client-util', () => ({
   api: {
     post: postMock,
-    get: getMock,
   },
 }));
 
@@ -42,8 +40,7 @@ describe('pomodoro store completion handling', () => {
     ensureHappyDom();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-28T16:00:00.000Z'));
-    postMock.mockResolvedValue({ streakDays: 4 });
-    getMock.mockResolvedValue({ streakDays: 0 });
+    postMock.mockResolvedValue({ success: true });
     playSelectedNotificationSoundMock.mockResolvedValue(undefined);
     vi.clearAllMocks();
     usePomodoroStore.getState().reset();
@@ -73,6 +70,5 @@ describe('pomodoro store completion handling', () => {
     expect(postMock).toHaveBeenCalledWith(API_ENDPOINTS.POMODORO.COMPLETE, {
       durationHours: 25 / 60,
     });
-    expect(usePomodoroStore.getState().streak).toBe(4);
   });
 });

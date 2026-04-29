@@ -45,7 +45,6 @@ vi.mock('@/lib/auth/api', () => ({
 }));
 
 vi.mock('drizzle-orm', () => ({
-  eq: (...args: unknown[]) => args,
   sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
     strings: Array.from(strings),
     values,
@@ -100,11 +99,6 @@ vi.mock('@/server/db', () => ({
         };
       },
     }),
-    select: () => ({
-      from: () => ({
-        where: async () => getPomodoroDbState().dailyRows,
-      }),
-    }),
   },
 }));
 
@@ -136,7 +130,7 @@ describe('pomodoro complete route', () => {
     expect(getPomodoroDbState().insertCalls).toBe(0);
   });
 
-  it('creates a row for today and returns the derived streak', async () => {
+  it('creates a row for today and returns success', async () => {
     const threeSecondsInHours = 3 / 3600;
     const threeSecondsInMinutes = 3 / 60;
 
@@ -164,7 +158,6 @@ describe('pomodoro complete route', () => {
     expect(getPomodoroDbState().insertValues?.day).toBeInstanceOf(Date);
     await expect(response.json()).resolves.toMatchObject({
       success: true,
-      streakDays: 3,
     });
   });
 
@@ -195,7 +188,6 @@ describe('pomodoro complete route', () => {
     });
     await expect(response.json()).resolves.toMatchObject({
       success: true,
-      streakDays: 4,
     });
   });
 });

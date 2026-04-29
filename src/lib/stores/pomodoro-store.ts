@@ -39,7 +39,6 @@ type PomodoroStore = {
   totalTimeSec: number;
   sessionDurations: SessionDurations;
   settings: PomodoroSettings;
-  streak: number;
   isLoaded: boolean;
 
   startPomodoro: (duration?: number, autoStart?: boolean, userGesture?: boolean) => void;
@@ -52,8 +51,6 @@ type PomodoroStore = {
   updateSettings: (settings: Partial<PomodoroSettings>) => void;
   tick: () => void;
   handleTimerComplete: (completedSession?: CompletedSessionSnapshot) => Promise<void>;
-  setStreak: (streak: number) => void;
-  fetchStreak: () => Promise<void>;
   startTimerInterval: () => void;
   stopTimerInterval: () => void;
 
@@ -99,7 +96,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
           soundVolume: DEFAULT_SOUND_VOLUME,
           notificationSound: SOUND_DEFAULT_STORAGE,
         },
-        streak: 0,
         isLoaded: true,
 
         startPomodoro: (duration, autoStart = false, userGesture = false) => {
@@ -325,11 +321,9 @@ export const usePomodoroStore = create<PomodoroStore>()(
               ? `You've worked for ${completedTotalTimeSec} seconds!`
               : `You've worked for ${completedMinutes.toFixed(0)} minutes!`;
             try {
-              const data = await api.post<{ streakDays?: number }>(API_ENDPOINTS.POMODORO.COMPLETE, {
+              await api.post(API_ENDPOINTS.POMODORO.COMPLETE, {
                 durationHours,
               });
-              const streakDays = data && typeof data.streakDays === 'number' ? data.streakDays : 0;
-              set({ streak: streakDays });
               toast.success('Pomodoro completed!', { description: completionDescription });
             } catch (error) {
               console.error('Failed to complete Pomodoro:', error);
@@ -343,19 +337,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
             get().switchToPomodoroStage(nextBreakType);
           } else {
             get().switchToPomodoroStage('work');
-          }
-        },
-
-        setStreak: streak => set({ streak }),
-
-        fetchStreak: async () => {
-          try {
-            const data = await api.get<{ streakDays?: number }>(API_ENDPOINTS.POMODORO.STREAK);
-            const streakDays = data && typeof data.streakDays === 'number' ? data.streakDays : 0;
-            set({ streak: streakDays });
-          } catch (error) {
-            console.error('Error fetching pomodoro streak:', error);
-            set({ streak: 0 });
           }
         },
 
@@ -388,7 +369,6 @@ export const usePomodoroStore = create<PomodoroStore>()(
               shortBreak: DEFAULT_SHORT_BREAK_DURATION,
               longBreak: DEFAULT_LONG_BREAK_DURATION,
             },
-            streak: 0,
           });
         },
       };
@@ -406,5 +386,4 @@ export const usePomodoroStore = create<PomodoroStore>()(
 // Initialize sound manager on client side
 if (typeof window !== 'undefined') {
   soundManager.init();
-  usePomodoroStore.getState().fetchStreak();
 }

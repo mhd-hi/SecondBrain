@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DEFAULT_WORK_DURATION, usePomodoroStore } from '@/lib/stores/pomodoro-store';
-import { StreakBadge } from '../shared/atoms/StreakBadge';
 import { DurationSelector } from './DurationSelector';
 
 export function PomodoroContainer() {
@@ -19,13 +18,11 @@ export function PomodoroContainer() {
     pomodoroStage,
     sessionDurations,
     isPomodoroActive,
-    streak,
     toggleTimer,
     stopPomodoro,
     addFiveMinutes,
     switchToPomodoroStage,
     updateDuration,
-    fetchStreak,
   } = usePomodoroStore();
 
   // Compute current duration reactively from sessionDurations
@@ -38,11 +35,6 @@ export function PomodoroContainer() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
-
-  // Fetch streak on mount
-  useEffect(() => {
-    fetchStreak();
-  }, [fetchStreak]);
 
   // Update page title with timer when running
   useEffect(() => {
@@ -88,31 +80,34 @@ export function PomodoroContainer() {
     }
   };
 
+  const sessionPrompt = pomodoroStage === 'work'
+    ? `Start a ${Math.round(currentDuration)}-minute focus session`
+    : pomodoroStage === 'shortBreak'
+      ? 'Take a short reset before the next sprint'
+      : 'Step away for a longer break';
+
   return (
-    <div className="relative max-w-3xl mx-auto space-y-6">
-      {/* Main Pomodoro Session Card */}
-      <div className="relative">
-        <Card className="border-2">
-          <CardContent className="space-y-6 mt-7">
-          {/* Pomodoro Stage Tabs */}
-          <div className="flex justify-center px-2">
+    <div className="mx-auto w-full max-w-5xl space-y-4">
+      <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+        <CardContent className="space-y-6 p-5 sm:p-6">
+          <div className="flex justify-center">
             <Tabs value={pomodoroStage} onValueChange={value => switchToPomodoroStage(value as PomodoroStage)}>
-              <TabsList className="flex flex-col md:grid w-full max-w-md md:grid-cols-3 h-auto min-h-10 bg-muted/50 p-1 rounded-xl gap-2 md:gap-0">
+              <TabsList className="flex h-auto min-h-10 w-full max-w-md flex-col gap-2 rounded-xl bg-muted/50 p-1 md:grid md:grid-cols-3 md:gap-0">
                 <TabsTrigger
                   value="work"
-                  className="h-auto min-h-8 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border-0 transition-colors duration-200 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md"
+                  className="h-auto min-h-8 rounded-lg border-0 px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:px-3 sm:text-sm"
                 >
                   Pomodoro
                 </TabsTrigger>
                 <TabsTrigger
                   value="shortBreak"
-                  className="h-auto min-h-8 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border-0 transition-colors duration-200 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md"
+                  className="h-auto min-h-8 rounded-lg border-0 px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:px-3 sm:text-sm"
                 >
                   Short Break
                 </TabsTrigger>
                 <TabsTrigger
                   value="longBreak"
-                  className="h-auto min-h-8 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border-0 transition-colors duration-200 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md"
+                  className="h-auto min-h-8 rounded-lg border-0 px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:px-3 sm:text-sm"
                 >
                   Long Break
                 </TabsTrigger>
@@ -120,8 +115,16 @@ export function PomodoroContainer() {
             </Tabs>
           </div>
 
-          {/* Timer Display */}
-          <div className="text-center space-y-4">
+          <div className="space-y-4 text-center">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {pomodoroStage === 'work' ? 'Focus session' : 'Recovery session'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {sessionPrompt}
+              </p>
+            </div>
+
             {showDurationSelector
               ? (
                 <DurationSelector
@@ -130,16 +133,15 @@ export function PomodoroContainer() {
                 />
               )
               : (
-                <div className="text-foreground flex h-16 items-center justify-center font-mono text-6xl font-bold">
+                <div className="text-foreground flex h-16 items-center justify-center font-mono text-7xl font-bold sm:text-6xl">
                   {formatTime(timeLeftSec)}
                 </div>
               )}
 
-            {/* Progress bar */}
-            <div className="mx-8 sm:mx-12 md:mx-16 lg:mx-20">
-              <div className="bg-muted mb-4 h-1.5 w-full rounded-full">
+            <div className="mx-auto max-w-xl px-2 sm:px-6">
+              <div className="bg-muted/80 h-2 w-full rounded-full">
                 <div
-                  className={`h-1.5 rounded-full transition-all duration-1000 
+                  className={`h-2 rounded-full transition-all duration-1000
                     ${pomodoroStage === 'work' ? 'bg-blue-500' : 'bg-green-500'}`}
                   style={{ width: `${getProgress()}%` }}
                 />
@@ -147,14 +149,13 @@ export function PomodoroContainer() {
             </div>
           </div>
 
-          {/* Session Controls */}
-          <div className="space-y-4">
+          <div className="border-t border-border/60 pt-5">
             <div className="flex items-center justify-center gap-4">
               <Button
                 onClick={handlePlayClick}
                 variant="outline"
                 size="lg"
-                className="pomodoro-button flex h-16 w-16 items-center justify-center rounded-full shadow-md"
+                className="pomodoro-button flex h-16 w-16 items-center justify-center rounded-full shadow-sm"
               >
                 {isRunning ? <Pause className="h-6 w-6" /> : <Play className="ml-1 h-6 w-6" />}
               </Button>
@@ -163,7 +164,7 @@ export function PomodoroContainer() {
                 onClick={stopPomodoro}
                 variant="outline"
                 size="lg"
-                className="flex h-16 w-16 items-center justify-center rounded-full shadow-lg"
+                className="flex h-16 w-16 items-center justify-center rounded-full shadow-sm"
               >
                 <Square className="h-6 w-6" />
               </Button>
@@ -172,7 +173,7 @@ export function PomodoroContainer() {
                 onClick={handleAddFiveMinutes}
                 variant="outline"
                 size="lg"
-                className="flex h-16 w-16 items-center justify-center rounded-full shadow-lg"
+                className="flex h-16 w-16 items-center justify-center rounded-full shadow-sm"
                 title="Add 5 minutes"
               >
                 <div className="flex flex-col items-center gap-1">
@@ -182,14 +183,10 @@ export function PomodoroContainer() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <StreakBadge streak={streak ?? 0} />
-          </CardContent>
-        </Card>
-
-        <QuoteBubble className="pointer-events-auto mt-7 justify-items-end" />
-      </div>
-
+      <QuoteBubble className="pointer-events-auto" />
     </div>
   );
 }

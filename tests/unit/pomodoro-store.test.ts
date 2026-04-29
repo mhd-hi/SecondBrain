@@ -77,6 +77,7 @@ describe('pomodoro store completion handling', () => {
     await Promise.resolve();
 
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+
     expect(fetchMock).toHaveBeenCalledWith(
       API_ENDPOINTS.POMODORO.COMPLETE,
       expect.objectContaining({

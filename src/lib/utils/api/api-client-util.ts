@@ -14,14 +14,19 @@ const apiRequest = async <T>(
   url: string,
   options: RequestInit = {},
   errorMessage = 'Request failed',
+  showToast = true,
 ): Promise<T> => {
   try {
     const response = await fetch(url, options);
     return await validateApiResponse<T>(response);
   } catch (error) {
     console.error('API request to', url, 'failed:', error);
-    // Use the consolidated error handler instead of direct toast
-    ErrorHandlers.api(error, errorMessage);
+    if (showToast) {
+      // Use the consolidated error handler instead of direct toast
+      ErrorHandlers.api(error, errorMessage);
+    } else {
+      ErrorHandlers.silent(error);
+    }
     throw error;
   }
 };
@@ -33,27 +38,54 @@ export const api = {
   get: <T>(url: string, errorMessage?: string) =>
     apiRequest<T>(url, { method: 'GET' }, errorMessage),
 
-  post: <T>(url: string, data?: unknown, errorMessage?: string) =>
+  getSilent: <T>(url: string, errorMessage?: string) =>
+    apiRequest<T>(url, { method: 'GET' }, errorMessage, false),
+
+  post: <T>(url: string, data?: unknown, errorMessage?: string, showToast = true) =>
     apiRequest<T>(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: data ? JSON.stringify(data) : undefined,
-    }, errorMessage),
+    }, errorMessage, showToast),
 
-  put: <T>(url: string, data?: unknown, errorMessage?: string) =>
+  postSilent: <T>(url: string, data?: unknown, errorMessage?: string) =>
+    apiRequest<T>(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: data ? JSON.stringify(data) : undefined,
+    }, errorMessage, false),
+
+  put: <T>(url: string, data?: unknown, errorMessage?: string, showToast = true) =>
     apiRequest<T>(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: data ? JSON.stringify(data) : undefined,
-    }, errorMessage),
+    }, errorMessage, showToast),
 
-  delete: <T>(url: string, errorMessage?: string) =>
-    apiRequest<T>(url, { method: 'DELETE' }, errorMessage),
+  putSilent: <T>(url: string, data?: unknown, errorMessage?: string) =>
+    apiRequest<T>(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: data ? JSON.stringify(data) : undefined,
+    }, errorMessage, false),
 
-  patch: <T>(url: string, data?: unknown, errorMessage?: string) =>
+  delete: <T>(url: string, errorMessage?: string, showToast = true) =>
+    apiRequest<T>(url, { method: 'DELETE' }, errorMessage, showToast),
+
+  deleteSilent: <T>(url: string, errorMessage?: string) =>
+    apiRequest<T>(url, { method: 'DELETE' }, errorMessage, false),
+
+  patch: <T>(url: string, data?: unknown, errorMessage?: string, showToast = true) =>
     apiRequest<T>(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: data ? JSON.stringify(data) : undefined,
-    }, errorMessage),
+    }, errorMessage, showToast),
+
+  patchSilent: <T>(url: string, data?: unknown, errorMessage?: string) =>
+    apiRequest<T>(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: data ? JSON.stringify(data) : undefined,
+    }, errorMessage, false),
 };

@@ -37,7 +37,7 @@ export default async function PomodoroPage() {
     : [];
 
   return (
-    <main className="container mx-auto mt-2 flex flex-col gap-6 px-4 sm:px-6 md:px-8">
+    <main className="container mx-auto mt-2 flex flex-col gap-6 px-4 pb-16 sm:px-6 md:px-8">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">

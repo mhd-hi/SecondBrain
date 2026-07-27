@@ -4,6 +4,7 @@ import type { Course } from '@/types/course';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { toast } from 'sonner';
 import CourseCard from '@/components/Boards/Course/CourseCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,12 +20,17 @@ export function CourseListTile() {
   const { deleteCourse } = useCourseMutations();
 
   const handleDeleteCourse = async (courseId: string) => {
+    const courseToDelete = courses?.find(c => c.id === courseId);
+
     try {
       await handleConfirm(
         'Are you sure you want to delete this course? This action cannot be undone.',
         async () => {
           await deleteCourse(courseId);
           await refreshCourses();
+          if (courseToDelete) {
+            toast.success(`Course ${courseToDelete.code} deleted successfully`);
+          }
         },
         undefined,
         {
@@ -40,6 +46,7 @@ export function CourseListTile() {
         CommonErrorMessages.COURSE_DELETE_FAILED,
         'CourseListTile handleDeleteCourse',
       );
+      toast.error(CommonErrorMessages.COURSE_DELETE_FAILED);
     }
   };
 
@@ -54,7 +61,7 @@ export function CourseListTile() {
       </div>
       <div
         className="grid w-full gap-3"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))' }}
       >
         {isLoading
 ? (

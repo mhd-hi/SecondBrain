@@ -81,33 +81,30 @@ export function AppSidebar({ courses, isLoading = false }: SidebarProps) {
         {/* My Courses Group */}
         <SidebarGroup>
           <SidebarGroupLabel>My Courses</SidebarGroupLabel>
-          {isMobile
-            ? (
-                <SidebarGroupAction
-                  onClick={() => router.push(getAddCoursePath())}
-                  className="h-8 w-8"
-                >
-                  <Plus className="size-5" />
-                </SidebarGroupAction>
-              )
-            : (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <SidebarGroupAction
-                        onClick={() => router.push(getAddCoursePath())}
-                        className="h-8 w-8"
-                      >
-                        <Plus className="size-5" />
-                      </SidebarGroupAction>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p>Add course</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-          <SidebarGroupContent>
+          {(() => {
+            const addCourseAction = (
+              <SidebarGroupAction
+                onClick={() => router.push(getAddCoursePath())}
+                className="top-2 h-8 w-8"
+              >
+                <Plus className="size-5" />
+              </SidebarGroupAction>
+            );
+
+            return isMobile
+              ? addCourseAction
+              : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>{addCourseAction}</TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>Add course</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+          })()}
+          <SidebarGroupContent className="mt-2">
             <SidebarMenu>
               {isLoading
                 ? Array.from({ length: 5 }, (_, i) => (
@@ -124,11 +121,11 @@ export function AppSidebar({ courses, isLoading = false }: SidebarProps) {
                           <SidebarMenuButton asChild isActive={isActive}>
                             <Link href={getCoursePath(course.id)} data-testid={TEST_IDS.shell.sidebarCourseLink}>
                               <NotebookText
-                                className="size-4"
+                                className="size-4 shrink-0"
                                 style={{ color: course.color }}
                               />
-                              <span>{course.code}</span>
-                              <div className="ml-auto flex items-center gap-1">
+                              <span className="min-w-0 truncate">{course.code}</span>
+                              <div className="ml-auto flex shrink-0 items-center gap-1">
                                 {course.overdueCount > 0 && (
                                   <StatusBadge
                                     content={course.overdueCount}

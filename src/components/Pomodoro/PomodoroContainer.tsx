@@ -153,9 +153,8 @@ export function PomodoroContainer() {
             <div className="flex items-center justify-center gap-4">
               <Button
                 onClick={handlePlayClick}
-                variant="outline"
                 size="lg"
-                className="pomodoro-button flex h-16 w-16 items-center justify-center rounded-full shadow-sm"
+                className="flex h-16 w-16 items-center justify-center rounded-full shadow-sm"
               >
                 {isRunning ? <Pause className="h-6 w-6" /> : <Play className="ml-1 h-6 w-6" />}
               </Button>

@@ -14,7 +14,7 @@ type InternalSubtask = {
   notes?: string;
 };
 
-export type InternalCourse = {
+type InternalCourse = {
   id: string;
   code: string;
   name: string;
@@ -25,7 +25,7 @@ export type InternalCourse = {
   updatedAt: string;
 };
 
-export type InternalTask = {
+type InternalTask = {
   id: string;
   courseId: string;
   title: string;

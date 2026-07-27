@@ -47,6 +47,7 @@ async function fetchCourseFromPlanETS(courseCode: string, term: string) {
       step: 'planets',
     },
     'Failed to fetch planets data',
+    false,
   );
 
   if (result.step.status === 'error') {
@@ -76,6 +77,7 @@ async function parseCourseWithAI(
       userContext,
     },
     'Failed to process with AI',
+    false,
   );
 
   if (result.step.status === 'error') {
@@ -101,6 +103,7 @@ async function createCourse(
       daypart,
     },
     'Failed to create course',
+    false,
   );
 
   if (!course.id) {
@@ -136,6 +139,7 @@ async function createTasks(
       tasks: tasksWithDueDates,
     },
     'Failed to create tasks',
+    false,
   );
 }
 
@@ -194,7 +198,6 @@ export function useAddCourse(): UseAddCourseReturn {
             error: errorMessage,
             currentPhase: 'skipped-pipeline-course-loading',
           });
-          toast.error(errorMessage);
         }
         return;
       }
@@ -238,7 +241,6 @@ export function useAddCourse(): UseAddCourseReturn {
           error: errorMessage,
           currentPhase: currentStep,
         });
-        toast.error(errorMessage);
       }
     },
     [currentStep],

@@ -32,7 +32,7 @@ export default function DashboardLayoutContent({
     <SidebarProvider>
       <div className="flex w-full" data-testid={TEST_IDS.shell.layout}>
         <AppSidebar courses={sidebarCourses} isLoading={sidebarIsLoading} onCourseAdded={refreshCourses} />
-        <SidebarInset className="flex flex-1 flex-col">
+        <SidebarInset className="flex min-w-0 flex-1 flex-col">
           <Navbar />
           <main className="container max-w-full flex-1">
             {children}

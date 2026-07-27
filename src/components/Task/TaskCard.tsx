@@ -267,7 +267,7 @@ export function TaskCard({
               <Button
                 onClick={handleStartPomodoro}
                 size="sm"
-                className="pomodoro-button h-8 px-3 shrink min-w-0 ml-auto"
+                className="h-8 px-3 shrink min-w-0 ml-auto"
               >
                 <Play className="h-4 w-4" />
                 Pomodoro

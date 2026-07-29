@@ -81,6 +81,7 @@ describe('AIChatAssistant', () => {
       const sidebar = view.container.querySelector(
         'aside[aria-label="Lucy task assistant"]',
       );
+
       expect(sidebar?.className).toContain('fixed');
       expect(sidebar?.className).toContain('h-dvh');
       expect(sidebar?.className).toContain('overflow-hidden');
@@ -98,8 +99,10 @@ describe('AIChatAssistant', () => {
       const resizeHandle = view.container.querySelector(
         '[aria-label="Resize Lucy"]',
       ) as HTMLDivElement;
+
       expect(resizeHandle.className).toContain('hidden');
       expect(resizeHandle.className).toContain('md:flex');
+
       await act(async () => {
         resizeHandle.dispatchEvent(
           new KeyboardEvent('keydown', {
@@ -108,6 +111,7 @@ describe('AIChatAssistant', () => {
           }),
         );
       });
+
       expect(sidebar?.getAttribute('style')).toContain('--chat-width: 408px');
     } finally {
       await view.unmount();
@@ -142,6 +146,7 @@ describe('AIChatAssistant', () => {
 
     try {
       await act(async () => button(view.container, 'Open Lucy').click());
+
       expect(view.container.textContent).toContain('First conversation');
 
       await act(async () => {
@@ -163,6 +168,7 @@ describe('AIChatAssistant', () => {
         view.container.querySelectorAll('.whitespace-pre-wrap'),
         (element) => element.textContent,
       );
+
       expect(visibleMessages).toEqual(['Second conversation']);
     } finally {
       await view.unmount();

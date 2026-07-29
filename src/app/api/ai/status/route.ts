@@ -3,9 +3,79 @@ import { getAIClient } from '@/lib/ai/client';
 import { buildProviderHealthAttempts } from '@/lib/ai/providers';
 import { withAuthSimple } from '@/lib/auth/api';
 
-const MODEL_TIMEOUT_MS = 10_000;
+const MODEL_TIMEOUT_MS = 20_000;
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * @swagger
+ * /api/ai/status:
+ *   get:
+ *     summary: Check configured AI model availability
+ *     tags: [AI]
+ *     responses:
+ *       200:
+ *         description: AI model health results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [checkedAt, models]
+ *               properties:
+ *                 checkedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 models:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [provider, model, status]
+ *                     properties:
+ *                       provider:
+ *                         type: string
+ *                       model:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [ok, error]
+ *                       latencyMs:
+ *                         type: number
+ *                       error:
+ *                         type: string
+ *                         description: NOT_CONFIGURED, ABORTED, TIMEOUT, REQUEST_FAILED, provider code, or HTTP status like HTTP_429
+ *       401:
+ *         description: Authentication required
+ */
+function statusError(
+  error: unknown,
+  request: Request,
+  timeoutSignal: AbortSignal,
+  elapsedMs: number,
+) {
+  if (request.signal.aborted) {
+    return 'ABORTED';
+  }
+  if (timeoutSignal.aborted || elapsedMs >= MODEL_TIMEOUT_MS) {
+    return 'TIMEOUT';
+  }
+  if (error && typeof error === 'object') {
+    const metadata = error as {
+      name?: unknown;
+      status?: unknown;
+      code?: unknown;
+    };
+    if (metadata.name === 'TimeoutError' || metadata.code === 'ETIMEDOUT') {
+      return 'TIMEOUT';
+    }
+    if (typeof metadata.code === 'string') {
+      return metadata.code;
+    }
+    if (typeof metadata.status === 'number') {
+      return `HTTP_${metadata.status}`;
+    }
+  }
+  return 'REQUEST_FAILED';
+}
 
 export const GET = withAuthSimple(async (request) => {
   const results = await Promise.all(
@@ -20,6 +90,7 @@ export const GET = withAuthSimple(async (request) => {
       }
 
       const startedAt = Date.now();
+      const timeoutSignal = AbortSignal.timeout(MODEL_TIMEOUT_MS);
       try {
         await getAIClient(attempt).chat.completions.create(
           {
@@ -28,10 +99,7 @@ export const GET = withAuthSimple(async (request) => {
             max_tokens: 8,
           },
           {
-            signal: AbortSignal.any([
-              request.signal,
-              AbortSignal.timeout(MODEL_TIMEOUT_MS),
-            ]),
+            signal: AbortSignal.any([request.signal, timeoutSignal]),
           },
         );
         return {
@@ -41,22 +109,13 @@ export const GET = withAuthSimple(async (request) => {
           latencyMs: Date.now() - startedAt,
         };
       } catch (error) {
-        const metadata =
-          error && typeof error === 'object'
-            ? (error as { status?: unknown; code?: unknown })
-            : {};
+        const latencyMs = Date.now() - startedAt;
         return {
           provider: attempt.name,
           model: attempt.model,
           status: 'error' as const,
-          latencyMs: Date.now() - startedAt,
-          error: request.signal.aborted
-            ? 'ABORTED'
-            : typeof metadata.code === 'string'
-              ? metadata.code
-              : typeof metadata.status === 'number'
-                ? `HTTP_${metadata.status}`
-                : 'REQUEST_FAILED',
+          latencyMs,
+          error: statusError(error, request, timeoutSignal, latencyMs),
         };
       }
     }),

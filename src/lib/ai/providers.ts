@@ -21,16 +21,26 @@ export type ProviderHealthAttempt =
 // Change models here — nowhere else. Order matters within each provider.
 const PROVIDER_MODELS = {
   groq: ['openai/gpt-oss-120b'],
-  'google-ai-studio': ['gemini-3.6-flash'],
+  'google-ai-studio': ['gemini-3.5-flash', 'gemini-3.5-flash-lite'],
   nvidia: ['meta/llama-3.3-70b-instruct', 'nvidia/nemotron-3-super-120b-a12b'],
-  openrouter: ['openai/gpt-oss-20b:free', 'openrouter/free'],
+  openrouter: [
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'openai/gpt-oss-20b:free',
+    'openrouter/free',
+  ],
+  xai: ['grok-4.5'],
 } as const;
 
 const CHAT_PROVIDER_MODELS = {
-  'google-ai-studio': ['gemini-3.6-flash'],
+  'google-ai-studio': ['gemini-3.5-flash', 'gemini-3.5-flash-lite'],
   groq: ['openai/gpt-oss-120b'],
   nvidia: ['nvidia/nemotron-3-super-120b-a12b', 'meta/llama-3.3-70b-instruct'],
-  openrouter: ['openai/gpt-oss-20b:free', 'openrouter/free'],
+  openrouter: [
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'openai/gpt-oss-20b:free',
+    'openrouter/free',
+  ],
+  xai: ['grok-4.5'],
 } as const;
 
 export function buildProviders(): ProviderConfig[] {
@@ -69,6 +79,15 @@ export function buildProviders(): ProviderConfig[] {
       apiKey: env.OPENROUTER_API_KEY,
       baseURL: 'https://openrouter.ai/api/v1',
       models: PROVIDER_MODELS.openrouter,
+    });
+  }
+
+  if (env.XAI_API_KEY) {
+    providers.push({
+      name: 'xai',
+      apiKey: env.XAI_API_KEY,
+      baseURL: 'https://api.x.ai/v1',
+      models: PROVIDER_MODELS.xai,
     });
   }
 

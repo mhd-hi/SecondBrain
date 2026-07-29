@@ -72,6 +72,7 @@ describe('AI chat contracts', () => {
       role: index % 2 ? ('assistant' as const) : ('user' as const),
       content: `message ${index}`,
     }));
+
     expect(() =>
       plannerOutputSchema.parse({ kind: 'reply', message: 'ok' }),
     ).not.toThrow();

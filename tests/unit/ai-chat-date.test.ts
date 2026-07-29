@@ -11,6 +11,7 @@ describe('AI chat Toronto dates', () => {
     'stores %s at noon in Toronto',
     (dateOnly) => {
       const date = parseTorontoDueDate(dateOnly);
+
       expect(formatTorontoDate(date)).toBe(dateOnly);
       expect(
         new Intl.DateTimeFormat('en-CA', {

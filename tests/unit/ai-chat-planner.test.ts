@@ -11,6 +11,10 @@ vi.mock('@/lib/ai/providers', () => ({
 vi.mock('@/lib/ai/client', () => ({
   getAIClient: getAIClientMock,
 }));
+vi.mock('@/lib/ai/stats', () => ({
+  aiErrorCode: () => 'TEST_ERROR',
+  recordAIModelAttempt: vi.fn(),
+}));
 vi.mock('@/lib/ai/chat/tools', () => ({
   CHAT_READ_TOOLS: [],
   MAX_PLANNER_NOTES_CHARACTERS: 12_000,

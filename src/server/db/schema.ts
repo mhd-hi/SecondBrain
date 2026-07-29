@@ -176,6 +176,30 @@ export const aiActionDrafts = pgTable(
   ],
 );
 
+export const aiModelStats = pgTable(
+  'ai_model_stats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    status: text('status', { enum: ['success', 'error'] }).notNull(),
+    errorCode: text('error_code').notNull().default(''),
+    count: integer('count').notNull().default(0),
+    lastLatencyMs: integer('last_latency_ms'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex('uq_ai_model_stats_bucket').on(
+      table.provider,
+      table.model,
+      table.status,
+      table.errorCode,
+    ),
+    index('idx_ai_model_stats_provider_model').on(table.provider, table.model),
+  ],
+);
+
 export const pomodoroDaily = pgTable(
   'pomodoro_daily',
   {

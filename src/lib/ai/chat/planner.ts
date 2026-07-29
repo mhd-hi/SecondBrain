@@ -1,21 +1,17 @@
 import type { OpenAI } from 'openai';
 import { getAIClient } from '@/lib/ai/client';
 import { AIError } from '@/lib/ai/error';
-import {
-  buildChatProviderAttempts,
-  type ProviderAttempt,
-} from '@/lib/ai/providers';
+import type { ProviderAttempt } from '@/lib/ai/providers';
+import { buildChatProviderAttempts } from '@/lib/ai/providers';
+import { aiErrorCode, recordAIModelAttempt } from '@/lib/ai/stats';
 import { formatTorontoDate } from './date';
 import {
   CHAT_READ_TOOLS,
   executeReadTool,
   MAX_PLANNER_NOTES_CHARACTERS,
 } from './tools';
-import {
-  type ChatRequest,
-  type PlannerOutput,
-  plannerOutputSchema,
-} from './types';
+import type { ChatRequest, PlannerOutput } from './types';
+import { plannerOutputSchema } from './types';
 
 const MAX_TOOL_ROUNDS = 4;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -236,14 +232,23 @@ export async function planTaskAction({
         overallSignal,
       });
       await validateOutput?.(output);
+      const latencyMs = Date.now() - startedAt;
       console.info('AI chat planner succeeded', {
         provider: attempt.name,
         model: attempt.model,
-        durationMs: Date.now() - startedAt,
+        durationMs: latencyMs,
+      });
+      await recordAIModelAttempt({
+        provider: attempt.name,
+        model: attempt.model,
+        status: 'success',
+        latencyMs,
       });
       return output;
     } catch (error) {
       terminalAbort(signal, overallSignal);
+      const latencyMs = Date.now() - startedAt;
+      const providerErrorCode = aiErrorCode(error);
       const metadata =
         error && typeof error === 'object'
           ? (error as { name?: unknown; status?: unknown; code?: unknown })
@@ -251,7 +256,7 @@ export async function planTaskAction({
       console.warn('AI chat planner failed', {
         provider: attempt.name,
         model: attempt.model,
-        durationMs: Date.now() - startedAt,
+        durationMs: latencyMs,
         errorName:
           typeof metadata.name === 'string' ? metadata.name : 'UnknownError',
         ...(typeof metadata.status === 'number' && {
@@ -261,6 +266,13 @@ export async function planTaskAction({
           typeof metadata.code === 'number') && {
           providerCode: metadata.code,
         }),
+      });
+      await recordAIModelAttempt({
+        provider: attempt.name,
+        model: attempt.model,
+        status: 'error',
+        errorCode: providerErrorCode,
+        latencyMs,
       });
     }
   }

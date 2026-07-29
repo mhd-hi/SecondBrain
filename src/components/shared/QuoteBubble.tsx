@@ -20,7 +20,6 @@ export function QuoteBubble({ className }: Props) {
 
   // Initialize quote on client side only to avoid hydration mismatch
   useEffect(() => {
-    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setQuote(nextQuote());
   }, []);
 

@@ -5,7 +5,8 @@ import {
   prepareDraft,
 } from '@/lib/ai/chat/drafts';
 import { planTaskAction } from '@/lib/ai/chat/planner';
-import { chatRequestSchema, type ChatEvent } from '@/lib/ai/chat/types';
+import {  chatRequestSchema } from '@/lib/ai/chat/types';
+import type {ChatEvent} from '@/lib/ai/chat/types';
 import { AIError } from '@/lib/ai/error';
 import { withAuthSimple } from '@/lib/auth/api';
 

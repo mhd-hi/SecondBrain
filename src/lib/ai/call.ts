@@ -1,7 +1,9 @@
 import type { OpenAI } from 'openai';
 import { getAIClient } from './client';
 import { AIError } from './error';
-import { buildProviderAttempts, type ProviderAttempt } from './providers';
+import { buildProviderAttempts  } from './providers';
+import type {ProviderAttempt} from './providers';
+import { aiErrorCode, recordAIModelAttempt } from './stats';
 
 const ATTEMPT_TIMEOUT_MS = 20_000;
 const OVERALL_TIMEOUT_MS = 60_000;
@@ -106,12 +108,19 @@ export async function callWithFallback(
         throw new Error('Empty response');
       }
       await options.validate?.(text, attempt);
+      const latencyMs = Date.now() - startedAt;
 
       console.info('AI provider succeeded', {
         provider: attempt.name,
         model: attempt.model,
-        durationMs: Date.now() - startedAt,
+        durationMs: latencyMs,
         responseLength: text.length,
+      });
+      await recordAIModelAttempt({
+        provider: attempt.name,
+        model: attempt.model,
+        status: 'success',
+        latencyMs,
       });
 
       return {
@@ -129,11 +138,20 @@ export async function callWithFallback(
         throw new AIError('AI_DEADLINE_EXCEEDED');
       }
 
+      const latencyMs = Date.now() - startedAt;
+      const providerErrorCode = aiErrorCode(error);
       console.warn('AI provider failed', {
         provider: attempt.name,
         model: attempt.model,
-        durationMs: Date.now() - startedAt,
+        durationMs: latencyMs,
         ...errorMetadata(error),
+      });
+      await recordAIModelAttempt({
+        provider: attempt.name,
+        model: attempt.model,
+        status: 'error',
+        errorCode: providerErrorCode,
+        latencyMs,
       });
     }
   }

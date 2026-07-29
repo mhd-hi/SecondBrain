@@ -1,3 +1,5 @@
+import { getDatesForTerm } from '@/lib/utils/term-util';
+
 const TORONTO_TIME_ZONE = 'America/Toronto';
 const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
 const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -108,4 +110,3 @@ export function resolveTermWeekDates(term: string, week: number) {
     };
   });
 }
-import { getDatesForTerm } from '@/lib/utils/term-util';

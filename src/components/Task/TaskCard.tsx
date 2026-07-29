@@ -147,7 +147,7 @@ export function TaskCard({
             className={cn('text-sm text-muted-foreground', isCompleted && 'opacity-70')}
             placeholder="Task description"
           />
-          <div className="flex items-center gap-2 mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <SubtasksPill
               subtasks={subtasks}
               isExpanded={isSubtasksExpanded}
@@ -164,10 +164,10 @@ export function TaskCard({
               <DropdownMenuTrigger asChild>
                 <Badge
                   variant="muted"
-                  className="cursor-pointer select-none"
+                  className="h-6 cursor-pointer select-none items-center"
                   title="Click to change task type"
                 >
-                  <span className="text-xs font-medium flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/50">
+                  <span className="flex items-center gap-1 text-xs leading-none font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground">
                     {TASK_TYPE_OPTIONS.find(opt => opt.value === task.type)?.label ?? task.type}
                   </span>
                 </Badge>
@@ -214,9 +214,10 @@ export function TaskCard({
                   <Badge
                     variant="muted"
                     onClick={startEffortEditing}
+                    className="h-6 items-center"
                     title="Click to edit estimated effort (hours)"
                   >
-                    <span className="text-xs font-medium flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/50">
+                    <span className="flex items-center gap-1 text-xs leading-none font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground">
                       <Clock className="h-3 w-3 shrink-0" />
                       {formatEffortTime(task.estimatedEffort)}
                     </span>
@@ -226,8 +227,8 @@ export function TaskCard({
             )}
 
             {task.estimatedEffort > 0 && task.actualEffort > 0 && (
-              <Badge variant="muted">
-                <span className="text-xs font-medium flex items-center gap-1 text-muted-foreground">
+              <Badge variant="muted" className="h-6 items-center">
+                <span className="flex items-center gap-1 text-xs leading-none font-medium text-muted-foreground">
                   <BarChart3 className="h-3 w-3 shrink-0" />
                   {Math.round((task.actualEffort / task.estimatedEffort) * 100)}
                   % complete
@@ -235,10 +236,14 @@ export function TaskCard({
               </Badge>
             )}
 
-            <Badge variant="muted" className="overflow-visible">
-              <span aria-label="Edit due date" className="block w-full min-w-0">
+            <Badge
+              variant="muted"
+              className="h-6 max-w-full items-center justify-start overflow-visible px-2 py-0.5"
+            >
+              <span aria-label="Edit due date" className="flex min-w-0 items-center">
                 <DueDateDisplay
                   date={task.dueDate ?? null}
+                  className="min-h-0 justify-start whitespace-nowrap text-left leading-none"
                   onChange={d => saveDueDate(d ?? null)}
                   triggerTestId={TEST_IDS.task.dueDateTrigger}
                   calendarTestId={TEST_IDS.task.dueDateCalendar}

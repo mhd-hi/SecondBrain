@@ -3,11 +3,10 @@ import { db } from '@/server/db';
 import { aiActionDrafts, courses, tasks } from '@/server/db/schema';
 import { formatTorontoDate, parseTorontoDueDate } from './date';
 import { getRelatedTasks, MAX_PLANNER_NOTES_CHARACTERS } from './tools';
+import type { PlannerOutput, ReviewPayload } from './types';
 import {
   AI_DRAFT_PAYLOAD_VERSION,
   draftPayloadSchema,
-  type PlannerOutput,
-  type ReviewPayload,
   reviewPayloadSchema,
 } from './types';
 

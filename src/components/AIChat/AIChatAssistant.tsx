@@ -6,11 +6,11 @@ import type {
   ReviewPayload,
 } from '@/lib/ai/chat/types';
 import {
+  ArrowUp,
   Bot,
   GripVertical,
   History,
   Info,
-  Send,
   SquarePen,
   X,
 } from 'lucide-react';
@@ -63,6 +63,7 @@ const LEGACY_STORAGE_KEY = 'second-brain-ai-chat-v2';
 const DEFAULT_CHAT_WIDTH = 384;
 const MIN_CHAT_WIDTH = 320;
 const MAX_CHAT_WIDTH = 720;
+const CHAT_INPUT_MAX_HEIGHT = 240;
 
 function clampChatWidth(width: number) {
   const maximum = Math.max(
@@ -81,6 +82,25 @@ function createConversation(messages: ChatMessage[] = []): ChatConversation {
     messages,
   };
 }
+
+function assistantStatusText(status: unknown) {
+  switch (status) {
+    case 'searching':
+      return 'Searching…';
+    case 'planning':
+      return 'Thinking…';
+    case 'validating':
+      return 'Generating…';
+    default:
+      return 'Thinking…';
+  }
+}
+
+const ASSISTANT_STATUS_TEXTS = new Set([
+  'Searching…',
+  'Thinking…',
+  'Generating…',
+]);
 
 function readChatStore(): ChatStore {
   try {
@@ -246,11 +266,11 @@ export function AIChatAssistant() {
   const [activeConversationId, setActiveConversationId] = React.useState('');
   const [hydrated, setHydrated] = React.useState(false);
   const [input, setInput] = React.useState('');
-  const [status, setStatus] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftReviewResponse | null>(null);
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [chatWidth, setChatWidth] = React.useState(DEFAULT_CHAT_WIDTH);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const resizeStart = React.useRef<{ x: number; width: number } | null>(null);
 
   React.useEffect(() => {
@@ -303,6 +323,19 @@ export function AIChatAssistant() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [open]);
+  React.useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(
+      textarea.scrollHeight,
+      CHAT_INPUT_MAX_HEIGHT,
+    )}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? 'auto' : 'hidden';
+  }, [input]);
 
   const switchConversation = (conversationId: string) => {
     const conversation = conversations.find(
@@ -421,7 +454,6 @@ export function AIChatAssistant() {
     ]);
     setInput('');
     setBusy(true);
-    setStatus('Searching your tasks…');
 
     try {
       const response = await fetch('/api/ai/chat', {
@@ -461,12 +493,24 @@ export function AIChatAssistant() {
           }
           const data = parsed.data as Record<string, unknown>;
           if (parsed.event === 'status') {
-            setStatus(`${String(data.status)}…`);
+            setMessages((previous) =>
+              previous.map((item) =>
+                item.id === assistantId &&
+                (!item.text.trim() || ASSISTANT_STATUS_TEXTS.has(item.text))
+                  ? { ...item, text: assistantStatusText(data.status) }
+                  : item,
+              ),
+            );
           } else if (parsed.event === 'message.delta') {
             setMessages((previous) =>
               previous.map((item) =>
                 item.id === assistantId
-                  ? { ...item, text: item.text + String(data.delta) }
+                  ? {
+                      ...item,
+                      text: ASSISTANT_STATUS_TEXTS.has(item.text)
+                        ? String(data.delta)
+                        : item.text + String(data.delta),
+                    }
                   : item,
               ),
             );
@@ -517,7 +561,6 @@ export function AIChatAssistant() {
       );
     } finally {
       setBusy(false);
-      setStatus('');
     }
   };
 
@@ -531,11 +574,11 @@ export function AIChatAssistant() {
       {!open && (
         <Button
           aria-label="Open Lucy"
-          className="fixed right-4 bottom-4 z-40 rounded-full shadow-lg md:right-6 md:bottom-6"
+          className="fixed right-4 bottom-4 z-40 size-12 rounded-full shadow-lg md:right-6 md:bottom-6"
           size="icon"
           onClick={() => setOpen(true)}
         >
-          <Bot />
+          <Bot className="size-7" />
         </Button>
       )}
       {open && (
@@ -544,6 +587,8 @@ export function AIChatAssistant() {
           className="bg-background fixed inset-0 z-50 flex h-dvh w-full flex-col overflow-hidden border-l md:sticky md:inset-auto md:top-0 md:z-30 md:h-svh md:w-[var(--chat-width)] md:max-w-[60vw] md:min-w-80 md:shrink-0"
           style={{ '--chat-width': `${chatWidth}px` } as React.CSSProperties}
         >
+          {/* Focusable ARIA separator is a resize control, despite jsx-a11y's static role classification. */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <div
             role="separator"
             aria-label="Resize Lucy"
@@ -698,20 +743,14 @@ export function AIChatAssistant() {
             </div>
           </ScrollArea>
           <footer className="bg-muted/20 shrink-0 border-t p-4">
-            {status && (
-              <p
-                className="text-muted-foreground mb-2 text-xs"
-                aria-live="polite"
-              >
-                {status}
-              </p>
-            )}
-            <div className="flex items-end gap-2">
+            <div className="relative">
               <Textarea
+                ref={inputRef}
                 aria-label="Message the task assistant"
                 value={input}
                 disabled={busy}
-                className="min-h-16 resize-none"
+                rows={1}
+                className="max-h-60 min-h-12 resize-none py-3 pr-12 leading-6"
                 placeholder="Move my LOG210 homework to Friday…"
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
@@ -726,13 +765,14 @@ export function AIChatAssistant() {
                 size="icon"
                 disabled={busy || !input.trim()}
                 onClick={() => void submit()}
+                className="absolute top-1/2 right-2 size-8 -translate-y-1/2 rounded-full"
               >
-                <Send />
+                <ArrowUp className="size-4" />
               </Button>
             </div>
             <Link
               href="/privacy/ai"
-              className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs underline-offset-4 hover:underline"
+              className="text-muted-foreground hover:text-foreground mx-auto mt-2 flex w-fit items-center gap-1 text-xs underline-offset-4 hover:underline"
             >
               <Info className="size-3" aria-hidden="true" />
               About Lucy &amp; privacy

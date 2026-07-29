@@ -4,7 +4,8 @@ import type {
 } from '@/types/server-pipelines/pipelines';
 import { NextResponse } from 'next/server';
 import { generateCoursePlanTasks } from '@/lib/ai/course-plan';
-import { AIError, type AIErrorCode } from '@/lib/ai/error';
+import { AIError  } from '@/lib/ai/error';
+import type {AIErrorCode} from '@/lib/ai/error';
 import { withAuthSimple } from '@/lib/auth/api';
 import { assertValidCourseCode } from '@/lib/utils/course/course';
 import { courseExists } from '@/lib/utils/course/queries';

@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AIError, type AIErrorCode } from '@/lib/ai/error';
+import { AIError  } from '@/lib/ai/error';
+import type {AIErrorCode} from '@/lib/ai/error';
 
 const assertValidCourseCodeMock = vi.fn((code: string) => code);
 const courseExistsMock = vi.fn();
@@ -113,7 +114,9 @@ describe('course pipeline AI errors', () => {
     );
 
     expect(response.status).toBe(status);
+
     const body = await response.json();
+
     expect(body).toMatchObject({
       step: { code, error: message },
       data: null,

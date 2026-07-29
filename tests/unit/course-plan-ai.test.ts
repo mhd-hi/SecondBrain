@@ -34,6 +34,7 @@ describe('generateCoursePlanTasks', () => {
 
     const [, options] = (callWithFallbackMock as unknown as Mock).mock
       .calls[0]!;
+
     expect(options.signal).toBe(controller.signal);
     expect(
       options.requestOptions({

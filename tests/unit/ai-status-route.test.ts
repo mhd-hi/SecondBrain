@@ -85,4 +85,51 @@ describe('AI status route', () => {
     ]);
     expect(JSON.stringify(body)).not.toContain('secret');
   });
+
+  it('reports timed out model checks clearly', async () => {
+    vi.useFakeTimers();
+    const timeoutCreate = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise((_, reject) => {
+            setTimeout(
+              () => reject(new Error('secret generic timeout')),
+              20_000,
+            );
+          }),
+      );
+    (buildProviderHealthAttemptsMock as unknown as Mock).mockReturnValue([
+      {
+        name: 'nvidia',
+        model: 'meta/llama-3.3-70b-instruct',
+        apiKey: 'secret',
+        baseURL: 'https://nvidia',
+        configured: true,
+      },
+    ]);
+    (getAIClientMock as unknown as Mock).mockReturnValue({
+      chat: { completions: { create: timeoutCreate } },
+    });
+
+    const responsePromise = GET(
+      new Request('http://localhost/api/ai/status') as never,
+      {} as never,
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(body.models).toEqual([
+      expect.objectContaining({
+        provider: 'nvidia',
+        model: 'meta/llama-3.3-70b-instruct',
+        status: 'error',
+        error: 'TIMEOUT',
+      }),
+    ]);
+    expect(JSON.stringify(body)).not.toContain('secret generic timeout');
+
+    vi.useRealTimers();
+  });
 });

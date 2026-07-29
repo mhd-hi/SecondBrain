@@ -22,7 +22,7 @@ export default function AIPrivacyPage() {
       <p>
         Course-plan content, optional context, and task data requested through
         the task assistant may be sent to the AI providers configured by this
-        deployment: Groq, Google AI Studio, NVIDIA NIM, and OpenRouter.
+        deployment: Groq, Google AI Studio, NVIDIA NIM, OpenRouter, and xAI.
       </p>
       <p>
         OpenRouter&apos;s free router may select a changing underlying provider.

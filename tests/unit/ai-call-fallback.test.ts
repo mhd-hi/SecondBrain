@@ -13,6 +13,11 @@ vi.mock('@/lib/ai/client', () => ({
   getAIClient: getAIClientMock,
 }));
 
+vi.mock('@/lib/ai/stats', () => ({
+  aiErrorCode: () => 'TEST_ERROR',
+  recordAIModelAttempt: vi.fn(),
+}));
+
 const { callWithFallback } = await import('@/lib/ai/call');
 
 beforeEach(() => {
@@ -225,6 +230,7 @@ describe('callWithFallback', () => {
     await vi.advanceTimersByTimeAsync(60_001);
 
     await rejection;
+
     expect(create).toHaveBeenCalledTimes(3);
   });
 

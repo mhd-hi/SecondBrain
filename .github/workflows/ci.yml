@@ -49,6 +49,7 @@ jobs:
           const outputDir = process.argv[2];
           const auditPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           delete auditPackage.devDependencies;
+          delete auditPackage.patchedDependencies;
 
           fs.writeFileSync(`${outputDir}/package.json`, `${JSON.stringify(auditPackage, null, 2)}\n`);
           EOF

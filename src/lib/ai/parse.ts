@@ -1,40 +1,30 @@
 import type { AITask } from '@/types/api/ai';
+import { z } from 'zod';
+import { MIN_TASK_ESTIMATED_EFFORT } from '@/lib/utils/task/task-draft';
+import { TASK_TYPES } from '@/types/task';
 
-function tryParseJson(text: string): unknown | null {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
+const shortText = z.string().trim().min(1).max(300);
+const notes = z.string().max(2_000).optional();
+const subtaskSchema = z.strictObject({
+  title: shortText,
+  notes,
+});
+const taskSchema = z.strictObject({
+  week: z.number().int().positive(),
+  type: z.enum(TASK_TYPES),
+  title: shortText,
+  notes,
+  estimatedEffort: z.number().finite().min(MIN_TASK_ESTIMATED_EFFORT),
+  subtasks: z.array(subtaskSchema).max(25).optional(),
+});
+const coursePlanTasksSchema = z.array(taskSchema).min(1).max(100);
 
-export function extractJsonArrayFromText(aiText: string): AITask[] {
-  // 1) Direct parse
-  let parsed = tryParseJson(aiText);
-  if (parsed && Array.isArray(parsed)) {
-    return parsed as AITask[];
-  }
-
-  // 2) Extract between first [ and last ]
-  const firstBracket = aiText.indexOf('[');
-  const lastBracket = aiText.lastIndexOf(']');
-  if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-    const candidate = aiText.substring(firstBracket, lastBracket + 1);
-    parsed = tryParseJson(candidate);
-    if (parsed && Array.isArray(parsed)) {
-      return parsed as AITask[];
-    }
-  }
-
-  // 3) Regex heuristic
-  const regex = /(\[\s*\{[\s\S]*\}\s*\])/;
-  const match = aiText.match(regex);
-  if (match && match[1]) {
-    parsed = tryParseJson(match[1]);
-    if (parsed && Array.isArray(parsed)) {
-      return parsed as AITask[];
-    }
-  }
-
-  throw new Error('Unable to parse JSON array of tasks from AI response');
+export function parseCoursePlanTasks(aiText: string): AITask[] {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(aiText)?.[1];
+  const start = aiText.indexOf('[');
+  const end = aiText.lastIndexOf(']');
+  const json =
+    fenced ??
+    (start >= 0 && end > start ? aiText.slice(start, end + 1) : aiText);
+  return coursePlanTasksSchema.parse(JSON.parse(json)) as AITask[];
 }

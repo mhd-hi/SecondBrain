@@ -1,6 +1,7 @@
 'use client';
 import { AlertCircle, NotebookText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import * as React from 'react';
 import { useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
@@ -13,24 +14,36 @@ import { useCourses } from '@/hooks/course/use-course-store';
 import { useTerms } from '@/hooks/use-terms';
 import { getCoursePath, ROUTES } from '@/lib/page-routes';
 import { useAddCourseFormStore } from '@/lib/stores/add-course-form-store';
-import { isValidCourseCode, normalizeCourseCode } from '@/lib/utils/course/course';
+import {
+  isValidCourseCode,
+  normalizeCourseCode,
+} from '@/lib/utils/course/course';
 import { PipelineErrorHandlers } from '@/lib/utils/errors/error';
 import { MAX_USER_CONTEXT_LENGTH } from '@/lib/utils/sanitize';
-import { getDatesForTerm, getNormalizedValidTermId } from '@/lib/utils/term-util';
+import {
+  getDatesForTerm,
+  getNormalizedValidTermId,
+} from '@/lib/utils/term-util';
 import { TEST_IDS } from '@/lib/testing/selectors';
 
 export default function AddCoursePage() {
   const router = useRouter();
-  const courseCode = useAddCourseFormStore(state => state.courseCode);
-  const term = useAddCourseFormStore(state => state.term);
-  const firstDayOfClass = useAddCourseFormStore(state => state.firstDayOfClass);
-  const daypart = useAddCourseFormStore(state => state.daypart);
-  const school = useAddCourseFormStore(state => state.school);
-  const userContext = useAddCourseFormStore(state => state.userContext);
-  const setTerm = useAddCourseFormStore(state => state.setTerm);
-  const setFirstDayOfClass = useAddCourseFormStore(state => state.setFirstDayOfClass);
-  const setShowDaypartError = useAddCourseFormStore(state => state.setShowDaypartError);
-  const resetForm = useAddCourseFormStore(state => state.reset);
+  const courseCode = useAddCourseFormStore((state) => state.courseCode);
+  const term = useAddCourseFormStore((state) => state.term);
+  const firstDayOfClass = useAddCourseFormStore(
+    (state) => state.firstDayOfClass,
+  );
+  const daypart = useAddCourseFormStore((state) => state.daypart);
+  const school = useAddCourseFormStore((state) => state.school);
+  const userContext = useAddCourseFormStore((state) => state.userContext);
+  const setTerm = useAddCourseFormStore((state) => state.setTerm);
+  const setFirstDayOfClass = useAddCourseFormStore(
+    (state) => state.setFirstDayOfClass,
+  );
+  const setShowDaypartError = useAddCourseFormStore(
+    (state) => state.setShowDaypartError,
+  );
+  const resetForm = useAddCourseFormStore((state) => state.reset);
 
   const {
     terms,
@@ -73,7 +86,8 @@ export default function AddCoursePage() {
       return;
     }
 
-    const middle = terms.length === 3 ? terms[1] : terms[Math.floor(terms.length / 2)];
+    const middle =
+      terms.length === 3 ? terms[1] : terms[Math.floor(terms.length / 2)];
     if (middle) {
       setTerm(middle.id);
     }
@@ -81,7 +95,9 @@ export default function AddCoursePage() {
 
   // Set first day of class based on term
   useLayoutEffect(() => {
-    setFirstDayOfClass(normalizedTerm ? getDatesForTerm(normalizedTerm).start : undefined);
+    setFirstDayOfClass(
+      normalizedTerm ? getDatesForTerm(normalizedTerm).start : undefined,
+    );
   }, [normalizedTerm, setFirstDayOfClass]);
 
   // Automatically refresh courses when course creation is completed
@@ -127,13 +143,12 @@ export default function AddCoursePage() {
     setShowDaypartError(false);
 
     if (!normalizedTerm) {
-      toast.error(
-        'Selected term id looks invalid. Please pick a valid term.',
-      );
+      toast.error('Selected term id looks invalid. Please pick a valid term.');
       return;
     }
 
-    const resolvedFirstDayOfClass = firstDayOfClass ?? getDatesForTerm(normalizedTerm).start;
+    const resolvedFirstDayOfClass =
+      firstDayOfClass ?? getDatesForTerm(normalizedTerm).start;
 
     await startProcessing(
       cleanCode,
@@ -161,7 +176,10 @@ export default function AddCoursePage() {
   };
 
   return (
-    <main className="container mx-auto mt-2 mb-3.5 flex min-h-screen flex-col gap-6 px-8" data-testid={TEST_IDS.addCourse.page}>
+    <main
+      className="container mx-auto mt-2 mb-3.5 flex min-h-screen flex-col gap-6 px-8"
+      data-testid={TEST_IDS.addCourse.page}
+    >
       <div>
         <h1 className="text-foreground text-3xl font-bold">
           <NotebookText className="align-text-middle mr-2 inline-block h-7 w-7" />
@@ -216,6 +234,13 @@ export default function AddCoursePage() {
         )}
 
         {/* Action Buttons */}
+        <p className="text-muted-foreground text-right text-xs">
+          Course-plan content and optional context may be sent to configured
+          third-party AI providers.{' '}
+          <Link className="underline" href="/privacy/ai">
+            Privacy notice
+          </Link>
+        </p>
         <div className="flex justify-end gap-2">
           <ActionButtons
             currentStep={currentStep}

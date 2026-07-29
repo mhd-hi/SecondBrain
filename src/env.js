@@ -12,10 +12,8 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: z.string(),
     AUTH_GOOGLE_ID: z.string(),
     AUTH_GOOGLE_SECRET: z.string(),
-    OPENAI_API_KEY: z.string().optional(),
     GROQ_API_KEY: z.string().optional(),
     GOOGLE_AI_STUDIO_API_KEY: z.string().optional(),
-    CEREBRAS_API_KEY: z.string().optional(),
     NVIDIA_API_KEY: z.string().optional(),
     OPENROUTER_API_KEY: z.string().optional(),
     DATABASE_URL: z.string().url(),
@@ -50,10 +48,8 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
     AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
     AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: process.env.GOOGLE_AI_STUDIO_API_KEY,
-    CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
     NVIDIA_API_KEY: process.env.NVIDIA_API_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
@@ -64,8 +60,10 @@ export const env = createEnv({
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
-    NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA:
+      process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF:
+      process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

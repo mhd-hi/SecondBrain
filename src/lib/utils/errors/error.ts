@@ -45,7 +45,8 @@ export const CommonErrorMessages = {
     'Course not found or not available for the current term',
   PIPELINE_PARSING_ERROR:
     'Unable to process course information. Please try again',
-  PIPELINE_AI_ERROR: 'Failed to parse with AI. Please try again later.',
+  PIPELINE_AI_ERROR:
+    'AI providers are temporarily unavailable. Please retry in a few minutes.',
   PIPELINE_INVALID_FORMAT:
     'Invalid course code format. Please use format like MAT145 or LOG210',
 } as const;
@@ -79,7 +80,7 @@ export const PipelineErrorHandlers = {
     ];
 
     if (
-      courseExistsPatterns.some(pattern => normalizedError.includes(pattern))
+      courseExistsPatterns.some((pattern) => normalizedError.includes(pattern))
     ) {
       return 'COURSE_EXISTS';
     }
@@ -90,9 +91,11 @@ export const PipelineErrorHandlers = {
       'failed to parse with ai',
       'ai error',
       'ai processing failed',
+      'ai processing is temporarily unavailable',
+      'ai processing timed out',
     ];
 
-    if (aiPatterns.some(pattern => normalizedError.includes(pattern))) {
+    if (aiPatterns.some((pattern) => normalizedError.includes(pattern))) {
       return 'AI_ERROR';
     }
 
@@ -106,7 +109,7 @@ export const PipelineErrorHandlers = {
       'planets error',
     ];
 
-    if (planetsPatterns.some(pattern => normalizedError.includes(pattern))) {
+    if (planetsPatterns.some((pattern) => normalizedError.includes(pattern))) {
       return 'PLANETS_ERROR';
     }
 
@@ -119,7 +122,7 @@ export const PipelineErrorHandlers = {
     ];
 
     if (
-      courseNotFoundPatterns.some(pattern =>
+      courseNotFoundPatterns.some((pattern) =>
         normalizedError.includes(pattern),
       )
     ) {
@@ -134,14 +137,14 @@ export const PipelineErrorHandlers = {
       'unable to process',
     ];
 
-    if (parsingPatterns.some(pattern => normalizedError.includes(pattern))) {
+    if (parsingPatterns.some((pattern) => normalizedError.includes(pattern))) {
       return 'PARSING_ERROR';
     }
 
     // Format validation errors
     const formatPatterns = ['invalid course code format', 'invalid format'];
 
-    if (formatPatterns.some(pattern => normalizedError.includes(pattern))) {
+    if (formatPatterns.some((pattern) => normalizedError.includes(pattern))) {
       return 'INVALID_FORMAT';
     }
 

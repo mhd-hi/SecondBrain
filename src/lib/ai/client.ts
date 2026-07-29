@@ -12,6 +12,7 @@ export function getAIClient(provider: ProviderAttempt): OpenAI {
   const client = new OpenAI({
     apiKey: provider.apiKey,
     baseURL: provider.baseURL,
+    maxRetries: 0,
   });
 
   aiClients.set(provider.name, client);

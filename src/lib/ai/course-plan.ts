@@ -1,7 +1,7 @@
 import type { AITask } from '@/types/api/ai';
-import * as Sentry from '@/lib/sentry-utils';
 import { callWithFallback } from './call';
-import { extractJsonArrayFromText } from './parse';
+import { AIError } from './error';
+import { parseCoursePlanTasks } from './parse';
 import {
   buildCoursePlanParsePrompt,
   COURSE_PLAN_PARSER_SYSTEM_PROMPT,
@@ -11,69 +11,36 @@ type ParseAIResult = {
   tasks: AITask[];
 };
 
+export const MAX_COURSE_PLAN_HTML_LENGTH = 500_000;
+
 export async function generateCoursePlanTasks(
   html: string,
   userContext?: string,
+  signal?: AbortSignal,
 ): Promise<ParseAIResult> {
-  const prompt = buildCoursePlanParsePrompt(html, userContext);
-  await Sentry.logger.info('Reporting course-plan AI payload to Sentry', {
-    htmlLength: html.length,
-    userContextLength: userContext?.length ?? 0,
-    userContextPreview: userContext?.slice(0, 500) ?? '',
-    promptLength: prompt.length,
-  });
-  await Sentry.captureException(new Error('Course-plan AI payload sent'), {
-    htmlLength: html.length,
-    userContextLength: userContext?.length ?? 0,
-    userContextPreview: userContext?.slice(0, 500) ?? '',
-    promptLength: prompt.length,
-    promptPreview: prompt.slice(0, 500),
-  });
-
-  console.log('Built prompt. Length:', prompt.length, 'characters');
-  if (userContext) {
-    console.log(
-      'User context provided. Length:',
-      userContext.length,
-      'characters',
-    );
-    console.log('User context content:', userContext);
+  if (html.length > MAX_COURSE_PLAN_HTML_LENGTH) {
+    throw new AIError('AI_INPUT_TOO_LARGE');
   }
 
-  try {
-    console.log('Starting AI provider call...');
-    const callResult = await callWithFallback([
+  const prompt = buildCoursePlanParsePrompt(html, userContext);
+  const callResult = await callWithFallback(
+    [
       { role: 'system', content: COURSE_PLAN_PARSER_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
-    ]);
+    ],
+    {
+      signal,
+      validate: parseCoursePlanTasks,
+      requestOptions: (attempt) => ({
+        max_tokens: 8_192,
+        ...(attempt.model === 'nvidia/nemotron-3-super-120b-a12b' && {
+          temperature: 1,
+          top_p: 0.95,
+          reasoning_effort: 'none',
+        }),
+      }),
+    },
+  );
 
-    console.log('AI provider call completed');
-    console.log('Provider used:', callResult.provider);
-    console.log('Model used:', callResult.model);
-    console.log('Total tokens:', callResult.usage?.total_tokens);
-
-    const aiText = callResult.text;
-    if (!aiText || !aiText.trim()) {
-      console.log('AI response is empty');
-      throw new Error('No response from AI provider');
-    }
-
-    console.log('AI response length:', aiText.length, 'characters');
-    console.log('AI response snapshot:', aiText.substring(0, 1000));
-
-    // Parse JSON array from text
-    const rawTasks: AITask[] = extractJsonArrayFromText(aiText);
-    console.log('Parsed JSON array. Items:', rawTasks.length);
-
-    // Return raw AI tasks - normalization will happen when creating database tasks
-    console.log('Returning raw AI tasks. Count:', rawTasks.length);
-
-    return { tasks: rawTasks };
-  } catch (error) {
-    console.log(
-      'Error in generateCoursePlanTasks:',
-      error instanceof Error ? error.message : 'Unknown error',
-    );
-    throw error;
-  }
+  return { tasks: parseCoursePlanTasks(callResult.text) };
 }

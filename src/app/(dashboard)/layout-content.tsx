@@ -2,6 +2,7 @@
 
 import type { Course } from '@/types/course';
 import * as React from 'react';
+import { AIChatAssistant } from '@/components/AIChat/AIChatAssistant';
 import CommandPalette from '@/components/CommandPalette/CommandPalette';
 import Navbar from '@/components/shared/Navigation/Navbar/Navbar';
 import { AppSidebar } from '@/components/shared/Navigation/Sidebar/sidebar';
@@ -23,21 +24,25 @@ export default function DashboardLayoutContent({
     [initialCourses],
   );
 
-  const sidebarCourses = coursesListItems.length > 0 || initialCourses.length === 0
-    ? coursesListItems
-    : initialCourseListItems;
+  const sidebarCourses =
+    coursesListItems.length > 0 || initialCourses.length === 0
+      ? coursesListItems
+      : initialCourseListItems;
   const sidebarIsLoading = isLoading && initialCourses.length === 0;
 
   return (
     <SidebarProvider>
       <div className="flex w-full" data-testid={TEST_IDS.shell.layout}>
-        <AppSidebar courses={sidebarCourses} isLoading={sidebarIsLoading} onCourseAdded={refreshCourses} />
+        <AppSidebar
+          courses={sidebarCourses}
+          isLoading={sidebarIsLoading}
+          onCourseAdded={refreshCourses}
+        />
         <SidebarInset className="flex min-w-0 flex-1 flex-col">
           <Navbar />
-          <main className="container max-w-full flex-1">
-            {children}
-          </main>
+          <main className="container max-w-full flex-1">{children}</main>
         </SidebarInset>
+        <AIChatAssistant />
       </div>
       <CommandPalette />
     </SidebarProvider>

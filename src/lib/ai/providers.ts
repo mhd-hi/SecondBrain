@@ -14,14 +14,23 @@ export type ProviderAttempt = {
   model: string;
 };
 
+export type ProviderHealthAttempt =
+  | (ProviderAttempt & { configured: true })
+  | { name: string; model: string; configured: false };
+
 // Change models here — nowhere else. Order matters within each provider.
 const PROVIDER_MODELS = {
-  groq: ['llama-3.3-70b-versatile'],
-  'google-ai-studio': ['gemini-2.5-flash'],
-  cerebras: ['llama-3.3-70b'],
-  nvidia: ['meta/llama-3.3-70b-instruct'],
-  openrouter: ['meta-llama/llama-3.3-70b-instruct:free'],
-  openai: ['gpt-4o-mini'],
+  groq: ['openai/gpt-oss-120b'],
+  'google-ai-studio': ['gemini-3.6-flash'],
+  nvidia: ['meta/llama-3.3-70b-instruct', 'nvidia/nemotron-3-super-120b-a12b'],
+  openrouter: ['openai/gpt-oss-20b:free', 'openrouter/free'],
+} as const;
+
+const CHAT_PROVIDER_MODELS = {
+  'google-ai-studio': ['gemini-3.6-flash'],
+  groq: ['openai/gpt-oss-120b'],
+  nvidia: ['nvidia/nemotron-3-super-120b-a12b', 'meta/llama-3.3-70b-instruct'],
+  openrouter: ['openai/gpt-oss-20b:free', 'openrouter/free'],
 } as const;
 
 export function buildProviders(): ProviderConfig[] {
@@ -45,15 +54,6 @@ export function buildProviders(): ProviderConfig[] {
     });
   }
 
-  if (env.CEREBRAS_API_KEY) {
-    providers.push({
-      name: 'cerebras',
-      apiKey: env.CEREBRAS_API_KEY,
-      baseURL: 'https://api.cerebras.ai/v1',
-      models: PROVIDER_MODELS.cerebras,
-    });
-  }
-
   if (env.NVIDIA_API_KEY) {
     providers.push({
       name: 'nvidia',
@@ -72,25 +72,53 @@ export function buildProviders(): ProviderConfig[] {
     });
   }
 
-  if (env.OPENAI_API_KEY) {
-    providers.push({
-      name: 'openai',
-      apiKey: env.OPENAI_API_KEY,
-      baseURL: 'https://api.openai.com/v1',
-      models: PROVIDER_MODELS.openai,
-    });
-  }
-
   return providers;
 }
 
 export function buildProviderAttempts(): ProviderAttempt[] {
-  return buildProviders().flatMap(provider =>
-    provider.models.map(model => ({
+  return buildProviders().flatMap((provider) =>
+    provider.models.map((model) => ({
       name: provider.name,
       apiKey: provider.apiKey,
       baseURL: provider.baseURL,
       model,
     })),
   );
+}
+
+export function buildChatProviderAttempts(): ProviderAttempt[] {
+  const providers = new Map(
+    buildProviders().map((provider) => [provider.name, provider]),
+  );
+  return Object.entries(CHAT_PROVIDER_MODELS).flatMap(([name, models]) => {
+    const provider = providers.get(name);
+    return provider
+      ? models.map((model) => ({
+          name,
+          apiKey: provider.apiKey,
+          baseURL: provider.baseURL,
+          model,
+        }))
+      : [];
+  });
+}
+
+export function buildProviderHealthAttempts(): ProviderHealthAttempt[] {
+  const providers = new Map(
+    buildProviders().map((provider) => [provider.name, provider]),
+  );
+  return Object.entries(PROVIDER_MODELS).flatMap(([name, models]) => {
+    const provider = providers.get(name);
+    return models.map((model) =>
+      provider
+        ? {
+            name,
+            model,
+            apiKey: provider.apiKey,
+            baseURL: provider.baseURL,
+            configured: true as const,
+          }
+        : { name, model, configured: false as const },
+    );
+  });
 }

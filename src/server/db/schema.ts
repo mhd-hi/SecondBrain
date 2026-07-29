@@ -4,6 +4,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   real,
@@ -134,6 +135,47 @@ export const subtasks = pgTable(
   ],
 );
 
+export const aiActionDrafts = pgTable(
+  'ai_action_drafts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requestId: uuid('request_id').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: text('status', {
+      enum: [
+        'pending',
+        'executing',
+        'rejected',
+        'executed',
+        'stale',
+        'expired',
+        'failed',
+      ],
+    })
+      .notNull()
+      .default('pending'),
+    summary: text('summary').notNull(),
+    reason: text('reason').notNull(),
+    payload: jsonb('payload').notNull(),
+    taskVersions: jsonb('task_versions').notNull(),
+    reviewPayload: jsonb('review_payload').notNull(),
+    failureCode: text('failure_code'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_ai_action_drafts_user_request').on(
+      table.userId,
+      table.requestId,
+    ),
+    index('idx_ai_action_drafts_user_id').on(table.userId),
+    index('idx_ai_action_drafts_status').on(table.status),
+    index('idx_ai_action_drafts_expires_at').on(table.expiresAt),
+  ],
+);
+
 export const pomodoroDaily = pgTable(
   'pomodoro_daily',
   {
@@ -176,6 +218,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   courses: many(courses),
   tasks: many(tasks),
+  aiActionDrafts: many(aiActionDrafts),
   customLinks: many(customLinks),
 }));
 
@@ -213,6 +256,16 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 export const subtasksRelations = relations(subtasks, ({ one }) => ({
   task: one(tasks, { fields: [subtasks.taskId], references: [tasks.id] }),
 }));
+
+export const aiActionDraftsRelations = relations(
+  aiActionDrafts,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [aiActionDrafts.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 // SQL function to delete courses and related data older than 8 months for all users
 export const deleteOldCourses = sql`

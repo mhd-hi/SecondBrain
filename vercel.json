@@ -14,5 +14,19 @@
   "installCommand": "bun install --frozen-lockfile",
   "env": {
     "NODE_OPTIONS": "--no-warnings=ExperimentalWarning"
+  },
+  "functions": {
+    "src/app/api/course-pipeline/route.ts": {
+      "supportsCancellation": true,
+      "maxDuration": 65
+    },
+    "src/app/api/ai/chat/route.ts": {
+      "supportsCancellation": true,
+      "maxDuration": 65
+    },
+    "src/app/api/ai/status/route.ts": {
+      "supportsCancellation": true,
+      "maxDuration": 15
+    }
   }
 }

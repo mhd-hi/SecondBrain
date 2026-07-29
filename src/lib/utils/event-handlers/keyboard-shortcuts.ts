@@ -108,7 +108,6 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 
       const isMac
         = typeof navigator !== 'undefined'
-        // eslint-disable-next-line style/indent-binary-ops
         && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
       const matchingShortcut = KEYBOARD_SHORTCUTS.find((shortcut) => {
@@ -159,7 +158,6 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 export function getShortcutDisplayText(shortcut: KeyboardShortcut): string {
   const isMac
     = typeof navigator !== 'undefined'
-    // eslint-disable-next-line style/indent-binary-ops
     && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
   const parts: string[] = [];
 

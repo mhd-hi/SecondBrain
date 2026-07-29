@@ -22,9 +22,7 @@ export default antfu(
     lessOpinionated: true,
     isInEditor: false,
 
-    stylistic: {
-      semi: true,
-    },
+    stylistic: false,
 
     formatters: {
       css: true,
@@ -41,7 +39,7 @@ export default antfu(
       '.next',
       'node_modules',
       'dist',
-      '*.json',
+      '**/*.json',
       '**/*.md',
     ],
   },
@@ -50,34 +48,34 @@ export default antfu(
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@stylistic/indent': ['warn', 2],
       'perfectionist/sort-imports': 'off',
     },
   },
   {
     files: ['**/*.test.ts?(x)'],
     ...testingLibrary.configs['flat/react'],
+    rules: {
+      ...testingLibrary.configs['flat/react'].rules,
+      'testing-library/no-container': 'off',
+    },
+  },
+  {
+    files: ['src/components/AIChat/AIChatAssistant.tsx'],
+    rules: {
+      'jsx-a11y/no-noninteractive-tabindex': 'off',
+    },
   },
   {
     rules: {
       'antfu/no-top-level-await': 'off', // Allow top-level await
-      'style/brace-style': ['warn', '1tbs'], // Use the default brace style
       'ts/consistent-type-definitions': ['error', 'type'], // Use `type` instead of `interface`
       'react/prefer-destructuring-assignment': 'off', // Vscode doesn't support automatically destructuring, it's a pain to add a new variable
+      'react-hooks-extra/no-direct-set-state-in-use-effect': 'off',
       'node/prefer-global/process': 'off', // Allow using `process.env`
       'test/padding-around-all': 'error', // Add padding in test files
       'test/prefer-lowercase-title': 'off', // Allow using uppercase titles in test titles
       'react/no-context-provider': 'off', // Disable to prevent false positives with Radix UI components
       'no-console': 'off', // Allow console statements since they're handled by Sentry integration
-    },
-  },
-  {
-    files: ['**/*.{ts,tsx,js,jsx}'],
-    rules: {
-      // Turn off the crashing rule; let Prettier handle indentation
-      'style/indent': 'off',
-      'style/eol-last': 'off',
-      'style/operator-linebreak': 'off', // Let Prettier handle this (it always puts operators at end of line)
     },
   },
 );

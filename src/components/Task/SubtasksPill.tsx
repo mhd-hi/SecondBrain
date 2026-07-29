@@ -23,6 +23,7 @@ export function SubtasksPill({ subtasks, isExpanded, onToggle }: SubtasksPillPro
     >
       <button
         type="button"
+        className="h-6 items-center leading-none"
         onClick={onToggle}
         aria-expanded={isExpanded}
         aria-controls="subtasks-list"

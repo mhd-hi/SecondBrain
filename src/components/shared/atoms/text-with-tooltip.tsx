@@ -37,7 +37,6 @@ export const TruncatedTextWithTooltip = ({
   }, [maxLines]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setIsTruncated(checkIfTruncated());
   }, [text, checkIfTruncated]);
 

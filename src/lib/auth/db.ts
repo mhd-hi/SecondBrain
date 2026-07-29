@@ -9,6 +9,61 @@ import {
 import { db } from '@/server/db';
 import { courses, subtasks, tasks } from '@/server/db/schema';
 
+type TaskMutationExecutor = Pick<typeof db, 'insert' | 'update' | 'delete'>;
+
+export async function createUserTaskWithExecutor(
+  executor: TaskMutationExecutor,
+  userId: string,
+  taskData: Omit<
+    typeof tasks.$inferInsert,
+    'userId' | 'id' | 'createdAt' | 'updatedAt'
+  >,
+) {
+  const result = await executor
+    .insert(tasks)
+    .values({
+      ...taskData,
+      userId,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+  return result[0]!;
+}
+
+export async function updateUserTaskWithExecutor(
+  executor: TaskMutationExecutor,
+  taskId: string,
+  userId: string,
+  updates: Partial<typeof tasks.$inferInsert>,
+) {
+  const result = await executor
+    .update(tasks)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+    .returning();
+  if (!result[0]) {
+    throw new AuthorizationError('Task not found or access denied');
+  }
+  return result[0];
+}
+
+export async function deleteUserTaskWithExecutor(
+  executor: TaskMutationExecutor,
+  taskId: string,
+  userId: string,
+) {
+  const result = await executor
+    .delete(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+    .returning();
+  if (!result[0]) {
+    throw new AuthorizationError('Task not found or access denied');
+  }
+  return result[0];
+}
+
 /**
  * Get courses for authenticated user
  */
@@ -75,18 +130,12 @@ export async function updateUserTask(
   type UpdateWithSubs = Partial<typeof tasks.$inferInsert> & { subtasks?: SubUpdate[] };
   const { subtasks: subUpdates, ...taskUpdates } = updates as UpdateWithSubs;
 
-  const result = await db
-    .update(tasks)
-    .set({
-      ...taskUpdates,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
-    .returning();
-
-  if (!result.length) {
-    throw new AuthorizationError('Task not found or access denied');
-  }
+  const result = await updateUserTaskWithExecutor(
+    db,
+    taskId,
+    userId,
+    taskUpdates,
+  );
 
   // Process subtasks updates: upsert by id, delete missing ones if provided as full set
   if (Array.isArray(subUpdates)) {
@@ -126,23 +175,14 @@ export async function updateUserTask(
     }
   }
 
-  return result[0];
+  return result;
 }
 
 /**
  * Delete task with ownership verification
  */
 export async function deleteUserTask(taskId: string, userId: string) {
-  const result = await db
-    .delete(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
-    .returning();
-
-  if (!result.length) {
-    throw new AuthorizationError('Task not found or access denied');
-  }
-
-  return result[0];
+  return deleteUserTaskWithExecutor(db, taskId, userId);
 }
 
 /**
@@ -161,18 +201,11 @@ export async function createUserTask(
   type CreateTaskWithSubs = Omit<typeof tasks.$inferInsert, 'userId' | 'id' | 'createdAt' | 'updatedAt'> & { subtasks?: ProvidedSub[] };
   const { subtasks: providedSubs, ...taskFields } = taskData as CreateTaskWithSubs;
 
-  const result = await db
-    .insert(tasks)
-    .values({
-      ...taskFields,
-      userId,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  const createdTask = result[0]!;
+  const createdTask = await createUserTaskWithExecutor(
+    db,
+    userId,
+    taskFields,
+  );
 
   // Insert provided subtasks
   if (Array.isArray(providedSubs) && providedSubs.length > 0) {

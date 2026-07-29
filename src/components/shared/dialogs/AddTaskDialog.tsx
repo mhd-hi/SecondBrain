@@ -80,7 +80,6 @@ export const AddTaskDialog = ({
   // Sync newTask.dueDate with effectiveDueDate when dialog opens
   React.useEffect(() => {
     if (isOpen && effectiveDueDate) {
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setNewTask(prev => ({
         ...prev,
         dueDate: effectiveDueDate,

@@ -2,8 +2,10 @@ import type {
   PipelineStepRequest,
   PipelineStepResult,
 } from '@/types/server-pipelines/pipelines';
+import type { AIErrorCode } from '@/lib/ai/error';
 import { NextResponse } from 'next/server';
-import { runAIProvider } from '@/lib/ai/registry';
+import { generateCoursePlanTasks } from '@/lib/ai/course-plan';
+import { AIError } from '@/lib/ai/error';
 import { withAuthSimple } from '@/lib/auth/api';
 import { assertValidCourseCode } from '@/lib/utils/course/course';
 import { courseExists } from '@/lib/utils/course/queries';
@@ -11,8 +13,27 @@ import { sanitizeUserInput, validateUserContext } from '@/lib/utils/sanitize';
 import { SchoolCourseDataSource } from '@/pipelines/data-sources/planets';
 import { SCHOOL } from '@/types/school';
 
+const AI_ROUTE_ERRORS = new Map<
+  AIErrorCode,
+  { status: number; message: string }
+>([
+  ['AI_INPUT_TOO_LARGE', {
+    status: 413,
+    message: 'Course-plan input is too large',
+  }],
+  ['AI_ABORTED', { status: 499, message: 'AI processing was cancelled' }],
+  ['AI_DEADLINE_EXCEEDED', { status: 504, message: 'AI processing timed out' }],
+  ['AI_PROVIDERS_EXHAUSTED', {
+    status: 503,
+    message: 'AI processing is temporarily unavailable',
+  }],
+]);
+
 // Endpoint for step-by-step course processing
-export async function handleCoursePipelinePost(request: Request, user: { id: string }) {
+export async function handleCoursePipelinePost(
+  request: Request,
+  user: { id: string },
+) {
   try {
     const body = (await request.json()) as PipelineStepRequest;
     const { courseCode, term, step, htmlData, userContext } = body;
@@ -70,13 +91,19 @@ export async function handleCoursePipelinePost(request: Request, user: { id: str
       const existsResult = await courseExists(user.id, cleanCode, term);
       if (existsResult.exists) {
         return NextResponse.json(
-          { error: `Course ${cleanCode} already exists in your account`, code: 'COURSE_EXISTS' },
+          {
+            error: `Course ${cleanCode} already exists in your account`,
+            code: 'COURSE_EXISTS',
+          },
           { status: 409 },
         );
       }
     } catch (err) {
       console.error('Failed to check course existence in pipeline:', err);
-      return NextResponse.json({ error: 'Failed to check course existence' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to check course existence' },
+        { status: 500 },
+      );
     }
 
     if (step === 'planets') {
@@ -147,7 +174,14 @@ export async function handleCoursePipelinePost(request: Request, user: { id: str
             ? `Present (${sanitizedContext.length} chars)`
             : 'Not provided',
         );
-        const result = await runAIProvider(htmlData, sanitizedContext);
+        const result = await generateCoursePlanTasks(
+          htmlData,
+          sanitizedContext,
+          request.signal,
+        );
+        if (request.signal.aborted) {
+          return new NextResponse(null, { status: 499 });
+        }
         const endTime = new Date().toISOString();
         const courseData = {
           courseCode: cleanCode,
@@ -171,6 +205,27 @@ export async function handleCoursePipelinePost(request: Request, user: { id: str
           data: courseData,
         } as PipelineStepResult);
       } catch (error) {
+        if (request.signal.aborted) {
+          return new NextResponse(null, { status: 499 });
+        }
+        if (error instanceof AIError) {
+          const routeError = AI_ROUTE_ERRORS.get(error.code)!;
+          return NextResponse.json(
+            {
+              step: {
+                id: 'ai',
+                name: 'AI Processing',
+                status: 'error',
+                error: routeError.message,
+                code: error.code,
+                endTime: new Date().toISOString(),
+              },
+              data: null,
+            } as PipelineStepResult,
+            { status: routeError.status },
+          );
+        }
+
         const errorMessage =
           error instanceof Error
             ? `Failed to process with AI: ${error.message}`

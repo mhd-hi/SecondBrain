@@ -27,6 +27,7 @@ type ProcessingStep = {
   name: string;
   status: 'pending' | 'loading' | 'success' | 'error';
   error?: string;
+  code?: string;
   startTime?: Date | string;
   endTime?: Date | string;
   data?: unknown;

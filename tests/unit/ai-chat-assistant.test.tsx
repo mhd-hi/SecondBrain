@@ -2,6 +2,10 @@ import * as React from 'react';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AIChatAssistant } from '@/components/AIChat/AIChatAssistant';
+import { useCalendarViewStore } from '@/lib/stores/calendar-view-store';
+import { useTaskStore } from '@/lib/stores/task-store';
+import { StatusTask } from '@/types/status-task';
+import type { Task } from '@/types/task';
 import { renderComponent } from '../helpers/render-utils';
 import { ensureHappyDom } from '../helpers/runtime';
 
@@ -31,6 +35,24 @@ const pendingDraft = {
   createdAt: '2026-07-29T00:00:00.000Z',
   expiresAt: '2026-07-30T00:00:00.000Z',
 };
+
+const task = {
+  id: 'task-1',
+  courseId: '22222222-2222-4222-8222-222222222222',
+  title: 'Read chapter 1',
+  type: 'theorie',
+  status: StatusTask.TODO,
+  estimatedEffort: 3,
+  actualEffort: 0,
+  dueDate: new Date('2026-09-08T12:00:00.000Z'),
+  course: {
+    id: '22222222-2222-4222-8222-222222222222',
+    code: 'LOG210',
+    name: 'Software Construction',
+    daypart: 'AM',
+    color: 'blue',
+  },
+} satisfies Task;
 
 function storeDraftConversation() {
   localStorage.setItem(
@@ -64,10 +86,12 @@ describe('AIChatAssistant', () => {
       }
     ).IS_REACT_ACT_ENVIRONMENT = true;
     localStorage.clear();
+    useTaskStore.getState().reset();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    useTaskStore.getState().reset();
     document.body.innerHTML = '';
   });
 
@@ -177,6 +201,9 @@ describe('AIChatAssistant', () => {
 
   it('marks an approved draft and records success in the conversation', async () => {
     storeDraftConversation();
+    useTaskStore.getState().setTasks([{ ...task, id: 'deleted-task' }]);
+    const refreshVersion =
+      useCalendarViewStore.getState().refreshVersion;
     vi.stubGlobal(
       'fetch',
       vi
@@ -184,8 +211,26 @@ describe('AIChatAssistant', () => {
         .mockResolvedValueOnce(Response.json(pendingDraft))
         .mockResolvedValueOnce(
           Response.json({
-            draft: { ...pendingDraft, status: 'executed' },
-            tasks: [],
+            draft: {
+              ...pendingDraft,
+              status: 'executed',
+              reviewPayload: {
+                ...pendingDraft.reviewPayload,
+                items: [
+                  {
+                    type: 'delete',
+                    taskId: 'deleted-task',
+                    courseId: task.courseId,
+                    title: 'Old task',
+                    before: {},
+                    diff: {},
+                    warnings: [],
+                    riskLevel: 'high',
+                  },
+                ],
+              },
+            },
+            tasks: [task],
           }),
         ),
     );
@@ -207,6 +252,50 @@ describe('AIChatAssistant', () => {
       expect(buttonWithText(view.container, 'Changes applied').disabled).toBe(
         true,
       );
+      expect(useTaskStore.getState().getTask(task.id)).toEqual({
+        ...task,
+        dueDate: task.dueDate.toISOString(),
+      });
+      expect(useTaskStore.getState().getTask('deleted-task')).toBeUndefined();
+      expect(useCalendarViewStore.getState().refreshVersion).toBe(
+        refreshVersion + 1,
+      );
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('disables conversation changes while a request is running', async () => {
+    storeDraftConversation();
+    let resolveFetch!: (response: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve;
+          }),
+      ),
+    );
+    const view = renderComponent(<AIChatAssistant />);
+    await view.render();
+
+    try {
+      await act(async () => button(view.container, 'Open Lucy').click());
+      await act(async () => {
+        buttonWithText(view.container, 'Review changes').click();
+        await Promise.resolve();
+      });
+
+      expect(button(view.container, 'Conversation history').disabled).toBe(
+        true,
+      );
+      expect(button(view.container, 'New conversation').disabled).toBe(true);
+
+      await act(async () => {
+        resolveFetch(Response.json(pendingDraft));
+        await Promise.resolve();
+      });
     } finally {
       await view.unmount();
     }

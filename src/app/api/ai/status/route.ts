@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 import { getAIClient } from '@/lib/ai/client';
 import { buildProviderHealthAttempts } from '@/lib/ai/providers';
 import { withAuthSimple } from '@/lib/auth/api';
 
-const MODEL_TIMEOUT_MS = 20_000;
+const MODEL_TIMEOUT_MS = 10_000;
 
 export const dynamic = 'force-dynamic';
 
@@ -42,19 +43,15 @@ export const dynamic = 'force-dynamic';
  *                         type: number
  *                       error:
  *                         type: string
- *                         description: NOT_CONFIGURED, ABORTED, TIMEOUT, REQUEST_FAILED, provider code, or HTTP status like HTTP_429
+ *                         description: NOT_CONFIGURED, TIMEOUT, REQUEST_FAILED, provider code, or HTTP status like HTTP_429
  *       401:
  *         description: Authentication required
  */
 function statusError(
   error: unknown,
-  request: Request,
   timeoutSignal: AbortSignal,
   elapsedMs: number,
 ) {
-  if (request.signal.aborted) {
-    return 'ABORTED';
-  }
   if (timeoutSignal.aborted || elapsedMs >= MODEL_TIMEOUT_MS) {
     return 'TIMEOUT';
   }
@@ -77,7 +74,7 @@ function statusError(
   return 'REQUEST_FAILED';
 }
 
-export const GET = withAuthSimple(async (request) => {
+const getProviderHealth = unstable_cache(async () => {
   const results = await Promise.all(
     buildProviderHealthAttempts().map(async (attempt) => {
       if (!attempt.configured) {
@@ -99,7 +96,7 @@ export const GET = withAuthSimple(async (request) => {
             max_tokens: 8,
           },
           {
-            signal: AbortSignal.any([request.signal, timeoutSignal]),
+            signal: timeoutSignal,
           },
         );
         return {
@@ -115,14 +112,18 @@ export const GET = withAuthSimple(async (request) => {
           model: attempt.model,
           status: 'error' as const,
           latencyMs,
-          error: statusError(error, request, timeoutSignal, latencyMs),
+          error: statusError(error, timeoutSignal, latencyMs),
         };
       }
     }),
   );
 
+  return { checkedAt: new Date().toISOString(), models: results };
+}, ['ai-provider-health'], { revalidate: 60 });
+
+export const GET = withAuthSimple(async () => {
   return NextResponse.json(
-    { checkedAt: new Date().toISOString(), models: results },
+    await getProviderHealth(),
     { headers: { 'Cache-Control': 'private, no-store' } },
   );
 });

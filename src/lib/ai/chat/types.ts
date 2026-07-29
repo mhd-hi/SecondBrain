@@ -56,7 +56,7 @@ export const draftActionSchema = z.discriminatedUnion('type', [
 export const draftActionsSchema = z
   .array(draftActionSchema)
   .min(1)
-  .max(100)
+  .max(20)
   .superRefine((actions, context) => {
     const taskIds = new Set<string>();
     for (const action of actions) {

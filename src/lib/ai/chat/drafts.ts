@@ -43,16 +43,18 @@ function diffRecords(
   before: Record<string, unknown> | undefined,
   after: Record<string, unknown> | undefined,
 ) {
-  const diff: Record<string, { before?: unknown; after?: unknown }> = {};
-  for (const key of new Set([
-    ...Object.keys(before ?? {}),
-    ...Object.keys(after ?? {}),
-  ])) {
-    if (before?.[key] !== after?.[key]) {
-      diff[key] = { before: before?.[key], after: after?.[key] };
+  const beforeValues = new Map(Object.entries(before ?? {}));
+  const afterValues = new Map(Object.entries(after ?? {}));
+  const diff = new Map<string, { before?: unknown; after?: unknown }>();
+  for (const key of new Set([...beforeValues.keys(), ...afterValues.keys()])) {
+    if (beforeValues.get(key) !== afterValues.get(key)) {
+      diff.set(key, {
+        before: beforeValues.get(key),
+        after: afterValues.get(key),
+      });
     }
   }
-  return diff;
+  return Object.fromEntries(diff);
 }
 
 export type PreparedDraft = {

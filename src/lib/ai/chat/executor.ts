@@ -124,7 +124,9 @@ export async function executeDraft(userId: string, draftId: string) {
       }
 
       const payload = draftPayloadSchema.parse(claimed[0].payload);
-      const taskVersions = claimed[0].taskVersions as Record<string, string>;
+      const taskVersions = new Map(
+        Object.entries(claimed[0].taskVersions as Record<string, string>),
+      );
       const existingTaskIds = payload.actions
         .filter((action) => action.type !== 'add_task')
         .map((action) => action.taskId)
@@ -142,7 +144,7 @@ export async function executeDraft(userId: string, draftId: string) {
       if (
         lockedTasks.length !== existingTaskIds.length ||
         lockedTasks.some(
-          (task) => task.updatedAt.toISOString() !== taskVersions[task.id],
+          (task) => task.updatedAt.toISOString() !== taskVersions.get(task.id),
         )
       ) {
         throw new DraftExecutionError('DRAFT_STALE');

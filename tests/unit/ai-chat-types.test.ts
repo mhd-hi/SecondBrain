@@ -51,6 +51,18 @@ describe('AI chat contracts', () => {
     ).toThrow();
   });
 
+  it('limits drafts to batches that fit the planner output budget', () => {
+    expect(() =>
+      draftActionsSchema.parse(
+        Array.from({ length: 21 }, () => ({
+          type: 'add_task',
+          courseId,
+          task: { title: 'Task', dueDate: '2026-09-08' },
+        })),
+      ),
+    ).toThrow();
+  });
+
   it('rejects unknown mutation fields and malformed dates', () => {
     expect(() =>
       draftActionsSchema.parse([

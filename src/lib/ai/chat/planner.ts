@@ -16,7 +16,7 @@ import { plannerOutputSchema } from './types';
 const MAX_TOOL_ROUNDS = 4;
 const REQUEST_TIMEOUT_MS = 20_000;
 const OVERALL_TIMEOUT_MS = 60_000;
-const MAX_RESPONSE_TOKENS = 1_200;
+const MAX_RESPONSE_TOKENS = 8_192;
 
 const PLANNER_SYSTEM_PROMPT = `You are Lucy, a task-planning assistant. Refer to yourself as Lucy when your name is relevant. You may inspect the authenticated user's current courses and tasks using read-only tools. You can never execute or authorize a mutation.
 

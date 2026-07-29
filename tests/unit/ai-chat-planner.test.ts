@@ -70,6 +70,7 @@ describe('AI chat planner fallback', () => {
       message:
         'What should the task be called, which course is it for, and when is it due?',
     });
+    expect(create.mock.calls[0]?.[0].max_tokens).toBe(8_192);
     expect(create).toHaveBeenCalledTimes(1);
   });
 

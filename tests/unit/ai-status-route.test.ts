@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const buildProviderHealthAttemptsMock = vi.fn();
 const getAIClientMock = vi.fn();
+const unstableCacheMock = vi.fn((callback: () => unknown) => callback);
 
+vi.mock('next/cache', () => ({ unstable_cache: unstableCacheMock }));
 vi.mock('@/lib/auth/api', () => ({
   withAuthSimple: vi.fn(
     (handler: (request: Request, user: { id: string }) => Promise<Response>) =>
@@ -26,6 +28,14 @@ beforeEach(() => {
 });
 
 describe('AI status route', () => {
+  it('shares provider results for one minute', () => {
+    expect(unstableCacheMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      ['ai-provider-health'],
+      { revalidate: 60 },
+    );
+  });
+
   it('reports ok, provider errors, and unconfigured models safely', async () => {
     const okCreate = vi.fn().mockResolvedValue({ choices: [] });
     const failedCreate = vi
@@ -95,7 +105,7 @@ describe('AI status route', () => {
           new Promise((_, reject) => {
             setTimeout(
               () => reject(new Error('secret generic timeout')),
-              20_000,
+              10_000,
             );
           }),
       );
@@ -116,7 +126,7 @@ describe('AI status route', () => {
       new Request('http://localhost/api/ai/status') as never,
       {} as never,
     );
-    await vi.advanceTimersByTimeAsync(20_000);
+    await vi.advanceTimersByTimeAsync(10_000);
     const response = await responsePromise;
     const body = await response.json();
 

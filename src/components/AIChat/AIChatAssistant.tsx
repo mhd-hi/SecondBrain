@@ -37,6 +37,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { invalidateCalendarEvents } from '@/lib/stores/calendar-view-store';
+import { useTaskStore } from '@/lib/stores/task-store';
+import type { Task } from '@/types/task';
 
 type ChatMessage = {
   id: string;
@@ -338,6 +341,9 @@ export function AIChatAssistant() {
   }, [input]);
 
   const switchConversation = (conversationId: string) => {
+    if (busy) {
+      return;
+    }
     const conversation = conversations.find(
       (item) => item.id === conversationId,
     );
@@ -352,6 +358,9 @@ export function AIChatAssistant() {
   };
 
   const startConversation = () => {
+    if (busy) {
+      return;
+    }
     const conversation = createConversation();
     setConversations((current) => [conversation, ...current]);
     setActiveConversationId(conversation.id);
@@ -390,6 +399,7 @@ export function AIChatAssistant() {
       });
       const body = (await response.json()) as {
         draft?: DraftReviewResponse;
+        tasks?: Task[];
         code?: string;
         message?: string;
       };
@@ -408,6 +418,14 @@ export function AIChatAssistant() {
         action === 'approve' ? 'Changes applied' : 'Draft rejected',
       );
       if (action === 'approve') {
+        const taskStore = useTaskStore.getState();
+        taskStore.upsertTasks(body.tasks ?? []);
+        for (const item of (body.draft ?? draft).reviewPayload.items) {
+          if (item.type === 'delete' && item.taskId) {
+            taskStore.deleteTask(item.taskId);
+          }
+        }
+        invalidateCalendarEvents();
         setMessages((current) => [
           ...current.map((message) =>
             message.draftId === draft.id
@@ -661,6 +679,7 @@ export function AIChatAssistant() {
                     title="Conversation history"
                     variant="outline"
                     size="icon"
+                    disabled={busy}
                   >
                     <History className="size-3.5" />
                   </Button>
@@ -687,6 +706,7 @@ export function AIChatAssistant() {
                 title="New conversation"
                 variant="outline"
                 size="icon"
+                disabled={busy}
                 onClick={startConversation}
               >
                 <SquarePen className="size-3.5" />

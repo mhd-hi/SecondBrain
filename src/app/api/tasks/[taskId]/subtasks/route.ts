@@ -5,6 +5,31 @@ import { getUserTask } from '@/lib/auth/db';
 import { db } from '@/server/db';
 import { subtasks } from '@/server/db/schema';
 
+/**
+ * @swagger
+ * /api/tasks/{taskId}/subtasks:
+ *   post:
+ *     summary: Create a subtask for a task
+ *     tags: [Subtasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               notes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Created subtask
+ *       404:
+ *         description: Task not found or unauthorized
+ */
 export const POST = withAuth<{ taskId: string }>(
     async (request: NextRequest, { params, user }) => {
         const { taskId } = await params;

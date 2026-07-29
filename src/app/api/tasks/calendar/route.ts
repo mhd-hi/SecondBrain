@@ -33,4 +33,25 @@ async function handleGetCalendarTasks(
     return NextResponse.json(tasks);
 }
 
+/**
+ * @swagger
+ * /api/tasks/calendar:
+ *   get:
+ *     summary: Get tasks with a due date between start and end
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: start
+ *         required: true
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: end
+ *         required: true
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: Tasks in range
+ *       400:
+ *         description: Missing or invalid dates
+ */
 export const GET = withAuthSimple(handleGetCalendarTasks);

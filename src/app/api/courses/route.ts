@@ -8,6 +8,16 @@ import { generateRandomCourseColor } from '@/lib/utils/colors-util';
 import { db } from '@/server/db';
 import { courses } from '@/server/db/schema';
 
+/**
+ * @swagger
+ * /api/courses:
+ *   get:
+ *     summary: List the authenticated user's courses
+ *     tags: [Courses]
+ *     responses:
+ *       200:
+ *         description: Course summaries
+ */
 export const GET = withAuthSimple(async (_request, user) => {
   const courseSummaries = await getUserCourseSummaries(user.id);
   return NextResponse.json(courseSummaries, {
@@ -17,6 +27,33 @@ export const GET = withAuthSimple(async (_request, user) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/courses:
+ *   post:
+ *     summary: Create a course for the authenticated user
+ *     tags: [Courses]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code, name, term]
+ *             properties:
+ *               code: { type: string }
+ *               name: { type: string }
+ *               term: { type: string }
+ *               daypart: { type: string }
+ *               userContext: { type: string }
+ *     responses:
+ *       200:
+ *         description: Created course
+ *       400:
+ *         description: Missing required fields
+ *       409:
+ *         description: Course already exists
+ */
 export const POST = withAuthSimple(async (request, user) => {
   const data = (await request.json()) as {
     code: string;

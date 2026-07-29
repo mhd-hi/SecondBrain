@@ -26,6 +26,23 @@ const updateCustomLinkSchema = z.object({
   message: 'No valid fields to update',
 });
 
+/**
+ * @swagger
+ * /api/custom-links/{customLinkId}:
+ *   delete:
+ *     summary: Delete a custom link
+ *     tags: [Custom Links]
+ *     parameters:
+ *       - in: path
+ *         name: customLinkId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *       404:
+ *         description: Not found
+ */
 export const DELETE = withAuth<{ customLinkId: string }>(async (req: NextRequest, { params, user }) => {
   try {
     const { customLinkId } = params as { customLinkId?: string };
@@ -49,6 +66,32 @@ export const DELETE = withAuth<{ customLinkId: string }>(async (req: NextRequest
   }
 });
 
+/**
+ * @swagger
+ * /api/custom-links/{customLinkId}:
+ *   patch:
+ *     summary: Update a custom link's title, url, or type
+ *     tags: [Custom Links]
+ *     parameters:
+ *       - in: path
+ *         name: customLinkId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               url: { type: string }
+ *               type: { type: string, enum: [planets, moodle, notebook_lm, spotify, youtube, chatgpt, custom] }
+ *     responses:
+ *       200:
+ *         description: Updated link
+ *       404:
+ *         description: Not found
+ */
 export const PATCH = withAuth<{ customLinkId: string }>(async (req: NextRequest, { params, user }) => {
   try {
     const { customLinkId } = params as { customLinkId?: string };

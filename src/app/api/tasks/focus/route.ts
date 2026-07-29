@@ -10,6 +10,21 @@ import { StatusTask } from '@/types/status-task';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+/**
+ * @swagger
+ * /api/tasks/focus:
+ *   get:
+ *     summary: Get actionable/overdue tasks for the focus view
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: filter
+ *         required: false
+ *         schema: { type: string, enum: [week, month, quarter], default: week }
+ *     responses:
+ *       200:
+ *         description: Focus tasks
+ */
 export const GET = withAuthSimple(
   async (request, user) => {
     const { searchParams } = new URL(request.url);

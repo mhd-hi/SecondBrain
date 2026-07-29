@@ -39,4 +39,31 @@ export async function handleSubtaskUpdatePost(req: NextRequest, user: { id: stri
   }
 }
 
+/**
+ * @swagger
+ * /api/subtasks/update:
+ *   post:
+ *     summary: Update a subtask's title or notes
+ *     tags: [Subtasks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id, input, value]
+ *             properties:
+ *               id: { type: string }
+ *               input: { type: string, enum: [title, notes] }
+ *               value: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated subtask
+ *       400:
+ *         description: Invalid field
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Subtask not found
+ */
 export const POST = withAuth(async (req, { user }) => handleSubtaskUpdatePost(req, user));

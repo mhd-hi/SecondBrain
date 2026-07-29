@@ -207,4 +207,31 @@ export async function handleCoursePipelinePost(request: Request, user: { id: str
   }
 }
 
+/**
+ * @swagger
+ * /api/course-pipeline:
+ *   post:
+ *     summary: Run a step of the course import pipeline (fetch from Planets or process with AI)
+ *     tags: [Courses]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [courseCode, term, step]
+ *             properties:
+ *               courseCode: { type: string }
+ *               term: { type: string }
+ *               step: { type: string, enum: [planets, ai] }
+ *               htmlData: { type: string }
+ *               userContext: { type: string }
+ *     responses:
+ *       200:
+ *         description: Pipeline step result
+ *       400:
+ *         description: Missing or invalid parameters
+ *       409:
+ *         description: Course already exists
+ */
 export const POST = withAuthSimple(handleCoursePipelinePost);

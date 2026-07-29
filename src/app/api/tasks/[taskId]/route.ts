@@ -49,6 +49,47 @@ async function handleDeleteTask(
   return statusResponse({ success: true });
 }
 
+/**
+ * @swagger
+ * /api/tasks/{taskId}:
+ *   patch:
+ *     summary: Update a task
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200:
+ *         description: Updated task
+ *   delete:
+ *     summary: Delete a task
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *   get:
+ *     summary: Get a task by id
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Task
+ */
 // Export the wrapped handlers
 export const PATCH = withAuth(handlePatchTask);
 export const DELETE = withAuth(handleDeleteTask);

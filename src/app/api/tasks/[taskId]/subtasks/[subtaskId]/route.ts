@@ -4,6 +4,27 @@ import { withAuth } from '@/lib/auth/api';
 import { db } from '@/server/db';
 import { subtasks, tasks } from '@/server/db/schema';
 
+/**
+ * @swagger
+ * /api/tasks/{taskId}/subtasks/{subtaskId}:
+ *   delete:
+ *     summary: Delete a subtask
+ *     tags: [Subtasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: subtaskId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *       404:
+ *         description: Task or subtask not found
+ */
 export const DELETE = withAuth<{ taskId: string; subtaskId: string }>(
     async (request, { params, user }) => {
         const { taskId, subtaskId } = await params;

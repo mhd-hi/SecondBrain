@@ -5,6 +5,16 @@ import { withAuthSimple } from '@/lib/auth/api';
 import { buildTerm, getCurrentTerm, getNextTerm, getPrevTerm, isValidTermId, nextTerm } from '@/lib/utils/term-util';
 import { db } from '@/server/db';
 
+/**
+ * @swagger
+ * /api/terms/exists:
+ *   get:
+ *     summary: Ensure previous, current, and next terms exist in the terms table
+ *     tags: [Terms]
+ *     responses:
+ *       200:
+ *         description: Terms
+ */
 // Returns and ensures previous, current and next sessions exist in terms table.
 export const GET = withAuthSimple(async (_request, _user) => {
   const now = new Date();

@@ -105,4 +105,29 @@ export async function handleTaskUpdatePost(req: NextRequest, user: { id: string 
   }
 }
 
+/**
+ * @swagger
+ * /api/tasks/update:
+ *   post:
+ *     summary: Update a single field of a task (title, notes, status, effort, dueDate, or type)
+ *     tags: [Tasks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [taskId, input, value]
+ *             properties:
+ *               taskId: { type: string }
+ *               input: { type: string, enum: [title, notes, status, estimatedEffort, actualEffort, dueDate, type] }
+ *               value: {}
+ *     responses:
+ *       200:
+ *         description: Updated task
+ *       400:
+ *         description: Invalid field or payload
+ *       404:
+ *         description: Task not found or access denied
+ */
 export const POST = withAuthSimple(handleTaskUpdatePost);

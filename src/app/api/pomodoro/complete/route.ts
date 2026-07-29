@@ -9,6 +9,27 @@ type CompleteSessionRequest = {
   durationHours: number;
 };
 
+/**
+ * @swagger
+ * /api/pomodoro/complete:
+ *   post:
+ *     summary: Record completed Pomodoro focus minutes for the current day
+ *     tags: [Pomodoro]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [durationHours]
+ *             properties:
+ *               durationHours: { type: number }
+ *     responses:
+ *       200:
+ *         description: Session recorded
+ *       400:
+ *         description: Invalid durationHours
+ */
 export const POST = withAuthSimple(
   async (request, user) => {
     try {

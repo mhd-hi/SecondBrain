@@ -4,6 +4,24 @@ import { cleanupOldCourses } from '@/server/db/queries';
 
 export const runtime = 'nodejs';
 
+/**
+ * @swagger
+ * /api/cron/cleanup-courses:
+ *   get:
+ *     summary: Cron job that deletes old courses (requires CRON_SECRET bearer token)
+ *     tags: [Cron]
+ *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: authorization
+ *         required: true
+ *         schema: { type: string, example: 'Bearer <CRON_SECRET>' }
+ *     responses:
+ *       200:
+ *         description: Cleanup completed
+ *       401:
+ *         description: Unauthorized
+ */
 export async function GET(request: Request) {
   try {
     // Basic API key authentication for cron jobs

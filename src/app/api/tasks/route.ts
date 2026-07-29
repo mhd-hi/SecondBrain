@@ -7,6 +7,27 @@ import { StatusTask } from '@/types/status-task';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+/**
+ * @swagger
+ * /api/tasks:
+ *   get:
+ *     summary: List tasks for a course, optionally filtered by status
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: courseId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema: { type: string, description: 'Comma-separated status values' }
+ *     responses:
+ *       200:
+ *         description: Tasks
+ *       400:
+ *         description: Missing courseId
+ */
 export const GET = withAuthSimple(
   async (request, user) => {
     const { searchParams } = new URL(request.url);
@@ -38,6 +59,30 @@ export const GET = withAuthSimple(
   },
 );
 
+/**
+ * @swagger
+ * /api/tasks:
+ *   post:
+ *     summary: Bulk create tasks for a course
+ *     tags: [Tasks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [courseId, tasks]
+ *             properties:
+ *               courseId: { type: string }
+ *               tasks:
+ *                 type: array
+ *                 items: { type: object }
+ *     responses:
+ *       200:
+ *         description: Created tasks
+ *       400:
+ *         description: Invalid task data
+ */
 export const POST = withAuthSimple(
   async (request, user) => {
     const data = await request.json() as {
@@ -90,6 +135,27 @@ export const POST = withAuthSimple(
   },
 );
 
+/**
+ * @swagger
+ * /api/tasks:
+ *   patch:
+ *     summary: Update a task by id (query param)
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200:
+ *         description: Updated task
+ *       400:
+ *         description: Missing id parameter
+ */
 export const PATCH = withAuthSimple(
   async (request, user) => {
     const { searchParams } = new URL(request.url);
@@ -120,6 +186,23 @@ export const PATCH = withAuthSimple(
   },
 );
 
+/**
+ * @swagger
+ * /api/tasks:
+ *   delete:
+ *     summary: Delete a task by id (query param)
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *       400:
+ *         description: Missing id parameter
+ */
 export const DELETE = withAuthSimple(
   async (request, user) => {
     const { searchParams } = new URL(request.url);

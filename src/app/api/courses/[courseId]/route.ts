@@ -8,6 +8,25 @@ import { COURSE_COLORS } from '@/lib/utils/colors-util';
 import { db } from '@/server/db';
 import { courses } from '@/server/db/schema';
 
+/**
+ * @swagger
+ * /api/courses/{courseId}:
+ *   get:
+ *     summary: Get a course with its tasks
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Course with tasks
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Not the owner
+ */
 export const GET = withAuth<{ courseId: string }>(
   async (request, { params, user }) => {
     try {
@@ -34,6 +53,33 @@ export const GET = withAuth<{ courseId: string }>(
   },
 );
 
+/**
+ * @swagger
+ * /api/courses/{courseId}:
+ *   patch:
+ *     summary: Update a course's color or daypart
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               color: { type: string }
+ *               daypart: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated course
+ *       400:
+ *         description: Missing or invalid fields
+ *       404:
+ *         description: Course not found or access denied
+ */
 export const PATCH = withAuth<{ courseId: string }>(
   async (request, { params, user }) => {
     try {
@@ -83,6 +129,21 @@ export const PATCH = withAuth<{ courseId: string }>(
   },
 );
 
+/**
+ * @swagger
+ * /api/courses/{courseId}:
+ *   delete:
+ *     summary: Delete a course
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ */
 export const DELETE = withAuth<{ courseId: string }>(
   async (request, { params, user }) => {
     try {

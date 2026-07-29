@@ -23,4 +23,30 @@ async function handleUpdateStatusTask(
   return NextResponse.json(updatedTask);
 }
 
+/**
+ * @swagger
+ * /api/tasks/{taskId}/status:
+ *   patch:
+ *     summary: Update a task's status
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated task
+ *       400:
+ *         description: Status is required
+ */
 export const PATCH = withAuth(handleUpdateStatusTask);

@@ -45,6 +45,21 @@ function validateAndNormalizeUrl(raw: unknown) {
   return s;
 }
 
+/**
+ * @swagger
+ * /api/custom-links:
+ *   get:
+ *     summary: List custom links, optionally scoped to a course
+ *     tags: [Custom Links]
+ *     parameters:
+ *       - in: query
+ *         name: courseId
+ *         required: false
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Custom links
+ */
 export const GET = withAuth(async (req: NextRequest, { user }) => {
   try {
     const url = new URL(req.url);
@@ -67,7 +82,30 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
   }
 });
 
-// POST: create a new link for the authenticated user
+/**
+ * @swagger
+ * /api/custom-links:
+ *   post:
+ *     summary: Create a custom link for the authenticated user
+ *     tags: [Custom Links]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, url]
+ *             properties:
+ *               title: { type: string }
+ *               url: { type: string }
+ *               type: { type: string, enum: [planets, moodle, notebook_lm, spotify, youtube, chatgpt, custom] }
+ *               courseId: { type: string }
+ *     responses:
+ *       200:
+ *         description: Created link
+ *       400:
+ *         description: Invalid request body
+ */
 export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
     const parsed = createCustomLinkSchema.safeParse(await req.json());
@@ -110,6 +148,23 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/custom-links:
+ *   delete:
+ *     summary: Delete all custom links for a course
+ *     tags: [Custom Links]
+ *     parameters:
+ *       - in: query
+ *         name: courseId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted links
+ *       400:
+ *         description: Missing courseId
+ */
 export const DELETE = withAuth(async (req: NextRequest, { user }) => {
   try {
     const url = new URL(req.url);

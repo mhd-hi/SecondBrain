@@ -1,6 +1,6 @@
 import type { AITask } from '@/types/api/ai';
 import * as Sentry from '@/lib/sentry-utils';
-import { callOpenAI } from './call';
+import { callWithFallback } from './call';
 import { extractJsonArrayFromText } from './parse';
 import {
   buildCoursePlanParsePrompt,
@@ -11,18 +11,18 @@ type ParseAIResult = {
   tasks: AITask[];
 };
 
-export async function parseContentWithAI(
+export async function generateCoursePlanTasks(
   html: string,
   userContext?: string,
 ): Promise<ParseAIResult> {
   const prompt = buildCoursePlanParsePrompt(html, userContext);
-  await Sentry.logger.info('Reporting OpenAI payload to Sentry', {
+  await Sentry.logger.info('Reporting course-plan AI payload to Sentry', {
     htmlLength: html.length,
     userContextLength: userContext?.length ?? 0,
     userContextPreview: userContext?.slice(0, 500) ?? '',
     promptLength: prompt.length,
   });
-  await Sentry.captureException(new Error('OpenAI payload sent'), {
+  await Sentry.captureException(new Error('Course-plan AI payload sent'), {
     htmlLength: html.length,
     userContextLength: userContext?.length ?? 0,
     userContextPreview: userContext?.slice(0, 500) ?? '',
@@ -41,20 +41,21 @@ export async function parseContentWithAI(
   }
 
   try {
-    console.log('Starting OpenAI API call...');
-    const callResult = await callOpenAI([
+    console.log('Starting AI provider call...');
+    const callResult = await callWithFallback([
       { role: 'system', content: COURSE_PLAN_PARSER_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ]);
 
-    console.log('OpenAI API call completed');
+    console.log('AI provider call completed');
+    console.log('Provider used:', callResult.provider);
     console.log('Model used:', callResult.model);
     console.log('Total tokens:', callResult.usage?.total_tokens);
 
     const aiText = callResult.text;
     if (!aiText || !aiText.trim()) {
-      console.log('OpenAI response is empty');
-      throw new Error('No response from OpenAI');
+      console.log('AI response is empty');
+      throw new Error('No response from AI provider');
     }
 
     console.log('AI response length:', aiText.length, 'characters');
@@ -70,7 +71,7 @@ export async function parseContentWithAI(
     return { tasks: rawTasks };
   } catch (error) {
     console.log(
-      'Error in parseContentWithAI:',
+      'Error in generateCoursePlanTasks:',
       error instanceof Error ? error.message : 'Unknown error',
     );
     throw error;

@@ -5,7 +5,7 @@ const assertValidCourseCodeMock = vi.fn((code: string) => code);
 const courseExistsMock = vi.fn();
 const sanitizeUserInputMock = vi.fn((value: string) => value);
 const validateUserContextMock = vi.fn();
-const runAIProviderMock = vi.fn();
+const generateCoursePlanTasksMock = vi.fn();
 const schoolCourseDataSourceMock = vi.fn();
 
 vi.mock('@/lib/auth/api', () => ({
@@ -34,8 +34,8 @@ vi.mock('@/lib/utils/sanitize', () => ({
   validateUserContext: validateUserContextMock,
 }));
 
-vi.mock('@/lib/ai/registry', () => ({
-  runAIProvider: runAIProviderMock,
+vi.mock('@/lib/ai/course-plan', () => ({
+  generateCoursePlanTasks: generateCoursePlanTasksMock,
 }));
 
 vi.mock('@/pipelines/data-sources/planets', () => ({
@@ -49,7 +49,7 @@ beforeEach(() => {
   (courseExistsMock as unknown as Mock).mockClear();
   (sanitizeUserInputMock as unknown as Mock).mockClear();
   (validateUserContextMock as unknown as Mock).mockClear();
-  (runAIProviderMock as unknown as Mock).mockClear();
+  (generateCoursePlanTasksMock as unknown as Mock).mockClear();
   (schoolCourseDataSourceMock as unknown as Mock).mockClear();
 });
 
@@ -74,7 +74,7 @@ describe('course pipeline duplicate protection', () => {
     expect(assertValidCourseCodeMock).toHaveBeenCalledWith('LOG210', 'Invalid course code format');
     expect(courseExistsMock).toHaveBeenCalledWith('user-1', 'LOG210', '20253');
     expect(schoolCourseDataSourceMock).not.toHaveBeenCalled();
-    expect(runAIProviderMock).not.toHaveBeenCalled();
+    expect(generateCoursePlanTasksMock).not.toHaveBeenCalled();
 
     await expect(response.json()).resolves.toMatchObject({
       code: 'COURSE_EXISTS',

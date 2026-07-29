@@ -3,7 +3,7 @@ import type {
   PipelineStepResult,
 } from '@/types/server-pipelines/pipelines';
 import { NextResponse } from 'next/server';
-import { runAIProvider } from '@/lib/ai/registry';
+import { generateCoursePlanTasks } from '@/lib/ai/course-plan';
 import { withAuthSimple } from '@/lib/auth/api';
 import { assertValidCourseCode } from '@/lib/utils/course/course';
 import { courseExists } from '@/lib/utils/course/queries';
@@ -147,7 +147,7 @@ export async function handleCoursePipelinePost(request: Request, user: { id: str
             ? `Present (${sanitizedContext.length} chars)`
             : 'Not provided',
         );
-        const result = await runAIProvider(htmlData, sanitizedContext);
+        const result = await generateCoursePlanTasks(htmlData, sanitizedContext);
         const endTime = new Date().toISOString();
         const courseData = {
           courseCode: cleanCode,

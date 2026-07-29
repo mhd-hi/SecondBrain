@@ -1,16 +1,19 @@
 import { OpenAI } from 'openai';
-import { env } from '@/env';
+import type { ProviderAttempt } from './providers';
 
-let openaiInstance: OpenAI | null = null;
+const aiClients = new Map<string, OpenAI>();
 
-export function getOpenAIClient(): OpenAI {
-  if (!openaiInstance) {
-    if (!env.OPENAI_API_KEY) {
-      throw new Error(
-        'OPENAI_API_KEY environment variable is required for AI processing',
-      );
-    }
-    openaiInstance = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+export function getAIClient(provider: ProviderAttempt): OpenAI {
+  const existingClient = aiClients.get(provider.name);
+  if (existingClient) {
+    return existingClient;
   }
-  return openaiInstance;
+
+  const client = new OpenAI({
+    apiKey: provider.apiKey,
+    baseURL: provider.baseURL,
+  });
+
+  aiClients.set(provider.name, client);
+  return client;
 }

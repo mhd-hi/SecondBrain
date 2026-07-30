@@ -2,7 +2,6 @@ import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { aiActionDrafts, courses, tasks } from '@/server/db/schema';
 import { formatTorontoDate, parseTorontoDueDate } from './date';
-import { getRelatedTasks, MAX_PLANNER_NOTES_CHARACTERS } from './tools';
 import type { PlannerOutput, ReviewPayload } from './types';
 import {
   AI_DRAFT_PAYLOAD_VERSION,
@@ -124,19 +123,6 @@ export async function prepareDraft(
   const taskVersions = Object.fromEntries(
     ownedTasks.map((task) => [task.id, task.updatedAt.toISOString()]),
   );
-  const related = new Map<
-    string,
-    Awaited<ReturnType<typeof getRelatedTasks>>
-  >();
-  for (const taskId of existingTaskIds) {
-    related.set(
-      taskId,
-      await getRelatedTasks(userId, taskId, {
-        remaining: MAX_PLANNER_NOTES_CHARACTERS,
-      }),
-    );
-  }
-
   const items: ReviewPayload['items'] = output.actions.map((action) => {
     if (action.type === 'add_task') {
       const dueDate = parseTorontoDueDate(action.task.dueDate);
@@ -167,10 +153,6 @@ export async function prepareDraft(
 
     const task = tasksById.get(action.taskId)!;
     const before = taskSnapshot(task);
-    const warnings = (related.get(task.id) ?? []).map(
-      (neighbor) =>
-        `Related task: ${neighbor.title} (${formatTorontoDate(neighbor.dueDate)})`,
-    );
     if (action.type === 'delete_task') {
       return {
         type: 'delete' as const,
@@ -179,7 +161,7 @@ export async function prepareDraft(
         title: task.title,
         before,
         diff: diffRecords(before, undefined),
-        warnings,
+        warnings: [],
         riskLevel: 'high' as const,
       };
     }
@@ -193,11 +175,9 @@ export async function prepareDraft(
       before,
       after,
       diff: diffRecords(before, after),
-      warnings,
+      warnings: [],
       riskLevel:
-        'dueDate' in action.changes || warnings.length > 0
-          ? ('medium' as const)
-          : ('low' as const),
+        'dueDate' in action.changes ? ('medium' as const) : ('low' as const),
     };
   });
 

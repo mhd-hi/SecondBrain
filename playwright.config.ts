@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 process.loadEnvFile();
 
-const baseURL = `http://127.0.0.1:3000`;
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
+const baseURL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -28,7 +28,7 @@ export default defineConfig({
     url: baseURL,
     env: {
       ...process.env,
-      PORT: String(3000),
+      PORT: String(PORT),
     },
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

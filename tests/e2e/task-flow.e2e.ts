@@ -63,25 +63,25 @@ test('hides completed tasks on the course page', async ({ app, page }) => {
   }).first();
   const hideCompletedToggle = page.getByTestId(TEST_IDS.coursePage.hideCompletedToggle);
 
-  await expect(taskCard).not.toBeVisible();
+  await expect(taskCard).toBeVisible();
 
   await hideCompletedToggle.click();
 
   const hideCompletedCheckbox = page.getByRole('checkbox', { name: 'Hide completed tasks' });
 
-  await expect(hideCompletedCheckbox).toBeChecked();
+  await expect(hideCompletedCheckbox).not.toBeChecked();
 
-  await hideCompletedCheckbox.uncheck();
-
-  await expect(taskCard).toBeVisible();
-
-  await hideCompletedToggle.click();
-
-  const hideCompletedCheckboxAfterReopen = page.getByRole('checkbox', { name: 'Hide completed tasks' });
-
-  await expect(hideCompletedCheckboxAfterReopen).not.toBeChecked();
-
-  await hideCompletedCheckboxAfterReopen.check();
+  await hideCompletedCheckbox.check();
 
   await expect(taskCard).not.toBeVisible();
+
+  await page.reload();
+
+  await expect(taskCard).not.toBeVisible();
+
+  await page.getByTestId(TEST_IDS.coursePage.hideCompletedToggle).click();
+
+  await expect(
+    page.getByRole('checkbox', { name: 'Hide completed tasks' }),
+  ).toBeChecked();
 });

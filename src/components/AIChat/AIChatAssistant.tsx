@@ -8,15 +8,16 @@ import type {
 import {
   ArrowUp,
   Bot,
+  ChevronRight,
   GripVertical,
   History,
   Info,
   SquarePen,
   X,
 } from 'lucide-react';
-import Link from 'next/link';
 import * as React from 'react';
 import { toast } from 'sonner';
+import { AIPrivacyNoticeDialog } from '@/components/AIPrivacyNoticeDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +46,7 @@ type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+  isStatus?: boolean;
   draftId?: string;
   draftStatus?: 'applied';
   options?: ClarificationOption[];
@@ -87,22 +89,45 @@ function createConversation(messages: ChatMessage[] = []): ChatConversation {
 }
 
 function assistantStatusText(status: unknown) {
-  switch (status) {
+  const activity = status as { status?: unknown; tool?: unknown };
+  if (activity.status === 'tool') {
+    switch (activity.tool) {
+      case 'search_courses':
+        return 'Finding your courses…';
+      case 'search_tasks':
+        return 'Searching your tasks…';
+      case 'get_task':
+        return 'Loading task details…';
+      case 'list_course_tasks':
+        return 'Loading course tasks…';
+      case 'resolve_course_week':
+        return 'Checking course dates…';
+      default:
+        return 'Checking your data…';
+    }
+  }
+  switch (activity.status) {
     case 'searching':
-      return 'Searching…';
+      return 'Understanding your request…';
     case 'planning':
-      return 'Thinking…';
+      return 'Reviewing what I found…';
     case 'validating':
-      return 'Generating…';
+      return 'Preparing changes for review…';
     default:
-      return 'Thinking…';
+      return 'Understanding your request…';
   }
 }
 
 const ASSISTANT_STATUS_TEXTS = new Set([
-  'Searching…',
-  'Thinking…',
-  'Generating…',
+  'Understanding your request…',
+  'Finding your courses…',
+  'Searching your tasks…',
+  'Loading task details…',
+  'Loading course tasks…',
+  'Checking course dates…',
+  'Checking your data…',
+  'Reviewing what I found…',
+  'Preparing changes for review…',
 ]);
 
 function readChatStore(): ChatStore {
@@ -146,6 +171,21 @@ function eventFromBlock(block: string) {
     .find((line) => line.startsWith('data: '))
     ?.slice(6);
   return event && data ? { event, data: JSON.parse(data) as unknown } : null;
+}
+
+function reconcileDraftTasks(
+  authoritativeTasks: Task[],
+  draft: DraftReviewResponse,
+) {
+  const taskStore = useTaskStore.getState();
+  const authoritativeIds = new Set(authoritativeTasks.map((task) => task.id));
+  taskStore.upsertTasks(authoritativeTasks);
+  for (const item of draft.reviewPayload.items) {
+    if (item.taskId && !authoritativeIds.has(item.taskId)) {
+      taskStore.deleteTask(item.taskId);
+    }
+  }
+  invalidateCalendarEvents();
 }
 
 function ReviewDialog({
@@ -194,21 +234,27 @@ function ReviewDialog({
                         key={item.taskId ?? `${item.courseId}-${index}`}
                         className={
                           item.type === 'delete'
-                            ? 'rounded-md border border-red-500/50 p-3'
-                            : 'rounded-md border p-3'
+                            ? 'group rounded-md border border-red-500/50 p-3'
+                            : 'group rounded-md border p-3'
                         }
                       >
-                        <summary className="flex cursor-pointer items-center justify-between gap-2">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
                           <span>{item.title}</span>
-                          <Badge
-                            variant={
-                              item.riskLevel === 'high'
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                          >
-                            {item.riskLevel} risk
-                          </Badge>
+                          <span className="flex shrink-0 items-center gap-2">
+                            <Badge
+                              variant={
+                                item.riskLevel === 'high'
+                                  ? 'destructive'
+                                  : 'secondary'
+                              }
+                            >
+                              {item.riskLevel} risk
+                            </Badge>
+                            <ChevronRight
+                              className="size-4 transition-transform group-open:rotate-90"
+                              aria-hidden="true"
+                            />
+                          </span>
                         </summary>
                         <div className="mt-3 space-y-2 text-xs">
                           {Object.entries(item.diff).map(([field, change]) => (
@@ -274,7 +320,7 @@ export function AIChatAssistant() {
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [chatWidth, setChatWidth] = React.useState(DEFAULT_CHAT_WIDTH);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
-  const resizeStart = React.useRef<{ x: number; width: number } | null>(null);
+  const resizeStartRef = React.useRef<{ x: number; width: number } | null>(null);
 
   React.useEffect(() => {
     const store = readChatStore();
@@ -406,6 +452,9 @@ export function AIChatAssistant() {
       if (!response.ok) {
         if (body.draft) {
           setDraft(body.draft);
+          if (body.tasks) {
+            reconcileDraftTasks(body.tasks, body.draft);
+          }
         }
         throw new Error(body.message ?? 'Draft action failed');
       }
@@ -418,26 +467,14 @@ export function AIChatAssistant() {
         action === 'approve' ? 'Changes applied' : 'Draft rejected',
       );
       if (action === 'approve') {
-        const taskStore = useTaskStore.getState();
-        taskStore.upsertTasks(body.tasks ?? []);
-        for (const item of (body.draft ?? draft).reviewPayload.items) {
-          if (item.type === 'delete' && item.taskId) {
-            taskStore.deleteTask(item.taskId);
-          }
-        }
-        invalidateCalendarEvents();
-        setMessages((current) => [
-          ...current.map((message) =>
+        reconcileDraftTasks(body.tasks ?? [], body.draft ?? draft);
+        setMessages((current) =>
+          current.map((message) =>
             message.draftId === draft.id
               ? { ...message, draftStatus: 'applied' as const }
               : message,
           ),
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            text: 'Changes applied.',
-          },
-        ]);
+        );
         setReviewOpen(false);
       }
     } catch (error) {
@@ -468,7 +505,12 @@ export function AIChatAssistant() {
     setMessages((previous) => [
       ...previous,
       { id: crypto.randomUUID(), role: 'user', text: message },
-      { id: assistantId, role: 'assistant', text: '' },
+      {
+        id: assistantId,
+        role: 'assistant',
+        text: 'Understanding your request…',
+        isStatus: true,
+      },
     ]);
     setInput('');
     setBusy(true);
@@ -515,7 +557,7 @@ export function AIChatAssistant() {
               previous.map((item) =>
                 item.id === assistantId &&
                 (!item.text.trim() || ASSISTANT_STATUS_TEXTS.has(item.text))
-                  ? { ...item, text: assistantStatusText(data.status) }
+                  ? { ...item, text: assistantStatusText(data), isStatus: true }
                   : item,
               ),
             );
@@ -528,6 +570,7 @@ export function AIChatAssistant() {
                       text: ASSISTANT_STATUS_TEXTS.has(item.text)
                         ? String(data.delta)
                         : item.text + String(data.delta),
+                      isStatus: false,
                     }
                   : item,
               ),
@@ -542,6 +585,7 @@ export function AIChatAssistant() {
                       options: data.options as
                         | ClarificationOption[]
                         | undefined,
+                      isStatus: false,
                     }
                   : item,
               ),
@@ -554,6 +598,7 @@ export function AIChatAssistant() {
                       ...item,
                       text: 'I prepared changes for your review.',
                       draftId: String(data.draftId),
+                      isStatus: false,
                     }
                   : item,
               ),
@@ -573,6 +618,7 @@ export function AIChatAssistant() {
                   error instanceof Error
                     ? error.message
                     : 'AI assistant is unavailable',
+                isStatus: false,
               }
             : item,
         ),
@@ -627,26 +673,26 @@ export function AIChatAssistant() {
               }
             }}
             onPointerDown={(event) => {
-              resizeStart.current = { x: event.clientX, width: chatWidth };
+              resizeStartRef.current = { x: event.clientX, width: chatWidth };
               event.currentTarget.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
-              if (resizeStart.current) {
+              if (resizeStartRef.current) {
                 setChatWidth(
                   clampChatWidth(
-                    resizeStart.current.width +
-                      resizeStart.current.x -
+                    resizeStartRef.current.width +
+                      resizeStartRef.current.x -
                       event.clientX,
                   ),
                 );
               }
             }}
             onPointerUp={(event) => {
-              resizeStart.current = null;
+              resizeStartRef.current = null;
               event.currentTarget.releasePointerCapture(event.pointerId);
             }}
             onPointerCancel={() => {
-              resizeStart.current = null;
+              resizeStartRef.current = null;
             }}
           >
             <GripVertical className="size-4" aria-hidden="true" />
@@ -726,10 +772,12 @@ export function AIChatAssistant() {
                   className={
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground ml-12 rounded-lg p-3 text-sm'
-                      : 'bg-muted mr-12 rounded-lg p-3 text-sm'
+                      : message.isStatus
+                        ? 'text-muted-foreground mr-12 px-3 py-1 text-sm'
+                        : 'bg-muted mr-12 rounded-lg p-3 text-sm'
                   }
                 >
-                  <p className="whitespace-pre-wrap">{message.text || '…'}</p>
+                  <p className="whitespace-pre-wrap">{message.text}</p>
                   {message.options?.map((option) => (
                     <Button
                       key={`${option.label}-${option.taskId ?? option.courseId}`}
@@ -742,21 +790,19 @@ export function AIChatAssistant() {
                     </Button>
                   ))}
                   {message.draftId && (
-                    <Button
-                      size="sm"
-                      variant={
-                        message.draftStatus === 'applied'
-                          ? 'secondary'
-                          : 'default'
-                      }
-                      className="mt-3"
-                      disabled={busy || message.draftStatus === 'applied'}
-                      onClick={() => void openReview(message.draftId!)}
-                    >
-                      {message.draftStatus === 'applied'
-                        ? 'Changes applied'
-                        : 'Review changes'}
-                    </Button>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={busy}
+                        onClick={() => void openReview(message.draftId!)}
+                      >
+                        Review changes
+                      </Button>
+                      {message.draftStatus === 'applied' && (
+                        <Badge variant="secondary">✓ Applied</Badge>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -770,7 +816,7 @@ export function AIChatAssistant() {
                 value={input}
                 disabled={busy}
                 rows={1}
-                className="max-h-60 min-h-12 resize-none py-3 pr-12 leading-6"
+                className="max-h-60 min-h-12 resize-none py-3 pr-12 leading-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 placeholder="Move my LOG210 homework to Friday…"
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
@@ -790,13 +836,15 @@ export function AIChatAssistant() {
                 <ArrowUp className="size-4" />
               </Button>
             </div>
-            <Link
-              href="/privacy/ai"
-              className="text-muted-foreground hover:text-foreground mx-auto mt-2 flex w-fit items-center gap-1 text-xs underline-offset-4 hover:underline"
-            >
-              <Info className="size-3" aria-hidden="true" />
-              About Lucy &amp; privacy
-            </Link>
+            <AIPrivacyNoticeDialog>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground mx-auto mt-2 flex w-fit cursor-pointer items-center gap-1 text-xs underline-offset-4 hover:underline"
+              >
+                <Info className="size-3" aria-hidden="true" />
+                About Lucy &amp; privacy
+              </button>
+            </AIPrivacyNoticeDialog>
           </footer>
         </aside>
       )}

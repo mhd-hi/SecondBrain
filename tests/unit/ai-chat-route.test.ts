@@ -42,15 +42,23 @@ function request(message = 'Hello') {
 
 describe('AI chat SSE route', () => {
   it('buffers a validated reply before emitting it', async () => {
-    (planTaskActionMock as unknown as Mock).mockResolvedValue({
-      kind: 'reply',
-      message: 'Validated response',
-    });
+    (planTaskActionMock as unknown as Mock).mockImplementation(
+      async ({ onStatus }: { onStatus: (status: unknown) => void }) => {
+        onStatus({ status: 'tool', tool: 'search_tasks' });
+        onStatus({ status: 'planning' });
+        return {
+          kind: 'reply',
+          message: 'Validated response',
+        };
+      },
+    );
 
     const response = await POST(request() as never, {} as never);
     const body = await response.text();
 
     expect(response.headers.get('Content-Type')).toContain('text/event-stream');
+    expect(body).toContain('"status":"tool","tool":"search_tasks"');
+    expect(body).toContain('"status":"planning"');
     expect(body).toContain('event: message.delta');
     expect(body).toContain('Validated response');
     expect(body.match(/event: done/g)).toHaveLength(1);

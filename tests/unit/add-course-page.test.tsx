@@ -195,4 +195,43 @@ describe('add course page terms flow', () => {
       await view.unmount();
     }
   });
+
+  it('opens the AI privacy notice in a closeable dialog', async () => {
+    (termsHook.useTerms as unknown as Mock).mockReturnValue({
+      terms: [],
+      loading: false,
+      error: null,
+      fetchTerms: vi.fn().mockResolvedValue([]),
+    });
+
+    const view = renderPage();
+    try {
+      await view.render();
+      const trigger = [...view.container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'Privacy notice',
+      );
+
+      expect(trigger).toBeDefined();
+
+      await React.act(async () => trigger!.click());
+
+      expect(document.body.textContent).toContain(
+        'AI provider privacy notice',
+      );
+
+      const close = [...document.body.querySelectorAll('button')].find(
+        (button) => button.textContent === 'Close',
+      );
+
+      expect(close).toBeDefined();
+
+      await React.act(async () => close!.click());
+
+      expect(document.body.textContent).not.toContain(
+        'AI provider privacy notice',
+      );
+    } finally {
+      await view.unmount();
+    }
+  });
 });

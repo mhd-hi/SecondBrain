@@ -202,7 +202,7 @@ export async function executeDraft(userId: string, draftId: string) {
         });
       }
 
-      await tx
+      const executed = await tx
         .update(aiActionDrafts)
         .set({ status: 'executed' })
         .where(
@@ -211,16 +211,27 @@ export async function executeDraft(userId: string, draftId: string) {
             eq(aiActionDrafts.userId, userId),
             eq(aiActionDrafts.status, 'executing'),
           ),
-        );
-      return [...affectedTaskIds];
+        )
+        .returning();
+      if (!executed[0]) {
+        throw new DraftExecutionError('DRAFT_CONFLICT');
+      }
+      const affectedIds = [...affectedTaskIds];
+      const authoritativeTasks = affectedIds.length
+        ? await tx
+            .select()
+            .from(tasks)
+            .where(
+              and(eq(tasks.userId, userId), inArray(tasks.id, affectedIds)),
+            )
+            .orderBy(asc(tasks.id))
+        : [];
+      return { draft: executed[0], tasks: authoritativeTasks };
     });
 
     audit(userId, draftId, actionCounts, 'approved');
     audit(userId, draftId, actionCounts, 'execution_succeeded');
-    return {
-      draft: await getOwnedDraft(userId, draftId),
-      tasks: await getAuthoritativeTasks(userId, result),
-    };
+    return result;
   } catch (error) {
     if (error instanceof DraftExecutionError) {
       if (error.code === 'DRAFT_CONFLICT') {

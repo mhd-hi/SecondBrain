@@ -77,6 +77,15 @@ describe('AI chat contracts', () => {
         },
       ]),
     ).toThrow();
+    expect(() =>
+      draftActionsSchema.parse([
+        {
+          type: 'update_task',
+          taskId,
+          changes: { dueDate: '2026-02-31' },
+        },
+      ]),
+    ).toThrow();
   });
 
   it('bounds clarification history as intent context', () => {

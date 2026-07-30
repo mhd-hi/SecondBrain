@@ -1,10 +1,10 @@
 'use client';
 import { AlertCircle, NotebookText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import * as React from 'react';
 import { useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
+import { AIPrivacyNoticeDialog } from '@/components/AIPrivacyNoticeDialog';
 import { ActionButtons } from '@/components/shared/dialogs/ActionButtons';
 import { CourseInputForm } from '@/components/shared/dialogs/CourseInputForm';
 import { ProcessingSteps } from '@/components/shared/dialogs/ProcessingSteps';
@@ -235,11 +235,11 @@ export default function AddCoursePage() {
 
         {/* Action Buttons */}
         <p className="text-muted-foreground text-right text-xs">
-          Course-plan content and optional context may be sent to configured
-          third-party AI providers.{' '}
-          <Link className="underline" href="/privacy/ai">
-            Privacy notice
-          </Link>
+          <AIPrivacyNoticeDialog>
+            <button type="button" className="cursor-pointer underline">
+              Privacy notice
+            </button>
+          </AIPrivacyNoticeDialog>
         </p>
         <div className="flex justify-end gap-2">
           <ActionButtons

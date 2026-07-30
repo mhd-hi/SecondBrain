@@ -71,8 +71,12 @@ export const POST = withAuthSimple(async (request, user) => {
             request: parsed.data,
             userId: user.id,
             signal: request.signal,
+            onStatus: (status) => {
+              send({ type: 'status', data: status });
+            },
             validateOutput: async (candidate) => {
               if (candidate.kind === 'draft') {
+                send({ type: 'status', data: { status: 'validating' } });
                 prepared = await prepareDraft(user.id, candidate);
               }
             },
@@ -99,7 +103,6 @@ export const POST = withAuthSimple(async (request, user) => {
               data: { message: output.message, options: output.options },
             });
           } else {
-            send({ type: 'status', data: { status: 'validating' } });
             const draft = await createDraft({
               userId: user.id,
               requestId: parsed.data.requestId,

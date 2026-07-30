@@ -129,10 +129,6 @@ describe('AI chat planner fallback', () => {
       .fn()
       .mockResolvedValueOnce({ choices: [{ message: { content: 'ready' } }] })
       .mockResolvedValueOnce({
-        choices: [{ message: { content: '{"kind":"draft"}' } }],
-      })
-      .mockResolvedValueOnce({ choices: [{ message: { content: 'ready' } }] })
-      .mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -163,12 +159,65 @@ describe('AI chat planner fallback', () => {
         userId: 'user-1',
       }),
     ).resolves.toEqual({ kind: 'reply', message: 'Nothing to change' });
-    expect(create).toHaveBeenCalledTimes(4);
-    expect(create.mock.calls[1]?.[0].messages.at(-1)).toEqual({
-      role: 'user',
-      content:
-        'Return the final PlannerOutput JSON now. Tools are no longer available.',
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('streams tool activity before preparing the final response', async () => {
+    const create = vi
+      .fn()
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call-1',
+                  type: 'function',
+                  function: { name: 'search_tasks', arguments: '{"query":"lab"}' },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: '{"kind":"reply","message":"Found it"}',
+            },
+          },
+        ],
+      });
+    (buildChatProviderAttemptsMock as unknown as Mock).mockReturnValue([
+      {
+        name: 'google-ai-studio',
+        model: 'gemini',
+        apiKey: 'key',
+        baseURL: 'url',
+      },
+    ]);
+    (getAIClientMock as unknown as Mock).mockReturnValue({
+      chat: { completions: { create } },
     });
+    (executeReadToolMock as unknown as Mock).mockResolvedValue([]);
+    const onStatus = vi.fn();
+
+    await planTaskAction({
+      request: {
+        requestId: crypto.randomUUID(),
+        message: 'Find my lab',
+      },
+      userId: 'user-1',
+      onStatus,
+    });
+
+    expect(onStatus).toHaveBeenNthCalledWith(1, {
+      status: 'tool',
+      tool: 'search_tasks',
+    });
+    expect(onStatus).toHaveBeenNthCalledWith(2, { status: 'planning' });
   });
 
   it('falls back after an unknown tool call', async () => {
@@ -190,7 +239,6 @@ describe('AI chat planner fallback', () => {
           },
         ],
       })
-      .mockResolvedValueOnce({ choices: [{ message: { content: 'ready' } }] })
       .mockResolvedValueOnce({
         choices: [
           {

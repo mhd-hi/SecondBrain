@@ -142,6 +142,8 @@ jobs:
           echo "✅ Postgres is accepting connections!"
       - name: Run migrations
         run: bun run db:migrate
+      - name: Run integration tests
+        run: bun run test:integration
       - name: Install Playwright browsers
         run: bun run playwright install --with-deps chromium
       - name: Run end-to-end tests

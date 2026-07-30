@@ -20,11 +20,5 @@ const taskSchema = z.strictObject({
 const coursePlanTasksSchema = z.array(taskSchema).min(1).max(100);
 
 export function parseCoursePlanTasks(aiText: string): AITask[] {
-  const fenced = /```(?:json)?([\s\S]*?)```/i.exec(aiText)?.[1];
-  const start = aiText.indexOf('[');
-  const end = aiText.lastIndexOf(']');
-  const json =
-    fenced ??
-    (start >= 0 && end > start ? aiText.slice(start, end + 1) : aiText);
-  return coursePlanTasksSchema.parse(JSON.parse(json)) as AITask[];
+  return coursePlanTasksSchema.parse(JSON.parse(aiText)) as AITask[];
 }

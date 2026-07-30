@@ -5,12 +5,23 @@ import {
 } from '@/lib/utils/task/task-draft';
 import { StatusTask } from '@/types/status-task';
 import { TASK_TYPES } from '@/types/task';
+import { parseTorontoDueDate } from './date';
 
 export const AI_DRAFT_PAYLOAD_VERSION = 1;
 
 const titleSchema = z.string().trim().min(1).max(300);
 const notesSchema = z.string().max(2_000).optional();
-const dueDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const dueDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    try {
+      parseTorontoDueDate(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid calendar date');
 const effortSchema = z.number().finite().min(MIN_TASK_ESTIMATED_EFFORT);
 const actualEffortSchema = z.number().finite().min(0);
 
@@ -179,10 +190,14 @@ export type DraftReviewResponse = {
   expiresAt: string;
 };
 
+export type ChatStatus =
+  | { status: 'searching' | 'planning' | 'validating' }
+  | { status: 'tool'; tool: string };
+
 export type ChatEvent =
   | {
       type: 'status';
-      data: { status: 'searching' | 'planning' | 'validating' };
+      data: ChatStatus;
     }
   | { type: 'message.delta'; data: { delta: string } }
   | {

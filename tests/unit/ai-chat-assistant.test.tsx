@@ -112,9 +112,18 @@ describe('AIChatAssistant', () => {
       expect(sidebar?.className).toContain('md:sticky');
       expect(sidebar?.className).toContain('md:w-[var(--chat-width)]');
       expect(view.container.querySelector('[role="dialog"]')).toBeNull();
-      expect(
-        view.container.querySelector('a[href="/privacy/ai"]')?.textContent,
-      ).toContain('About Lucy & privacy');
+
+      await act(async () =>
+        buttonWithText(view.container, 'About Lucy & privacy').click(),
+      );
+
+      expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+        'AI provider privacy notice',
+      );
+
+      await act(async () => buttonWithText(document, 'Close').click());
+
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
       expect(
         view.container.querySelector('[data-radix-scroll-area-viewport]')
           ?.className,
@@ -248,10 +257,11 @@ describe('AIChatAssistant', () => {
         await Promise.resolve();
       });
 
-      expect(view.container.textContent).toContain('Changes applied.');
-      expect(buttonWithText(view.container, 'Changes applied').disabled).toBe(
-        true,
-      );
+      expect(view.container.textContent).toContain('✓ Applied');
+      expect(view.container.textContent).not.toContain('Changes applied.');
+      expect(
+        buttonWithText(view.container, 'Review changes'),
+      ).toBeDefined();
       expect(useTaskStore.getState().getTask(task.id)).toEqual({
         ...task,
         dueDate: task.dueDate.toISOString(),
@@ -303,6 +313,32 @@ describe('AIChatAssistant', () => {
 
   it('keeps the review available and records an approval failure', async () => {
     storeDraftConversation();
+    useTaskStore.getState().setTasks([
+      {
+        ...task,
+        title: 'Stale title',
+      },
+    ]);
+    const staleDraft = {
+      ...pendingDraft,
+      status: 'stale',
+      reviewPayload: {
+        ...pendingDraft.reviewPayload,
+        items: [
+          {
+            type: 'update',
+            taskId: task.id,
+            courseId: task.courseId,
+            title: task.title,
+            before: {},
+            after: {},
+            diff: {},
+            warnings: [],
+            riskLevel: 'medium',
+          },
+        ],
+      },
+    };
     vi.stubGlobal(
       'fetch',
       vi
@@ -310,7 +346,11 @@ describe('AIChatAssistant', () => {
         .mockResolvedValueOnce(Response.json(pendingDraft))
         .mockResolvedValueOnce(
           Response.json(
-            { message: 'Draft cannot be approved', draft: pendingDraft },
+            {
+              message: 'Tasks changed since this draft was created',
+              draft: staleDraft,
+              tasks: [task],
+            },
             { status: 409 },
           ),
         ),
@@ -335,6 +375,7 @@ describe('AIChatAssistant', () => {
       expect(buttonWithText(view.container, 'Review changes').disabled).toBe(
         false,
       );
+      expect(useTaskStore.getState().getTask(task.id)?.title).toBe(task.title);
     } finally {
       await view.unmount();
     }

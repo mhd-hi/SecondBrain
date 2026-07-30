@@ -100,7 +100,7 @@ export function CourseTaskToolbar({
       </div>
 
       {showFloatingButton && (
-        <div className="fixed top-20 z-40" style={{ right: '2rem' }}>
+        <div className="sticky top-20 z-40 flex h-0 justify-end">
           <AddTaskDialog
             courseId={courseId}
             trigger={(

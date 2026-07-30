@@ -107,20 +107,6 @@ export const CHAT_READ_TOOLS: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'get_related_tasks',
-      description:
-        'Find advisory neighboring tasks within 14 days or with a related title.',
-      parameters: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['taskId'],
-        properties: { taskId: { type: 'string', format: 'uuid' } },
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
       name: 'resolve_course_week',
       description:
         'Resolve a numbered course week to authoritative calendar dates. Always use this for "week N" or "semaine N".',
@@ -176,6 +162,10 @@ function budgetNotes<T extends { notes: string | null }>(
   });
 }
 
+function compactNotes<T extends { notes: string | null }>(rows: T[]) {
+  return rows.map((row) => ({ ...row, notes: undefined }));
+}
+
 async function searchCourses(userId: string, input: unknown) {
   const { query } = searchCoursesSchema.parse(input);
   const match = `%${query}%`;
@@ -201,7 +191,6 @@ async function searchCourses(userId: string, input: unknown) {
 async function searchTasks(
   userId: string,
   input: unknown,
-  budget: NotesBudget,
 ) {
   const parsed = searchTasksSchema.parse(input);
   const filters = [eq(tasks.userId, userId)];
@@ -232,7 +221,7 @@ async function searchTasks(
     .where(and(...filters))
     .orderBy(asc(tasks.dueDate), asc(tasks.id))
     .limit(parsed.limit);
-  return budgetNotes(rows, budget);
+  return compactNotes(rows);
 }
 
 async function getTask(userId: string, input: unknown, budget: NotesBudget) {
@@ -252,7 +241,6 @@ async function getTask(userId: string, input: unknown, budget: NotesBudget) {
 async function listCourseTasks(
   userId: string,
   input: unknown,
-  budget: NotesBudget,
 ) {
   const { courseId } = courseIdSchema.parse(input);
   const ownedCourse = await db
@@ -270,7 +258,7 @@ async function listCourseTasks(
     .where(and(eq(tasks.userId, userId), eq(tasks.courseId, courseId)))
     .orderBy(asc(tasks.dueDate), asc(tasks.id))
     .limit(MAX_TOOL_RESULTS);
-  return budgetNotes(rows, budget);
+  return compactNotes(rows);
 }
 
 async function resolveCourseWeek(userId: string, input: unknown) {
@@ -291,46 +279,6 @@ async function resolveCourseWeek(userId: string, input: unknown) {
     week,
     dates: resolveTermWeekDates(course.term, week),
   };
-}
-
-export async function getRelatedTasks(
-  userId: string,
-  taskId: string,
-  budget: NotesBudget = { remaining: MAX_PLANNER_NOTES_CHARACTERS },
-) {
-  const target = await getTask(userId, { taskId }, budget);
-  const rows = await db
-    .select(taskProjection())
-    .from(tasks)
-    .innerJoin(courses, eq(tasks.courseId, courses.id))
-    .where(and(eq(tasks.userId, userId), eq(tasks.courseId, target.courseId)))
-    .limit(MAX_TOOL_RESULTS);
-  const title = target.title.toLocaleLowerCase();
-  const targetTime = target.dueDate.getTime();
-
-  return budgetNotes(
-    rows
-      .filter((task) => {
-        if (task.id === target.id) {
-          return false;
-        }
-        const taskTitle = task.title.toLocaleLowerCase();
-        return (
-          Math.abs(task.dueDate.getTime() - targetTime) <=
-            14 * 24 * 60 * 60 * 1_000 ||
-          taskTitle.includes(title) ||
-          title.includes(taskTitle)
-        );
-      })
-      .sort(
-        (left, right) =>
-          Math.abs(left.dueDate.getTime() - targetTime) -
-            Math.abs(right.dueDate.getTime() - targetTime) ||
-          left.id.localeCompare(right.id),
-      )
-      .slice(0, 20),
-    budget,
-  );
 }
 
 export async function executeReadTool({
@@ -355,19 +303,14 @@ export async function executeReadTool({
       result = await searchCourses(userId, input);
       break;
     case 'search_tasks':
-      result = await searchTasks(userId, input, budget);
+      result = await searchTasks(userId, input);
       break;
     case 'get_task':
       result = await getTask(userId, input, budget);
       break;
     case 'list_course_tasks':
-      result = await listCourseTasks(userId, input, budget);
+      result = await listCourseTasks(userId, input);
       break;
-    case 'get_related_tasks': {
-      const { taskId } = taskIdSchema.parse(input);
-      result = await getRelatedTasks(userId, taskId, budget);
-      break;
-    }
     case 'resolve_course_week':
       result = await resolveCourseWeek(userId, input);
       break;

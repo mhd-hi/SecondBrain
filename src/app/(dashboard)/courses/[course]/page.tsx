@@ -38,6 +38,8 @@ type CoursePageProps = {
   }>;
 };
 
+const HIDE_COMPLETED_STORAGE_KEY = 'course-page-hide-completed';
+
 export default function CoursePage({ params }: CoursePageProps) {
   const router = useRouter();
   const unwrappedParams = use(params);
@@ -48,7 +50,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   const { deleteCourse, updateCourseField } = useCourseMutations();
   const course = useCourseStore(state => state.courses.get(courseId));
   const [searchQuery, setSearchQuery] = useState('');
-  const [hideCompleted, setHideCompleted] = useState(true);
+  const [hideCompleted, setHideCompleted] = useState(false);
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const addTaskButtonRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +73,10 @@ export default function CoursePage({ params }: CoursePageProps) {
   const removeTask = useTaskStore(state => state.removeTask);
   const fetchTasksByCourse = useTaskStore(state => state.fetchTasksByCourse);
   const fetchCustomLinksByCourse = useCustomLinkStore(state => state.fetchCustomLinksByCourse);
+
+  useEffect(() => {
+    setHideCompleted(localStorage.getItem(HIDE_COMPLETED_STORAGE_KEY) === 'true');
+  }, []);
 
   // Fetch tasks and custom links when component mounts or courseId changes
   // Only fetch if courseId is a valid UUID (not a custom link URL)
@@ -171,6 +177,11 @@ export default function CoursePage({ params }: CoursePageProps) {
     } catch (error) {
       ErrorHandlers.silent(error, 'CoursePage handleUpdateStatusTask');
     }
+  };
+
+  const handleHideCompletedChange = (checked: boolean) => {
+    setHideCompleted(checked);
+    localStorage.setItem(HIDE_COMPLETED_STORAGE_KEY, String(checked));
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -346,7 +357,7 @@ export default function CoursePage({ params }: CoursePageProps) {
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
               hideCompleted={hideCompleted}
-              onHideCompletedChange={setHideCompleted}
+              onHideCompletedChange={handleHideCompletedChange}
               showFloatingButton={showFloatingButton}
             />
 

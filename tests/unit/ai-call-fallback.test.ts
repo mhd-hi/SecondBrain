@@ -42,12 +42,12 @@ function mockAbortSignalTimeout() {
 }
 
 describe('callWithFallback', () => {
-  it('accepts a valid course plan wrapped in provider markdown', () => {
-    expect(
+  it('rejects a valid course plan wrapped in provider markdown', () => {
+    expect(() =>
       parseCoursePlanTasks(
         '```json\n[{"week":1,"type":"theorie","title":"Task","estimatedEffort":1}]\n```',
       ),
-    ).toHaveLength(1);
+    ).toThrow();
   });
 
   it('tries later models when earlier attempts fail', async () => {
@@ -131,12 +131,33 @@ describe('callWithFallback', () => {
   it('falls back when course-plan output is invalid', async () => {
     const invalidResponses = [
       'not json',
+      '```json\n[{"week":1,"type":"theorie","title":"Task","estimatedEffort":1}]\n```',
       '{"tasks":[]}',
       '[{}]',
       '[]',
       '[{"week":1,"type":"invalid","title":"Task","estimatedEffort":1}]',
       '[{"week":1,"type":"theorie","title":"Task","estimatedEffort":0.4}]',
       '[{"week":1,"type":"theorie","title":"Task","estimatedEffort":1,"extra":true}]',
+      JSON.stringify([{
+        week: 1,
+        type: 'theorie',
+        title: 'x'.repeat(301),
+        estimatedEffort: 1,
+      }]),
+      JSON.stringify([{
+        week: 1,
+        type: 'theorie',
+        title: 'Task',
+        notes: 'x'.repeat(2_001),
+        estimatedEffort: 1,
+      }]),
+      JSON.stringify([{
+        week: 1,
+        type: 'theorie',
+        title: 'Task',
+        estimatedEffort: 1,
+        subtasks: Array.from({ length: 26 }, () => ({ title: 'Subtask' })),
+      }]),
     ];
     const validResponse =
       '[{"week":1,"type":"theorie","title":"Task","estimatedEffort":1}]';

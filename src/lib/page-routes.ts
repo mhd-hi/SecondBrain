@@ -4,6 +4,7 @@ export const ROUTES = {
   ADD_COURSE: '/courses/add',
   POMODORO: '/pomodoro',
   CALENDAR: '/calendar',
+  KANBAN: '/kanban',
   ROADMAP: '/roadmap',
   PREFERENCES: '/preferences',
   SIGNIN: '/auth/signin',
@@ -15,6 +16,7 @@ export const getCourseTaskPath = (courseId: string | number, taskId: string | nu
   `${getCoursePath(courseId)}#task-${taskId}`;
 export const getAddCoursePath = () => ROUTES.ADD_COURSE;
 export const getPomodoroPath = () => ROUTES.POMODORO;
+export const getKanbanPath = () => ROUTES.KANBAN;
 export const getCalendarPath = (view?: string) => (view ? `${ROUTES.CALENDAR}?view=${view}` : ROUTES.CALENDAR);
 export const getPreferencesPath = (view?: 'profile' | 'pomodoro') =>
   view ? `${ROUTES.PREFERENCES}?view=${view}` : ROUTES.PREFERENCES;

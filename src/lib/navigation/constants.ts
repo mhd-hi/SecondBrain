@@ -1,4 +1,4 @@
-import { getCalendarPath, getPomodoroPath, ROUTES } from '@/lib/page-routes';
+import { getCalendarPath, getKanbanPath, getPomodoroPath, ROUTES } from '@/lib/page-routes';
 
 export const navbarItems = [
   {
@@ -10,6 +10,11 @@ export const navbarItems = [
     title: 'Pomodoro',
     url: getPomodoroPath(),
     icon: '🍅',
+  },
+  {
+    title: 'Kanban',
+    url: getKanbanPath(),
+    icon: '📋',
   },
   {
     title: 'Calendar',

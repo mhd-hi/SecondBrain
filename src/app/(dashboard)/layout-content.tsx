@@ -32,17 +32,24 @@ export default function DashboardLayoutContent({
 
   return (
     <SidebarProvider>
-      <div className="flex w-full" data-testid={TEST_IDS.shell.layout}>
+      <div
+        className="flex h-svh w-full overflow-hidden"
+        data-testid={TEST_IDS.shell.layout}
+      >
         <AppSidebar
           courses={sidebarCourses}
           isLoading={sidebarIsLoading}
           onCourseAdded={refreshCourses}
         />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col">
+        <SidebarInset className="flex h-svh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Navbar />
-          <main className="container max-w-full flex-1">{children}</main>
+          <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            <main className="container flex min-h-0 max-w-full flex-1 flex-col overflow-auto">
+              {children}
+            </main>
+            <AIChatAssistant />
+          </div>
         </SidebarInset>
-        <AIChatAssistant />
       </div>
       <CommandPalette />
     </SidebarProvider>

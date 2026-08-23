@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     SUBTASKS: (taskId: string) => `/api/tasks/${taskId}/subtasks`,
     SUBTASK_DETAIL: (taskId: string, subtaskId: string) => `/api/tasks/${taskId}/subtasks/${subtaskId}`,
     FOCUS: '/api/tasks/focus',
+    ALL: '/api/tasks/all',
     CALENDAR: '/api/tasks/calendar',
     UPDATE: '/api/tasks/update',
     BATCH_STATUS: '/api/tasks/batch/status',

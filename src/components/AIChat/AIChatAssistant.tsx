@@ -648,7 +648,7 @@ export function AIChatAssistant() {
       {open && (
         <aside
           aria-label="Lucy task assistant"
-          className="bg-background fixed inset-0 z-50 flex h-dvh w-full flex-col overflow-hidden border-l md:sticky md:inset-auto md:top-0 md:z-30 md:h-svh md:w-[var(--chat-width)] md:max-w-[60vw] md:min-w-80 md:shrink-0"
+          className="bg-background fixed inset-0 z-50 flex h-dvh w-full flex-col overflow-hidden border-l md:sticky md:inset-auto md:top-14 md:z-30 md:h-[calc(100svh-3.5rem)] md:w-[var(--chat-width)] md:max-w-[60vw] md:min-w-80 md:shrink-0"
           style={{ '--chat-width': `${chatWidth}px` } as React.CSSProperties}
         >
           {/* Focusable ARIA separator is a resize control, despite jsx-a11y's static role classification. */}
@@ -700,10 +700,7 @@ export function AIChatAssistant() {
           <header className="shrink-0 border-b px-4 py-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                  Lucy
-                </p>
-                <h2 className="text-lg font-semibold">Your task assistant</h2>
+                <h2 className="text-lg font-semibold">LUCY AI</h2>
               </div>
               <Button
                 aria-label="Close Lucy"

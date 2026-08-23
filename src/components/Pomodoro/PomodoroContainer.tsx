@@ -80,12 +80,6 @@ export function PomodoroContainer() {
     }
   };
 
-  const sessionPrompt = pomodoroStage === 'work'
-    ? `Start a ${Math.round(currentDuration)}-minute focus session`
-    : pomodoroStage === 'shortBreak'
-      ? 'Take a short reset before the next sprint'
-      : 'Step away for a longer break';
-
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
       <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
@@ -119,9 +113,6 @@ export function PomodoroContainer() {
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {pomodoroStage === 'work' ? 'Focus session' : 'Recovery session'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {sessionPrompt}
               </p>
             </div>
 

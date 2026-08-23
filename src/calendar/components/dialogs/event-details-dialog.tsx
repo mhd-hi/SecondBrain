@@ -25,7 +25,7 @@ export function EventDetailsDialog({ event, children }: IProps) {
         <DialogTrigger asChild>{children}</DialogTrigger>
 
         <DialogContent
-          aria-describedby="event-details-dialog-description"
+          aria-describedby={undefined}
         >
           <DialogHeader>
             <DialogTitle>{event.title}</DialogTitle>

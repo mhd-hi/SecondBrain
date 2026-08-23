@@ -146,7 +146,7 @@ jobs:
         run: bun run test:integration
       - name: Install Playwright browsers
         run: bun run playwright install --with-deps chromium
-      - name: Run end-to-end tests
+      - name: Run end-to-end tests (Playwright)
         run: bun run test:e2e
 
   detect-db-migration-changes:

@@ -38,7 +38,7 @@ export function KanbanColumn({
     <div
       ref={dropRef}
       className={cn(
-        'bg-muted/30 flex h-full max-h-full min-w-[18rem] flex-1 basis-0 flex-col overflow-hidden rounded-xl border transition-colors',
+        'bg-muted/30 flex h-full max-h-full min-w-[18rem] flex-1 basis-0 flex-col overflow-hidden rounded-xl border transition-colors select-none',
         isOver && 'border-primary bg-primary/5',
       )}
     >

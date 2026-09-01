@@ -434,6 +434,20 @@ export function AIChatAssistant() {
     }
   };
 
+  React.useEffect(() => {
+    // ?draft= deep link (MCP web fallback, plan section 15): load the owned
+    // draft through the existing authenticated endpoint, open the review
+    // dialog, then strip the parameter from the URL.
+    const url = new URL(window.location.href);
+    const draftId = url.searchParams.get('draft');
+    if (!draftId || !open) {
+      return;
+    }
+    url.searchParams.delete('draft');
+    window.history.replaceState(null, '', url.toString());
+    void openReview(draftId);
+  }, [open]);
+
   const handleDraft = async (action: 'approve' | 'reject') => {
     if (!draft) {
       return;

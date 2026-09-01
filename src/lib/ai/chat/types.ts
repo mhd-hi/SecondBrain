@@ -138,6 +138,8 @@ export const reviewItemSchema = z.strictObject({
   type: z.enum(['add', 'update', 'delete']),
   taskId: z.uuid().optional(),
   courseId: z.uuid().optional(),
+  courseCode: z.string().max(20).optional(),
+  courseName: z.string().max(300).optional(),
   title: titleSchema,
   before: z.record(z.string(), z.unknown()).optional(),
   after: z.record(z.string(), z.unknown()).optional(),

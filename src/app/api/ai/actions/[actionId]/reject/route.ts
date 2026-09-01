@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { DraftExecutionError, rejectDraft } from '@/lib/ai/chat/executor';
 import { publicDraft } from '@/lib/ai/chat/drafts';
+import { requireSameOrigin } from '@/lib/auth/origin';
 import { withAuth } from '@/lib/auth/api';
 
 export const POST = withAuth<{ actionId: string }>(
-  async (_request, { params, user }) => {
+  async (request, { params, user }) => {
+    const crossOrigin = requireSameOrigin(request);
+    if (crossOrigin) {
+      return crossOrigin;
+    }
     const { actionId } = await params;
     try {
       return NextResponse.json(

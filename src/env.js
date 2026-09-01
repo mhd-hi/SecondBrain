@@ -23,6 +23,12 @@ export const env = createEnv({
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
+    MCP_OAUTH_ISSUER: z.string().url().optional(),
+    MCP_OAUTH_AUDIENCE: z.string().optional(),
+    MCP_OAUTH_JWKS_URI: z.string().url().optional(),
+    MCP_OAUTH_SECRET: z.string().optional(),
+    MCP_DEV_TOKEN_SECRET: z.string().optional(),
+    MCP_ENABLED_USERS: z.string().optional(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
@@ -60,6 +66,12 @@ export const env = createEnv({
     SENTRY_ORG: process.env.SENTRY_ORG,
     SENTRY_PROJECT: process.env.SENTRY_PROJECT,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+    MCP_OAUTH_ISSUER: process.env.MCP_OAUTH_ISSUER,
+    MCP_OAUTH_AUDIENCE: process.env.MCP_OAUTH_AUDIENCE,
+    MCP_OAUTH_JWKS_URI: process.env.MCP_OAUTH_JWKS_URI,
+    MCP_OAUTH_SECRET: process.env.MCP_OAUTH_SECRET,
+    MCP_DEV_TOKEN_SECRET: process.env.MCP_DEV_TOKEN_SECRET,
+    MCP_ENABLED_USERS: process.env.MCP_ENABLED_USERS,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA:

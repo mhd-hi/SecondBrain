@@ -1,5 +1,5 @@
 import type { ChatCompletionTool } from 'openai/resources/chat/completions';
-import { and, asc, eq, gte, ilike, lt, or } from 'drizzle-orm';
+import { and, asc, eq, gte, ilike, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { courses, tasks } from '@/server/db/schema';
@@ -135,8 +135,8 @@ function taskProjection() {
   return {
     id: tasks.id,
     courseId: tasks.courseId,
-    courseCode: courses.code,
-    courseName: courses.name,
+    courseCode: sql<string | null>`case when ${courses.userId} = ${tasks.userId} then ${courses.code} else null end`,
+    courseName: sql<string | null>`case when ${courses.userId} = ${tasks.userId} then ${courses.name} else null end`,
     title: tasks.title,
     notes: tasks.notes,
     dueDate: tasks.dueDate,

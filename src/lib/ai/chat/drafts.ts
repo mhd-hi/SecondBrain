@@ -123,6 +123,22 @@ export async function prepareDraft(
   const taskVersions = Object.fromEntries(
     ownedTasks.map((task) => [task.id, task.updatedAt.toISOString()]),
   );
+  // Course identity for human-readable review cards (plan 12.1): adds carry
+  // it from the owned add-course rows, updates/deletes from the course the
+  // task currently belongs to.
+  const coursesById = new Map(ownedCourses.map((course) => [course.id, course]));
+  const affectedTaskCourseIds = [
+    ...new Set(ownedTasks.map((task) => task.courseId)),
+  ];
+  const coursesForOwnedTasks = affectedTaskCourseIds.length
+    ? await db
+        .select({ id: courses.id, code: courses.code, name: courses.name })
+        .from(courses)
+        .where(inArray(courses.id, affectedTaskCourseIds))
+    : [];
+  const courseIdentityById = new Map(
+    coursesForOwnedTasks.map((course) => [course.id, course]),
+  );
   const items: ReviewPayload['items'] = output.actions.map((action) => {
     if (action.type === 'add_task') {
       const dueDate = parseTorontoDueDate(action.task.dueDate);
@@ -137,9 +153,12 @@ export async function prepareDraft(
         );
       });
       const after = { ...action.task };
+      const course = coursesById.get(action.courseId);
       return {
         type: 'add' as const,
         courseId: action.courseId,
+        courseCode: course?.code,
+        courseName: course?.name,
         title: action.task.title,
         after,
         diff: diffRecords(undefined, after),
@@ -153,11 +172,14 @@ export async function prepareDraft(
 
     const task = tasksById.get(action.taskId)!;
     const before = taskSnapshot(task);
+    const course = courseIdentityById.get(task.courseId);
     if (action.type === 'delete_task') {
       return {
         type: 'delete' as const,
         taskId: task.id,
         courseId: task.courseId,
+        courseCode: course?.code,
+        courseName: course?.name,
         title: task.title,
         before,
         diff: diffRecords(before, undefined),
@@ -171,6 +193,8 @@ export async function prepareDraft(
       type: 'update' as const,
       taskId: task.id,
       courseId: task.courseId,
+      courseCode: course?.code,
+      courseName: course?.name,
       title: action.changes.title ?? task.title,
       before,
       after,
@@ -195,13 +219,35 @@ export async function prepareDraft(
   };
 }
 
+/**
+ * Chat-namespace draft lookup (plan section 10). All Lucy drafts live in the
+ * `chat` namespace; the three-column lookup is the authoritative path now
+ * that the legacy `(user_id, request_id)` index is dropped.
+ */
 export async function findDraftByRequest(userId: string, requestId: string) {
+  return findDraftByNamespacedRequest({
+    userId,
+    requestNamespace: 'chat',
+    requestId,
+  });
+}
+
+export async function findDraftByNamespacedRequest({
+  userId,
+  requestNamespace,
+  requestId,
+}: {
+  userId: string;
+  requestNamespace: string;
+  requestId: string;
+}) {
   return db
     .select()
     .from(aiActionDrafts)
     .where(
       and(
         eq(aiActionDrafts.userId, userId),
+        eq(aiActionDrafts.requestNamespace, requestNamespace),
         eq(aiActionDrafts.requestId, requestId),
       ),
     )
@@ -214,11 +260,17 @@ export async function createDraft({
   requestId,
   output,
   prepared,
+  mcp,
 }: {
   userId: string;
   requestId: string;
   output: Extract<PlannerOutput, { kind: 'draft' }>;
   prepared: PreparedDraft;
+  mcp?: {
+    connectionId: string;
+    requestNamespace: string;
+    requestHash: string;
+  };
 }) {
   const createdAt = new Date();
   const inserted = await db
@@ -233,12 +285,50 @@ export async function createDraft({
       reviewPayload: prepared.reviewPayload,
       createdAt,
       expiresAt: new Date(createdAt.getTime() + DRAFT_TTL_MS),
+      ...(mcp
+        ? {
+            source: 'mcp' as const,
+            sourceConnectionId: mcp.connectionId,
+            requestNamespace: mcp.requestNamespace,
+            requestHash: mcp.requestHash,
+          }
+        : {}),
     })
     .onConflictDoNothing({
-      target: [aiActionDrafts.userId, aiActionDrafts.requestId],
+      // Three-column namespaced target (plan section 10): every row carries
+      // a request_namespace ('chat' default or mcp:<connection>). The legacy
+      // two-column index has been dropped by migration 0031.
+      target: [
+        aiActionDrafts.userId,
+        aiActionDrafts.requestNamespace,
+        aiActionDrafts.requestId,
+      ],
     })
-    .returning();
-  const draft = inserted[0] ?? (await findDraftByRequest(userId, requestId));
+    .returning()
+    .catch(async (error) => {
+      // Unique-violation race guard: a concurrent insert of the same
+      // namespaced request resolves through the lookup below (SQLSTATE
+      // 23505 = "already exists").
+      const wrapped = error as {
+        code?: string;
+        cause?: { code?: string; constraint?: string };
+      };
+      const code = wrapped?.code ?? wrapped?.cause?.code;
+      const isUniqueViolation = code === '23505';
+      if (isUniqueViolation) {
+        return [];
+      }
+      throw error;
+    });
+  const draft =
+    inserted[0] ??
+    (mcp
+      ? await findDraftByNamespacedRequest({
+          userId,
+          requestNamespace: mcp.requestNamespace,
+          requestId,
+        })
+      : await findDraftByRequest(userId, requestId));
   if (!draft) {
     throw new Error('Draft could not be created');
   }
@@ -248,6 +338,7 @@ export async function createDraft({
       draftId: draft.id,
       actionCounts: prepared.reviewPayload.counts,
       status: 'created',
+      source: draft.source,
     });
   }
   return draft;

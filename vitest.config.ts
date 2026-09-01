@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     include: ['tests/unit/**/*.test.ts', 'tests/unit/**/*.test.tsx'],
-    setupFiles: [],
+    setupFiles: ['tests/setup/unit-globals.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

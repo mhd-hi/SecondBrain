@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/keep-db-active",
       "schedule": "0 0 */5 * *"
+    },
+    {
+      "path": "/api/cron/cleanup-mcp-rate-limits",
+      "schedule": "0 * * * *"
     }
   ],
   "buildCommand": "bun run db:migrate && bun run build",

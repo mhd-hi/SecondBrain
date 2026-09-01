@@ -135,6 +135,70 @@ export const subtasks = pgTable(
   ],
 );
 
+export const mcpConnections = pgTable(
+  'mcp_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    oauthIssuer: text('oauth_issuer').notNull(),
+    oauthSubject: text('oauth_subject').notNull(),
+    oauthClientId: text('oauth_client_id').notNull(),
+    oauthGrantId: text('oauth_grant_id').notNull(),
+    clientName: text('client_name').notNull().default('MCP client'),
+    scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    lastUsedAt: timestamp('last_used_at'),
+    revokedAt: timestamp('revoked_at'),
+  },
+  table => [
+    uniqueIndex('uq_mcp_connections_issuer_grant').on(
+      table.oauthIssuer,
+      table.oauthGrantId,
+    ),
+    index('idx_mcp_connections_user_id').on(table.userId),
+  ],
+);
+
+export const mcpAuditEvents = pgTable(
+  'mcp_audit_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    connectionId: uuid('connection_id').references(() => mcpConnections.id, {
+      onDelete: 'set null',
+    }),
+    toolName: text('tool_name').notNull(),
+    draftId: uuid('draft_id'),
+    outcome: text('outcome').notNull(),
+    correlationId: text('correlation_id').notNull(),
+    durationMs: integer('duration_ms'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  table => [
+    index('idx_mcp_audit_events_user_created').on(table.userId, table.createdAt),
+    index('idx_mcp_audit_events_draft').on(table.draftId),
+    index('idx_mcp_audit_events_connection').on(table.connectionId),
+  ],
+);
+
+export const mcpRateLimits = pgTable(
+  'mcp_rate_limits',
+  {
+    key: text('key').notNull(),
+    windowStartedAt: timestamp('window_started_at').notNull(),
+    count: integer('count').notNull().default(0),
+    expiresAt: timestamp('expires_at').notNull(),
+  },
+  table => [
+    primaryKey({ columns: [table.key, table.windowStartedAt] }),
+    index('idx_mcp_rate_limits_expires_at').on(table.expiresAt),
+  ],
+);
+
 export const aiActionDrafts = pgTable(
   'ai_action_drafts',
   {
@@ -164,10 +228,31 @@ export const aiActionDrafts = pgTable(
     failureCode: text('failure_code'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     expiresAt: timestamp('expires_at').notNull(),
+    source: text('source', { enum: ['chat', 'mcp'] }).notNull().default('chat'),
+    sourceConnectionId: uuid('source_connection_id').references(
+      () => mcpConnections.id,
+      { onDelete: 'set null' },
+    ),
+    requestNamespace: text('request_namespace').notNull().default('chat'),
+    requestHash: text('request_hash'),
+    approvalCapabilityHash: text('approval_capability_hash'),
+    approvalCapabilityExpiresAt: timestamp('approval_capability_expires_at'),
+    approvalCapabilityConsumedAt: timestamp(
+      'approval_capability_consumed_at',
+    ),
+    approvalChannel: text('approval_channel', {
+      enum: ['web', 'mcp_app'],
+    }),
+    approvedAt: timestamp('approved_at'),
+    terminalAt: timestamp('terminal_at'),
+    executionReceipt: jsonb('execution_receipt'),
   },
   table => [
-    uniqueIndex('uq_ai_action_drafts_user_request').on(
+    // Namespaced idempotency (plan section 10): the sole uniqueness arbiter
+    // after migration 0031 dropped the legacy (user_id, request_id) index.
+    uniqueIndex('uq_ai_action_drafts_user_ns_request').on(
       table.userId,
+      table.requestNamespace,
       table.requestId,
     ),
     index('idx_ai_action_drafts_user_id').on(table.userId),

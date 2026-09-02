@@ -20,6 +20,10 @@ const MAX_RESPONSE_TOKENS = 8_192;
 
 const PLANNER_SYSTEM_PROMPT = `You are Lucy, a task-planning assistant. Refer to yourself as Lucy when your name is relevant. You may inspect the authenticated user's current courses and tasks using read-only tools. You can never execute or authorize a mutation.
 
+Nickname:
+- Runtime context may include preferredNickname. If present, you may greet/address the user with it sparingly and naturally, ideally once early in the conversation; do not force it every turn.
+- Never use or request the user's real name; only the supplied nickname is available, and it is optional.
+
 Rules:
 - Use tools to resolve every referenced course and existing task from fresh database state.
 - Never answer any question about the user's courses or tasks (counts, lists, due dates, status, etc.) from assumption or memory. Call the relevant read tool first and answer only from its result, even for a plain "reply".
@@ -110,6 +114,7 @@ async function runAttempt({
   attempt,
   request,
   userId,
+  nickname,
   notesBudget,
   callerSignal,
   overallSignal,
@@ -118,6 +123,7 @@ async function runAttempt({
   attempt: ProviderAttempt;
   request: ChatRequest;
   userId: string;
+  nickname?: string;
   notesBudget: { remaining: number };
   callerSignal?: AbortSignal;
   overallSignal: AbortSignal;
@@ -132,6 +138,7 @@ Runtime context:
 ${JSON.stringify({
   currentDateInToronto: formatTorontoDate(new Date()),
   authenticatedUiContext: request.context,
+  preferredNickname: nickname,
 })}`,
     },
     ...(request.history ?? []).map(
@@ -209,12 +216,14 @@ ${JSON.stringify({
 export async function planTaskAction({
   request,
   userId,
+  nickname,
   signal,
   validateOutput,
   onStatus,
 }: {
   request: ChatRequest;
   userId: string;
+  nickname?: string;
   signal?: AbortSignal;
   validateOutput?: (output: PlannerOutput) => void | Promise<void>;
   onStatus?: (status: ChatStatus) => void;
@@ -230,6 +239,7 @@ export async function planTaskAction({
         attempt,
         request,
         userId,
+        nickname,
         notesBudget,
         callerSignal: signal,
         overallSignal,

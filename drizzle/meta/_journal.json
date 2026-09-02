@@ -225,6 +225,13 @@
       "when": 1787919794842,
       "tag": "0031_rainy_psylocke",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787920000000,
+      "tag": "0032_pure_moonstar",
+      "breakpoints": true
     }
   ]
 }

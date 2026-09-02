@@ -21,6 +21,18 @@ vi.mock('@/lib/ai/chat/drafts', () => ({
   prepareDraft: prepareDraftMock,
   createDraft: createDraftMock,
 }));
+vi.mock('@/server/db', () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+  },
+}));
+vi.mock('@/server/db/schema', () => ({
+  users: { nickname: 'nickname' },
+}));
 
 const { POST } = await import('@/app/api/ai/chat/route');
 

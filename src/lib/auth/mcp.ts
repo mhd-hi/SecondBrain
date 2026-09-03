@@ -1,5 +1,6 @@
-import { createHash } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { Buffer } from 'node:buffer';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { db } from '@/server/db';
 import { mcpAuditEvents, mcpConnections } from '@/server/db/schema';
@@ -24,6 +25,14 @@ export type McpScope = (typeof MCP_SCOPES)[number];
 
 export const MCP_RESOURCE_AUDIENCE = 'second-brain-mcp';
 
+/**
+ * Prefix for user-created static API keys (Preferences > MCP API keys).
+ * Keys are 256-bit random secrets, shown once, stored only as sha256 hashes
+ * (fine for high-entropy secrets, unlike passwords). The prefix lets
+ * authenticateMcpRequest route between key auth and OAuth JWT auth.
+ */
+export const MCP_API_KEY_PREFIX = 'sb_mcp_';
+
 export type McpAuthContext = {
   userId: string;
   connectionId: string;
@@ -31,6 +40,7 @@ export type McpAuthContext = {
   grantId: string;
   issuer: string;
   scopes: string[];
+  apiKey?: true;
 };
 
 export type McpAuthFailure = {
@@ -65,8 +75,10 @@ export function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function isMcpAuthConfigured(): boolean {
-  return Boolean(process.env.MCP_OAUTH_ISSUER && process.env.MCP_OAUTH_AUDIENCE);
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
 }
 
 function requiredEnv(name: string): string {
@@ -145,14 +157,8 @@ async function verifyTokenStructure(
           async (header) => {
             if (header.alg === 'HS256') {
               // Symmetric tokens: production uses the authorization server's
-              // MCP_OAUTH_SECRET. MCP_DEV_TOKEN_SECRET is a development-only
-              // alternative so local smoke tests can mint tokens without a
-              // real provider; it is honored only outside production.
-              const rawSecret =
-                process.env.MCP_OAUTH_SECRET ||
-                (process.env.NODE_ENV !== 'production'
-                  ? process.env.MCP_DEV_TOKEN_SECRET
-                  : undefined);
+              // MCP_OAUTH_SECRET.
+              const rawSecret = process.env.MCP_OAUTH_SECRET;
               if (!rawSecret) {
                 throw new McpAuthError({
                   status: 401,
@@ -213,6 +219,9 @@ function extractBearerToken(request: Request): string | null {
 /**
  * Authenticate one MCP request. Throws McpAuthError on any failure.
  *
+ * Bearer tokens starting with sb_mcp_ are static API keys (hashed lookup,
+ * below); everything else is treated as an OAuth JWT.
+ *
  * Order of checks: bearer presence -> structural verification (signature,
  * issuer, audience, expiry) -> claim presence -> scope -> connection
  * resolution and revocation check.
@@ -229,6 +238,10 @@ export async function authenticateMcpRequest(
     });
   }
 
+  if (token.startsWith(MCP_API_KEY_PREFIX)) {
+    return authenticateApiKey(token);
+  }
+
   const payload = await verifyTokenStructure(token);
   const sub = claimString(payload, 'sub');
   const clientId = claimString(payload, 'client_id');
@@ -240,7 +253,10 @@ export async function authenticateMcpRequest(
     .select()
     .from(mcpConnections)
     .where(
-      eq(mcpConnections.oauthGrantId, grantId),
+      and(
+        eq(mcpConnections.oauthGrantId, grantId),
+        eq(mcpConnections.oauthIssuer, issuer),
+      ),
     )
     .limit(1)
     .then((rows) => rows[0]);
@@ -264,21 +280,7 @@ export async function authenticateMcpRequest(
       errorDescription: 'Connection revoked or token claims do not match',
     });
   }
-
-  // Staged rollout allowlist (plan section 20, Phase 6 / section 22.1 private
-  // alpha): when MCP_ENABLED_USERS is set, only listed user IDs may connect.
-  // Empty/unset means the MCP surface is open to all authenticated users.
-  const allowlist = (process.env.MCP_ENABLED_USERS ?? '')
-    .split(',')
-    .map((id) => id.trim())
-    .filter(Boolean);
-  if (allowlist.length > 0 && !allowlist.includes(sub)) {
-    throw new McpAuthError({
-      status: 403,
-      code: 'insufficient_scope',
-      errorDescription: 'This account is not enabled for MCP access',
-    });
-  }
+  assertUserAllowed(sub);
 
   return {
     userId: sub,
@@ -287,6 +289,92 @@ export async function authenticateMcpRequest(
     grantId,
     issuer,
     scopes: scope.split(/[\s+]/).filter(Boolean),
+  };
+}
+
+// Staged rollout allowlist (plan section 20, Phase 6 / section 22.1 private
+// alpha): when MCP_ENABLED_USERS is set, only listed user IDs may connect or
+// create API keys. Empty/unset means the MCP surface is open to all
+// authenticated users.
+export function isUserMcpEnabled(userId: string): boolean {
+  const allowlist = (process.env.MCP_ENABLED_USERS ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return allowlist.length === 0 || allowlist.includes(userId);
+}
+
+function assertUserAllowed(userId: string): void {
+  if (!isUserMcpEnabled(userId)) {
+    throw new McpAuthError({
+      status: 403,
+      code: 'insufficient_scope',
+      errorDescription: 'This account is not enabled for MCP access',
+    });
+  }
+}
+
+/**
+ * Static API-key authentication path (Preferences > MCP API keys).
+ * The presented token is sha256-hashed and looked up directly; no signature,
+ * issuer, or expiry validation applies because the key itself is the secret.
+ * Compromise response: revoke from the UI (immediate, checked every request).
+ *
+ * Timing-attack resistance: the expensive, variable part of a guess is the
+ * sha256 of the token, which every request performs exactly once up front.
+ * Each failure path then burns one additional same-input-size sha256 and one
+ * timing-safe compare before throwing, so response latency cannot distinguish
+ * unknown key from revoked key from allowlisted user. The DB read is an
+ * indexed unique-key point read with the same cost whether or not a row
+ * matches. Network jitter far exceeds the residual differences.
+ */
+async function authenticateApiKey(token: string): Promise<McpAuthContext> {
+  const hash = sha256Hex(token);
+  const candidate = await db
+    .select()
+    .from(mcpConnections)
+    .where(eq(mcpConnections.keyHash, hash))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  let connection: typeof candidate | undefined;
+  if (candidate?.keyHash && timingSafeEqualStr(candidate.keyHash, hash)) {
+    connection = candidate;
+  }
+  if (!connection) {
+    // Failure padding: same sha256 + compare work as the success path.
+    timingSafeEqualStr(sha256Hex(hash), hash);
+    throw new McpAuthError({
+      status: 401,
+      code: 'invalid_token',
+      errorDescription: 'Unknown API key',
+    });
+  }
+  if (connection.revokedAt) {
+    timingSafeEqualStr(sha256Hex(hash), hash);
+    throw new McpAuthError({
+      status: 401,
+      code: 'connection_revoked',
+      errorDescription: 'API key has been revoked',
+    });
+  }
+  if (!isUserMcpEnabled(connection.userId)) {
+    timingSafeEqualStr(sha256Hex(hash), hash);
+    throw new McpAuthError({
+      status: 403,
+      code: 'insufficient_scope',
+      errorDescription: 'This account is not enabled for MCP access',
+    });
+  }
+
+  return {
+    userId: connection.userId,
+    connectionId: connection.id,
+    clientId: 'api-key',
+    grantId: `api-key:${connection.id}`,
+    issuer: 'local',
+    scopes: connection.scopes,
+    apiKey: true,
   };
 }
 
@@ -308,10 +396,11 @@ export function requireScopes(
 
 export async function touchConnectionLastUsed(
   connectionId: string,
+  apiKey = false,
 ): Promise<void> {
   await db
     .update(mcpConnections)
-    .set({ lastUsedAt: new Date() })
+    .set(apiKey ? { lastUsedAt: new Date(), keyLastUsedAt: new Date() } : { lastUsedAt: new Date() })
     .where(eq(mcpConnections.id, connectionId));
 }
 

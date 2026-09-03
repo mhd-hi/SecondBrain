@@ -64,8 +64,9 @@ the decisions as implemented under `src/lib/mcp/` and `src/app/api/mcp/`.
     production mode; algorithms enforced by `jose` against the JWKS).
   - `MCP_OAUTH_SECRET`: symmetric-token secret (only if the chosen provider
     issues HS256; discouraged).
-  - `MCP_DEV_TOKEN_SECRET`: development-only HS256 secret used by local
-    smoke tests. Honored only when `NODE_ENV !== 'production'`.
+  - Static API keys (`sb_mcp_...`) need no env config; they authenticate
+    via hashed lookup in `mcp_connections` (see `authenticateApiKey` in
+    `src/lib/auth/mcp.ts`).
 - Validation on every request (section 21.1 coverage in
   `tests/unit/mcp-auth.test.ts`): signature, exact issuer, exact audience,
   exp/nbf with 5 s tolerance, `sub`, `client_id`, `grant_id`, `scope`,

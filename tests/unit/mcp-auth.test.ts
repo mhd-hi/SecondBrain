@@ -8,10 +8,12 @@ const connectionRow = {
   oauthSubject: 'user-1',
   oauthClientId: 'client-1',
   oauthGrantId: 'grant-1',
+  keyHash: null as string | null,
+  scopes: ['secondbrain:read', 'secondbrain:write'],
   revokedAt: null as Date | null,
 };
 
-// When true, the connection lookup resolves to no row (unknown grant).
+// When true, the connection lookup resolves to no row (unknown grant/key).
 let grantLookupEmpty = false;
 
 vi.mock('@/server/db', () => ({
@@ -19,7 +21,14 @@ vi.mock('@/server/db', () => ({
     select: () => ({
       from: () => ({
         where: () => ({
-          limit: async () => (grantLookupEmpty ? [] : [connectionRow]),
+          limit: async () => {
+            if (grantLookupEmpty) {
+              return [];
+            }
+            // Both lookup shapes (oauthGrantId eq / keyHash eq) resolve to
+            // the single fixture row; per-filter matching is DB behavior.
+            return [connectionRow];
+          },
         }),
       }),
     }),
@@ -91,6 +100,8 @@ describe('MCP token boundary (plan 21.1)', () => {
     connectionRow.oauthSubject = 'user-1';
     connectionRow.oauthClientId = 'client-1';
     connectionRow.oauthIssuer = ISSUER;
+    connectionRow.keyHash = null;
+    connectionRow.scopes = ['secondbrain:read', 'secondbrain:write'];
     connectionRow.revokedAt = null;
   });
 
@@ -256,5 +267,68 @@ describe('MCP token boundary (plan 21.1)', () => {
     } finally {
       delete process.env.MCP_ENABLED_USERS;
     }
+  });
+});
+
+describe('MCP API key boundary', () => {
+  const KEY = 'sb_mcp_3knWq9tP2vXhF8mQeZ1rJcYbA7dUsKoLgNiMwTxE5Ra';
+
+  beforeEach(() => {
+    connectionRow.keyHash = sha256Hex(KEY);
+    connectionRow.userId = 'user-1';
+    connectionRow.scopes = ['secondbrain:read', 'secondbrain:write'];
+    connectionRow.revokedAt = null;
+    delete process.env.MCP_ENABLED_USERS;
+  });
+
+  it('authenticates a valid API key with the connection scopes', async () => {
+    const context = await authenticateMcpRequest(requestWith(KEY));
+
+    expect(context.userId).toBe('user-1');
+    expect(context.connectionId).toBe('conn-1');
+    expect(context.clientId).toBe('api-key');
+    expect(context.issuer).toBe('local');
+    expect(context.apiKey).toBe(true);
+    expect(context.scopes).toContain('secondbrain:write');
+  });
+
+  it('rejects an unknown API key', async () => {
+    grantLookupEmpty = true;
+    try {
+      await expect(
+        authenticateMcpRequest(requestWith('sb_mcp_totally-unknown-key')),
+      ).rejects.toMatchObject({ status: 401, code: 'invalid_token' });
+    } finally {
+      grantLookupEmpty = false;
+    }
+  });
+
+  it('rejects a revoked API key', async () => {
+    connectionRow.revokedAt = new Date();
+
+    await expect(authenticateMcpRequest(requestWith(KEY))).rejects.toMatchObject(
+      { status: 401, code: 'connection_revoked' },
+    );
+  });
+
+  it('enforces the MCP_ENABLED_USERS allowlist for API keys', async () => {
+    process.env.MCP_ENABLED_USERS = 'someone-else';
+    try {
+      await expect(authenticateMcpRequest(requestWith(KEY))).rejects.toMatchObject(
+        { status: 403 },
+      );
+    } finally {
+      delete process.env.MCP_ENABLED_USERS;
+    }
+  });
+
+  it('read-only key cannot pass requireScopes for write tools', async () => {
+    connectionRow.scopes = ['secondbrain:read'];
+    const context = await authenticateMcpRequest(requestWith(KEY));
+
+    expect(() => requireScopes(context, ['secondbrain:read'])).not.toThrow();
+    expect(() => requireScopes(context, ['secondbrain:write'])).toThrowError(
+      McpAuthError,
+    );
   });
 });

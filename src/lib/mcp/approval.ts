@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { sha256Hex } from '@/lib/auth/mcp';
 import { db } from '@/server/db';
 import { aiActionDrafts } from '@/server/db/schema';
@@ -72,7 +72,7 @@ export function canonicalRequestHash(input: {
     if (value && typeof value === 'object') {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          .sort(([left], [right]) => left.localeCompare(right))
+          .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
           .map(([key, entry]) => [key, canonicalize(entry)]),
       );
     }
@@ -118,7 +118,7 @@ export async function rotateApprovalCapability(
     throw new ApprovalCapabilityError('DRAFT_EXPIRED');
   }
 
-  await db
+  const rotated = await db
     .update(aiActionDrafts)
     .set({
       approvalCapabilityHash: capability.hash,
@@ -131,8 +131,15 @@ export async function rotateApprovalCapability(
         eq(aiActionDrafts.status, 'pending'),
         eq(aiActionDrafts.source, 'mcp'),
         eq(aiActionDrafts.sourceConnectionId, connectionId),
+        gt(aiActionDrafts.expiresAt, now),
       ),
-    );
+    )
+    .returning({ id: aiActionDrafts.id });
+  if (!rotated[0]) {
+    // State changed between the SELECT and this UPDATE (expired, claimed, or
+    // consumed concurrently); the SELECT's checks no longer hold.
+    throw new ApprovalCapabilityError('DRAFT_NOT_PENDING');
+  }
 
   return { raw: capability.raw, expiresAt: capability.expiresAt };
 }

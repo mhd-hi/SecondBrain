@@ -66,11 +66,11 @@ async function readBodyWithLimit(
   if (lengthHeader && Number(lengthHeader) > MAX_BODY_BYTES) {
     return { ok: false };
   }
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) {
+  const buffer = await request.arrayBuffer();
+  if (buffer.byteLength > MAX_BODY_BYTES) {
     return { ok: false };
   }
-  return { ok: true, text };
+  return { ok: true, text: new TextDecoder().decode(buffer) };
 }
 
 function validateOrigin(request: Request): boolean {
@@ -98,16 +98,23 @@ async function checkRateLimit(
     Math.ceil((expiresAt.getTime() - now) / 1000),
   );
 
+  // Increment only while under the cap: rejected requests do not extend
+  // their own lockout, they just wait for the fixed window to reset.
   const rows = await db
     .insert(mcpRateLimits)
     .values({ key, windowStartedAt, count: 1, expiresAt })
     .onConflictDoUpdate({
       target: [mcpRateLimits.key, mcpRateLimits.windowStartedAt],
       set: { count: sql`${mcpRateLimits.count} + 1` },
+      setWhere: sql`${mcpRateLimits.count} < ${max}`,
     })
     .returning({ count: mcpRateLimits.count });
-  const count = rows[0]?.count ?? 1;
-  return { allowed: count <= max, retryAfterSeconds };
+  // No row returned means the conflict row was already at/over the cap.
+  const count = rows[0]?.count;
+  return {
+    allowed: count !== undefined && count <= max,
+    retryAfterSeconds,
+  };
 }
 
 const PARSE_ERROR = -32700;
@@ -301,7 +308,7 @@ async function handlePost(request: Request): Promise<Response> {
       },
       parsedBody: parsed as never,
     });
-    void touchConnectionLastUsed(auth.connectionId).catch(() => {});
+    void touchConnectionLastUsed(auth.connectionId, auth.apiKey === true).catch(() => {});
     return response;
   } catch (error) {
     await server.close().catch(() => {});

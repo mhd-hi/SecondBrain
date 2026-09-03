@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "secondbrain": {
+      "type": "remote",
+      "url": "http://localhost:3006/api/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:SECONDBRAIN_MCP_KEY}"
+      }
+    }
+  }
+}

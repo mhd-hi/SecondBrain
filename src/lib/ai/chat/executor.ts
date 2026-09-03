@@ -111,7 +111,6 @@ async function rejectDraftWithCapability(
       .set({
         status: 'rejected',
         approvalCapabilityConsumedAt: now,
-        approvedAt: now,
         approvalChannel: 'mcp_app',
         terminalAt: now,
       })
@@ -154,6 +153,7 @@ function capabilityClaimPredicate(
     eq(aiActionDrafts.approvalCapabilityHash, approval.capabilityHash),
     gt(aiActionDrafts.approvalCapabilityExpiresAt, now),
     isNull(aiActionDrafts.approvalCapabilityConsumedAt),
+    sql`${aiActionDrafts.payload}->>'payloadVersion' = ${String(AI_DRAFT_PAYLOAD_VERSION)}`,
   );
 }
 
@@ -266,7 +266,11 @@ export async function executeDraft(
                 approvedAt: now,
                 approvalChannel: 'mcp_app' as const,
               }
-            : { status: 'executing' as const },
+            : {
+                status: 'executing' as const,
+                approvedAt: now,
+                approvalChannel: 'web' as const,
+              },
         )
         .where(
           isMcp

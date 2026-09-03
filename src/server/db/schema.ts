@@ -149,6 +149,9 @@ export const mcpConnections = pgTable(
     oauthGrantId: text('oauth_grant_id').notNull(),
     clientName: text('client_name').notNull().default('MCP client'),
     scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
+    keyHash: text('key_hash'),
+    keyPrefix: text('key_prefix'),
+    keyLastUsedAt: timestamp('key_last_used_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     lastUsedAt: timestamp('last_used_at'),
     revokedAt: timestamp('revoked_at'),
@@ -158,6 +161,7 @@ export const mcpConnections = pgTable(
       table.oauthIssuer,
       table.oauthGrantId,
     ),
+    uniqueIndex('uq_mcp_connections_key_hash').on(table.keyHash),
     index('idx_mcp_connections_user_id').on(table.userId),
   ],
 );

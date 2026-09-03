@@ -28,6 +28,13 @@ import {
  * MCP Apps UI extension in its `_meta` (verified per request, never from
  * client name heuristics or prior requests). Hosts without the extension
  * fail closed to a text review plus an authenticated web review URL.
+ *
+ * Trust boundary (accepted, plan 11.3): `_meta` is caller-asserted, so a
+ * model in a misbehaving host can self-assert the extension flag and receive
+ * a capability. The server cannot distinguish "UI requested" from "model
+ * requested" on a stateless bearer transport; containment comes from the
+ * capability being single-use, TTL-bound, and scoped to one connection and
+ * draft, and from app-only tool visibility in hosts that implement MCP Apps.
  */
 
 const UI_EXTENSION_ID = 'io.modelcontextprotocol/ui';

@@ -54,24 +54,34 @@ Drafts expire after 24 hours; approval capabilities expire after 10 minutes.
 
 ## Connecting a client
 
-Point the client at `https://<app-origin>/api/mcp` with a bearer token that
-carries the `secondbrain:read` and/or `secondbrain:write` scopes and the
-required claims (`sub`, `client_id`, `grant_id`). In Hermes, for example:
+Step-by-step instructions (server URL and a copyable example config) are
+shown in the app under **Preferences > Profile > Connected AI clients**.
+
+### API keys (personal use)
+
+Create a static API key under **Preferences > Profile > MCP API keys**
+(read-only, or read + write to allow proposing task changes). The key is
+shown exactly once and stored only as a sha256 hash; it authenticates as
+your account. Point the client at `https://<app-origin>/api/mcp`:
 
 ```yaml
 mcp_servers:
   secondbrain:
     url: "https://<app-origin>/api/mcp"
     headers:
-      Authorization: "Bearer <token>"
+      Authorization: "Bearer sb_mcp_<your-api-key>"
 ```
 
-Local development: with `MCP_DEV_TOKEN_SECRET` set in `.env` and the dev
-server running, sign in to the app and `POST /api/mcp/dev-token` from the
-browser session to mint a 1-hour test token and register the connection.
+### OAuth tokens (hosted providers)
 
-Revoke any client from Preferences > Profile > Connected AI clients.
-Revocation is immediate, even for unexpired tokens.
+Production authorization-server tokens are also accepted: a bearer JWT
+signed by the configured issuer, bound to the `second-brain-mcp` audience,
+carrying the `secondbrain:read` and/or `secondbrain:write` scopes and the
+required claims (`sub`, `client_id`, `grant_id`). See
+[docs/mcp-adr.md](mcp-adr.md).
+
+Revoking any client or key from **Preferences > Profile** takes effect
+immediately, even for unexpired tokens.
 
 ## What is sent to the AI provider
 
@@ -93,5 +103,8 @@ access immediately.
   connection, tool, draft, outcome, correlation ID, duration).
 - Rate limits: 60 requests/minute per connection, 300 per 10 minutes per
   user; responses include `Retry-After`.
-- Revocation is local and immediate; tokens from a revoked grant fail even
-  if unexpired.
+- API keys are 256-bit random secrets, shown once, stored only as sha256
+  hashes, and capped at 10 active per user. The `sb_mcp_` prefix never
+  collides with JWT validation.
+- Revocation is local and immediate; tokens from a revoked grant and
+  revoked API keys fail even if unexpired.

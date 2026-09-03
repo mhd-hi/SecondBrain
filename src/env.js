@@ -12,6 +12,7 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: z.string(),
     AUTH_GOOGLE_ID: z.string(),
     AUTH_GOOGLE_SECRET: z.string(),
+    BAI_API_KEY: z.string().optional(),
     GROQ_API_KEY: z.string().optional(),
     GOOGLE_AI_STUDIO_API_KEY: z.string().optional(),
     NVIDIA_API_KEY: z.string().optional(),
@@ -27,7 +28,6 @@ export const env = createEnv({
     MCP_OAUTH_AUDIENCE: z.string().optional(),
     MCP_OAUTH_JWKS_URI: z.string().url().optional(),
     MCP_OAUTH_SECRET: z.string().optional(),
-    MCP_DEV_TOKEN_SECRET: z.string().optional(),
     MCP_ENABLED_USERS: z.string().optional(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
@@ -55,6 +55,7 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
     AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
     AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
+    BAI_API_KEY: process.env.BAI_API_KEY,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: process.env.GOOGLE_AI_STUDIO_API_KEY,
     NVIDIA_API_KEY: process.env.NVIDIA_API_KEY,
@@ -70,7 +71,6 @@ export const env = createEnv({
     MCP_OAUTH_AUDIENCE: process.env.MCP_OAUTH_AUDIENCE,
     MCP_OAUTH_JWKS_URI: process.env.MCP_OAUTH_JWKS_URI,
     MCP_OAUTH_SECRET: process.env.MCP_OAUTH_SECRET,
-    MCP_DEV_TOKEN_SECRET: process.env.MCP_DEV_TOKEN_SECRET,
     MCP_ENABLED_USERS: process.env.MCP_ENABLED_USERS,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

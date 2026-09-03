@@ -154,7 +154,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     const result = await executeDraft(owner.userId, draft.id, {
       channel: 'mcp_app',
       connectionId: owner.connectionId,
-      grantId: `grant-${owner.connectionId}`,
       capabilityHash: sha256Hex(capabilityRaw),
     });
 
@@ -187,7 +186,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        grantId: `grant-${owner.connectionId}`,
         capabilityHash: sha256Hex(capabilityRaw),
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CONFLICT' });
@@ -218,7 +216,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        grantId: `grant-${owner.connectionId}`,
         capabilityHash: sha256Hex('wrong-capability-9876543210'),
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CAPABILITY_MISMATCH' });
@@ -264,7 +261,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        grantId: `grant-${owner.connectionId}`,
         capabilityHash: sha256Hex('expired-capability-0123456789'),
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CAPABILITY_EXPIRED' });
@@ -296,7 +292,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: other.connectionId,
-        grantId: `grant-${other.connectionId}`,
         capabilityHash: sha256Hex('capability-abc-0123456789def'),
       }),
     ).rejects.toBeInstanceOf(DraftExecutionError);
@@ -327,7 +322,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     const rejected = await rejectDraft(owner.userId, draft.id, {
       channel: 'mcp_app',
       connectionId: owner.connectionId,
-      grantId: `grant-${owner.connectionId}`,
       capabilityHash: sha256Hex(capabilityRaw),
     });
 
@@ -347,7 +341,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       rejectDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        grantId: `grant-${owner.connectionId}`,
         capabilityHash: sha256Hex(capabilityRaw),
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CAPABILITY_CONSUMED' });
@@ -412,7 +405,6 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        grantId: `grant-${owner.connectionId}`,
         capabilityHash: sha256Hex(capabilityRaw),
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_STALE' });

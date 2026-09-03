@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { mcpConnections } from '@/server/db/schema';
 import { withAuthSimple } from '@/lib/auth/api';
@@ -16,6 +16,9 @@ export const GET = withAuthSimple(async (_request, user) => {
     .select({
       id: mcpConnections.id,
       clientName: mcpConnections.clientName,
+      scopes: mcpConnections.scopes,
+      keyPrefix: mcpConnections.keyPrefix,
+      keyLastUsedAt: mcpConnections.keyLastUsedAt,
       lastUsedAt: mcpConnections.lastUsedAt,
       revokedAt: mcpConnections.revokedAt,
     })
@@ -37,9 +40,14 @@ export const DELETE = withAuthSimple(async (request, user) => {
   const revoked = await db
     .update(mcpConnections)
     .set({ revokedAt: new Date() })
-    .where(eq(mcpConnections.id, connectionId))
-    .returning({ id: mcpConnections.id, userId: mcpConnections.userId });
-  if (!revoked[0] || revoked[0].userId !== user.id) {
+    .where(
+      and(
+        eq(mcpConnections.id, connectionId),
+        eq(mcpConnections.userId, user.id),
+      ),
+    )
+    .returning({ id: mcpConnections.id });
+  if (!revoked[0]) {
     return NextResponse.json(
       { error: 'Connection not found' },
       { status: 404 },

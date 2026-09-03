@@ -67,3 +67,6 @@ sprints.md
 /playwright-report.zip
 .playwright
 test-results/
+
+.mcp-serve.err.log
+.mcp-serve.log

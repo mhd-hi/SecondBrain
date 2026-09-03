@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PomodoroTab } from './PomodoroTab';
-import { McpConnectionsCard, ProfileTab } from './ProfileTab';
+import { McpSection, ProfileTab } from './ProfileTab';
 
 export function PreferencesContainer() {
   const searchParams = useSearchParams();
@@ -21,7 +21,7 @@ export function PreferencesContainer() {
 
       <TabsContent value="profile" className="space-y-6">
         <ProfileTab />
-        <McpConnectionsCard />
+        <McpSection />
       </TabsContent>
 
       <TabsContent value="pomodoro" className="space-y-6">

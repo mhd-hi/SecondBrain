@@ -2,6 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { redactMcpSecrets } from '@/lib/mcp/redact';
 
 describe('MCP secret redaction (plan 21.10)', () => {
+  it('masks general telemetry secrets, URL credentials, and short/quoted values', () => {
+    const event = {
+      message: 'password="private password" api_key=short https://api.test/?app_key=query-private https://discord.com/api/webhooks/1/webhook-private https://user:basic-private@api.test',
+      attributes: { password: 'attribute-private', nested: [{ apiKey: 'nested-private', status: 500 }] },
+    };
+    const result = JSON.stringify(redactMcpSecrets(event));
+    for (const secret of ['private password', 'short', 'query-private', 'webhook-private', 'basic-private', 'attribute-private', 'nested-private']) {
+      expect(result).not.toContain(secret);
+    }
+
+    expect(result).toContain('500');
+    expect(redactMcpSecrets('Authorization: Basic private-credential')).not.toContain('private-credential');
+    expect(redactMcpSecrets('eyJfake-header.payload.signature')).toBe('[REDACTED]');
+  });
+
   it('redacts bearer tokens in strings', () => {
     expect(
       redactMcpSecrets('Authorization=Bearer eyJhbGciOiJIUzI1NiJ9.abc.def'),

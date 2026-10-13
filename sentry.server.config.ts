@@ -11,6 +11,7 @@ if (process.env.NODE_ENV === 'production') {
     dsn: process.env.SENTRY_DSN || undefined,
 
     integrations: [
+      Sentry.captureConsoleIntegration({ levels: ['error'] }),
       Sentry.consoleLoggingIntegration({
         levels: ['log', 'warn', 'error'],
       }),
@@ -21,6 +22,15 @@ if (process.env.NODE_ENV === 'production') {
 
     beforeSend(event) {
       return redactMcpSecrets(event) as typeof event;
+    },
+    beforeSendTransaction(event) {
+      return redactMcpSecrets(event) as typeof event;
+    },
+    beforeSendLog(log) {
+      return redactMcpSecrets(log) as typeof log;
+    },
+    beforeBreadcrumb(breadcrumb) {
+      return redactMcpSecrets(breadcrumb) as typeof breadcrumb;
     },
 
     // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.

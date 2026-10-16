@@ -104,8 +104,8 @@ function ConnectInstructions() {
         </li>
         <li>
           <span className="text-foreground">
-            Proposed task changes always appear as a review card or web page —
-            nothing changes until you approve.
+            Proposed changes open in authenticated web review — nothing changes
+            until you approve.
           </span>
         </li>
       </ol>

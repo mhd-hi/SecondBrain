@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { and, count, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { db } from '@/server/db';
 import { mcpConnections } from '@/server/db/schema';
 import { withAuthSimple } from '@/lib/auth/api';
 import { MCP_API_KEY_PREFIX, MCP_SCOPES, sha256Hex } from '@/lib/auth/mcp';
+import { requireSameOrigin } from '@/lib/auth/origin';
 
 /**
  * Browser-authenticated API key management (Preferences > MCP API keys).
@@ -20,23 +22,37 @@ const MAX_ACTIVE_KEYS_PER_USER = 10;
 const KEY_RANDOM_BYTES = 32;
 
 export const POST = withAuthSimple(async (request, user) => {
-  let body: { label?: unknown; readOnly?: unknown };
+  const originError = requireSameOrigin(request);
+  if (originError) {
+    return originError;
+  }
+  if (
+    request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() !==
+    'application/json'
+  ) {
+    return NextResponse.json({ error: 'Expected application/json' }, { status: 415 });
+  }
+
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const label = typeof body.label === 'string' ? body.label.trim() : '';
-  if (label.length < 1 || label.length > 40) {
+  const parsed = z.strictObject({
+    label: z.string().trim().min(1).max(40),
+    readOnly: z.boolean().optional(),
+  }).safeParse(rawBody);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Label must be 1-40 characters' },
+      { error: 'Label must be 1-40 characters; readOnly must be boolean' },
       { status: 400 },
     );
   }
 
-  const readOnly = body.readOnly === true;
-  const scopes = readOnly ? [MCP_SCOPES[0]] : [...MCP_SCOPES];
+  const { label, readOnly } = parsed.data;
+  const scopes = readOnly === true ? [MCP_SCOPES[0]] : [...MCP_SCOPES];
 
   const key = `${MCP_API_KEY_PREFIX}${randomBytes(KEY_RANDOM_BYTES).toString('base64url')}`;
   const created = await db.transaction(async (tx) => {
@@ -86,10 +102,13 @@ export const POST = withAuthSimple(async (request, user) => {
     );
   }
 
-  return NextResponse.json({
-    id: created.id,
-    keyPrefix: created.keyPrefix,
-    key,
-    scopes,
-  });
+  return NextResponse.json(
+    {
+      id: created.id,
+      keyPrefix: created.keyPrefix,
+      key,
+      scopes,
+    },
+    { headers: { 'Cache-Control': 'no-store, private' } },
+  );
 });

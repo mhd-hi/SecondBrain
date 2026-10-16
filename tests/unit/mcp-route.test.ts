@@ -122,6 +122,7 @@ describe('MCP endpoint wire validation (plan 21.2/16)', () => {
 
     expect(response.status).toBe(401);
     expect(response.headers.get('WWW-Authenticate')).toContain('Bearer');
+    expect(request.bodyUsed).toBe(false);
 
     const payload = (await response.json()) as { error: { data: { code: string } } };
 

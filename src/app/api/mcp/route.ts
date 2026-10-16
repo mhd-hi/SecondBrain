@@ -201,6 +201,18 @@ async function handlePost(request: Request): Promise<Response> {
     return httpError(406);
   }
 
+  // Reject unauthenticated requests before reading or parsing attacker bodies.
+  // Their JSON-RPC ID is unavailable, so auth errors use id: null.
+  let auth;
+  try {
+    auth = await authenticateMcpRequest(request);
+  } catch (error) {
+    if (error instanceof McpAuthError) {
+      return authErrorResponse(request, null, error);
+    }
+    throw error;
+  }
+
   const bodyResult = await readBodyWithLimit(request);
   if (!bodyResult.ok) {
     return httpError(413);
@@ -230,18 +242,6 @@ async function handlePost(request: Request): Promise<Response> {
     );
   }
   const parsedId = extractId(parsed);
-
-  // Authentication before protocol dispatch; browser cookies are never
-  // consulted (plan section 16).
-  let auth;
-  try {
-    auth = await authenticateMcpRequest(request);
-  } catch (error) {
-    if (error instanceof McpAuthError) {
-      return authErrorResponse(request, parsedId, error);
-    }
-    throw error;
-  }
 
   // Per-connection and per-user durable limits (plan section 16).
   const connectionLimit = await checkRateLimit(

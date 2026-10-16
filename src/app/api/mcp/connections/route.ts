@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { and, desc, eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { db } from '@/server/db';
 import { mcpConnections } from '@/server/db/schema';
 import { withAuthSimple } from '@/lib/auth/api';
+import { requireSameOrigin } from '@/lib/auth/origin';
 
 /**
  * Browser-authenticated connection management (plan 19.1): list and revoke
@@ -25,10 +27,17 @@ export const GET = withAuthSimple(async (_request, user) => {
     .from(mcpConnections)
     .where(eq(mcpConnections.userId, user.id))
     .orderBy(desc(mcpConnections.createdAt));
-  return NextResponse.json({ connections });
+  return NextResponse.json(
+    { connections },
+    { headers: { 'Cache-Control': 'no-store, private' } },
+  );
 });
 
 export const DELETE = withAuthSimple(async (request, user) => {
+  const originError = requireSameOrigin(request);
+  if (originError) {
+    return originError;
+  }
   const url = new URL(request.url);
   const connectionId = url.searchParams.get('id');
   if (!connectionId) {
@@ -36,6 +45,9 @@ export const DELETE = withAuthSimple(async (request, user) => {
       { error: 'Missing connection id' },
       { status: 400 },
     );
+  }
+  if (!z.uuid().safeParse(connectionId).success) {
+    return NextResponse.json({ error: 'Invalid connection id' }, { status: 400 });
   }
   const revoked = await db
     .update(mcpConnections)

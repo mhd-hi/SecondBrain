@@ -2,6 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { redactMcpSecrets } from '@/lib/mcp/redact';
 
 describe('MCP secret redaction (plan 21.10)', () => {
+  it('redacts standalone MCP API keys and unquoted approval capabilities', () => {
+    const input =
+      'issued sb_mcp_abcdefghijklmnopqrstuvwxyz0123456789 approvalCapability=raw-capability-value';
+    const result = String(redactMcpSecrets(input));
+
+    expect(result).not.toContain('sb_mcp_');
+    expect(result).not.toContain('raw-capability-value');
+    expect(result).toContain('[REDACTED]');
+  });
+
+  it('redacts database usernames from OpenTelemetry span attributes', () => {
+    const result = redactMcpSecrets({ 'db.user': 'database-user' }) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result['db.user']).toBe('[REDACTED]');
+  });
+
   it('masks general telemetry secrets, URL credentials, and short/quoted values', () => {
     const event = {
       message: 'password="private password" api_key=short https://api.test/?app_key=query-private https://discord.com/api/webhooks/1/webhook-private https://user:basic-private@api.test',

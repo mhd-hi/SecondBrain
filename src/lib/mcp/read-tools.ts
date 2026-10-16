@@ -124,12 +124,50 @@ export function registerReadTools(
     list_terms: {},
   } as const;
 
-  for (const name of MCP_READ_TOOL_NAMES) {
+  const toolDefinitions = [
+    {
+      name: 'search_courses',
+      description: READ_TOOL_DESCRIPTIONS.search_courses,
+      inputSchema: rawShapes.search_courses,
+    },
+    {
+      name: 'search_tasks',
+      description: READ_TOOL_DESCRIPTIONS.search_tasks,
+      inputSchema: rawShapes.search_tasks,
+    },
+    {
+      name: 'get_task',
+      description: READ_TOOL_DESCRIPTIONS.get_task,
+      inputSchema: rawShapes.get_task,
+    },
+    {
+      name: 'list_course_tasks',
+      description: READ_TOOL_DESCRIPTIONS.list_course_tasks,
+      inputSchema: rawShapes.list_course_tasks,
+    },
+    {
+      name: 'resolve_course_week',
+      description: READ_TOOL_DESCRIPTIONS.resolve_course_week,
+      inputSchema: rawShapes.resolve_course_week,
+    },
+    {
+      name: 'list_supported_schools',
+      description: READ_TOOL_DESCRIPTIONS.list_supported_schools,
+      inputSchema: rawShapes.list_supported_schools,
+    },
+    {
+      name: 'list_terms',
+      description: READ_TOOL_DESCRIPTIONS.list_terms,
+      inputSchema: rawShapes.list_terms,
+    },
+  ] as const;
+
+  for (const { name, description, inputSchema } of toolDefinitions) {
     server.registerTool(
       name,
       {
-        description: READ_TOOL_DESCRIPTIONS[name],
-        inputSchema: rawShapes[name],
+        description,
+        inputSchema,
         annotations: READ_ANNOTATIONS,
       },
       async (args: Record<string, unknown>) => {

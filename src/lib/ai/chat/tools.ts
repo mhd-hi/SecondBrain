@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { buildTerm, getCurrentTerm, getNextTerm, getPrevTerm, nextTerm } from '@/lib/utils/term-util';
 import { db } from '@/server/db';
 import { courses, tasks } from '@/server/db/schema';
-import { SCHOOL, SCHOOL_INFO } from '@/types/school';
+import { SCHOOL_INFO } from '@/types/school';
 import { StatusTask } from '@/types/status-task';
 import {
   addDateOnlyDays,
@@ -292,9 +292,9 @@ async function listCourseTasks(
 }
 
 function listSupportedSchools() {
-  return (Object.values(SCHOOL) as string[]).map((id) => ({
+  return Object.entries(SCHOOL_INFO).map(([id, info]) => ({
     id,
-    label: SCHOOL_INFO[id as keyof typeof SCHOOL_INFO]?.label ?? id,
+    label: info.label,
   }));
 }
 

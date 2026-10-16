@@ -33,17 +33,12 @@ export function redactMcpSecrets(value: unknown): unknown {
     return value.map((item) => redactMcpSecrets(item));
   }
   if (value && typeof value === 'object') {
-    const redacted: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(
-      value as Record<string, unknown>,
-    )) {
-      if (SECRET_KEY_PATTERN.test(key)) {
-        redacted[key] = REDACTED;
-      } else {
-        redacted[key] = redactMcpSecrets(entry);
-      }
-    }
-    return redacted;
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key,
+        SECRET_KEY_PATTERN.test(key) ? REDACTED : redactMcpSecrets(entry),
+      ]),
+    );
   }
   return value;
 }

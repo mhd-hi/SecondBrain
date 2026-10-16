@@ -73,6 +73,7 @@ describe('MCP tool surface metadata (plan 19.1 / 21.4)', () => {
     ]) {
       expect(names.has(name), name).toBe(true);
     }
+
     expect(names.has('commit_task_changes')).toBe(false);
     expect(names.has('reject_task_changes')).toBe(false);
   });

@@ -249,8 +249,13 @@ export function buildCourseTasks(
 ): BuiltCourseTask[] {
   const normalized = normalizeTasks(aiTasks);
   const baseDate = firstDayOfClass ?? getDatesForTerm(term).start;
-  return normalized.map((task, index) => {
-    const aiTask = aiTasks[index];
+  const normalizedTasks = normalized[Symbol.iterator]();
+  return aiTasks.map((aiTask) => {
+    const nextTask = normalizedTasks.next();
+    if (nextTask.done) {
+      throw new Error('Task normalization lost an input task');
+    }
+    const task = nextTask.value;
     const week = typeof aiTask?.week === 'number' ? aiTask.week : 1;
     if (!Number.isInteger(week) || week < COURSE_WEEK_MIN || week > COURSE_WEEK_MAX) {
       throw new CourseCreationError(

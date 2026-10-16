@@ -7,6 +7,7 @@
   --landing-shadow:
     0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent),
     0 16px 40px -20px color-mix(in oklab, var(--foreground) 28%, transparent);
+
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -333,6 +334,11 @@
   border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
 }
 
+.landing-feature-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
 .landing-task-check {
   width: 1.15rem;
   height: 1.15rem;
@@ -483,11 +489,6 @@
   background: color-mix(in oklab, var(--primary) 11%, transparent);
 }
 
-.landing-feature-icon svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-
 .landing-feature h3 {
   margin-top: 1rem;
   font-size: 1rem;
@@ -569,6 +570,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -627,6 +629,7 @@
     opacity: 0;
     transform: rotate(-1.4deg) translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: rotate(-1.4deg) translateY(0);
@@ -638,6 +641,7 @@
     opacity: 0;
     transform: rotate(0.9deg) translateX(0.9rem) translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: rotate(0.9deg) translateX(0.9rem) translateY(0);

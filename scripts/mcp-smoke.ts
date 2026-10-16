@@ -31,15 +31,15 @@ async function post(token?: string) {
 export {};
 
 const noAuth = await post();
-console.log(`no-token:    ${noAuth}`);
 if (noAuth !== 401) throw new Error('expected 401 without token');
+console.log('no-token: rejected');
 
 const bad = await post('sb_mcp_smoke-test-invalid-key');
-console.log(`unknown key: ${bad}`);
 if (bad !== 401) throw new Error('expected 401 for unknown key');
+console.log('unknown key: rejected');
 
 const notKey = await post('not-a-jwt-and-not-a-key');
-console.log(`garbage:     ${notKey}`);
 if (notKey !== 401) throw new Error('expected 401 for garbage token');
+console.log('garbage: rejected');
 
 console.log('smoke OK: auth boundary rejects unauthenticated and unknown-key requests');

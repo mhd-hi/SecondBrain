@@ -9,6 +9,7 @@
     "bun": ">=1.0.0"
   },
   "scripts": {
+    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') require('node:child_process').execFileSync('git', ['config', 'core.hooksPath', '.githooks'])\"",
     "build": "next build",
     "preview": "bun run build && bun --env-file=.env next start",
     "start": "bun --env-file=.env next start",

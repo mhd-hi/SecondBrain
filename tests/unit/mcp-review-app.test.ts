@@ -91,7 +91,7 @@ describe('MCP App review resource (plan 19.1 / 21.7)', () => {
     // The capability is passed to the component but must not be rendered as
     // text anywhere except inside the JSON data island (parsed at runtime).
     const islandMatch = html.match(
-      /<script type="application\/json" id="sb-review-data">([\s\S]*?)<\/script>/,
+      /<script type="application\/json" id="sb-review-data">([\s\S]*?)<\/script>/i,
     );
 
     expect(islandMatch).toBeTruthy();

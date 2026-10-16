@@ -47,13 +47,22 @@ function handleCourseError(error: unknown): ToolResult {
     return errorResult(error.code, error.message);
   }
   if (error instanceof AIError) {
-    const safe: Record<string, string> = {
-      AI_INPUT_TOO_LARGE: 'Course-plan input is too large',
-      AI_ABORTED: 'AI processing was cancelled',
-      AI_DEADLINE_EXCEEDED: 'AI processing timed out',
-      AI_PROVIDERS_EXHAUSTED: 'AI processing is temporarily unavailable',
-    };
-    return errorResult(error.code, safe[error.code] ?? 'AI processing failed');
+    let message = 'AI processing failed';
+    switch (error.code) {
+      case 'AI_INPUT_TOO_LARGE':
+        message = 'Course-plan input is too large';
+        break;
+      case 'AI_ABORTED':
+        message = 'AI processing was cancelled';
+        break;
+      case 'AI_DEADLINE_EXCEEDED':
+        message = 'AI processing timed out';
+        break;
+      case 'AI_PROVIDERS_EXHAUSTED':
+        message = 'AI processing is temporarily unavailable';
+        break;
+    }
+    return errorResult(error.code, message);
   }
   return handleError(error);
 }

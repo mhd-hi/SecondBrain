@@ -376,6 +376,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       .select()
       .from(mcpAuditEvents)
       .where(eq(mcpAuditEvents.draftId, draft.id));
+
     expect(auditRows).toHaveLength(1);
     expect(auditRows[0]!.toolName).toBe('web_approve_draft');
   });
@@ -400,6 +401,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       .select()
       .from(mcpAuditEvents)
       .where(eq(mcpAuditEvents.draftId, draft.id));
+
     expect(auditRows).toHaveLength(1);
     expect(auditRows[0]!.toolName).toBe('web_reject_draft');
   });

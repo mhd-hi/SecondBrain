@@ -181,9 +181,9 @@ export function AppSidebar({ courses, isLoading = false }: SidebarProps) {
                 >
                   <ThemeToggle />
                   <DropdownMenuItem asChild>
-                    <Link href={ROUTES.PREFERENCES}>
+                    <Link href={ROUTES.SETTINGS}>
                       <Settings className="mr-2 size-4" />
-                      Preferences
+                      Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

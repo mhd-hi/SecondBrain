@@ -239,6 +239,13 @@
       "when": 1788412971496,
       "tag": "0033_slow_joystick",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792151449975,
+      "tag": "0034_mcp_secret_verifiers",
+      "breakpoints": true
     }
   ]
 }

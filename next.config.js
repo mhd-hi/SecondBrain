@@ -60,8 +60,16 @@ const nextConfig = {
 
     return nextWebpackConfig;
   },
-  async headers() {
+  async redirects() {
     return [
+      {
+        source: '/preferences/:path*',
+        destination: '/settings/:path*',
+        permanent: true,
+      },
+    ];
+  },
+  async headers() {    return [
       {
         source: '/:path*',
         headers: [

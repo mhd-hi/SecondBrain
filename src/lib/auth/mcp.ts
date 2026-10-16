@@ -1,5 +1,10 @@
 import { Buffer } from 'node:buffer';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  randomBytes,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { mcpAuditEvents, mcpConnections } from '@/server/db/schema';
@@ -9,20 +14,20 @@ import { mcpAuditEvents, mcpConnections } from '@/server/db/schema';
  *
  * Every `/api/mcp` request is authenticated here, independently: the Auth.js
  * browser session cookie is never consulted (plan section 6.3/16). The token
- * is a static API key (`sb_mcp_` prefix, created in Preferences > MCP & AI
+ * is a static API key (`sb_mcp_` prefix, created in Settings > MCP & AI
  * Clients) that resolves to exactly one active (non-revoked) `mcp_connections`
- * row by its sha256 hash. Identity comes from that key's row, never from tool
- * input.
+ * row by prefix lookup plus scrypt verification. Identity comes from that
+ * key's row, never from tool input.
  */
 
 export const MCP_SCOPES = ['secondbrain:read', 'secondbrain:write'] as const;
 export type McpScope = (typeof MCP_SCOPES)[number];
 
 /**
- * Prefix for user-created static API keys (Preferences > MCP API keys).
- * Keys are 256-bit random secrets, shown once, stored only as sha256 hashes
- * (fine for high-entropy secrets, unlike passwords). The prefix is the
- * boundary's fast-path signal that this is an API key.
+ * Prefix for user-created static API keys (Settings > MCP API keys).
+ * Keys are 256-bit random secrets, shown once, stored only as salted scrypt
+ * verifiers. The prefix doubles as the non-secret lookup id: authentication
+ * routes by the key's first 16 chars, then verifies with scrypt.
  */
 export const MCP_API_KEY_PREFIX = 'sb_mcp_';
 
@@ -64,14 +69,109 @@ export class McpAuthError extends Error {
 }
 
 export function sha256Hex(value: string): string {
-  // High-entropy 256-bit API keys/capabilities, not passwords; sha256 enables indexed lookup.
-  return createHash('sha256').update(value).digest('hex'); // codeql[js/insufficient-password-hash]
+  return createHash('sha256').update(value).digest('hex');
 }
 
-function timingSafeEqualStr(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+/**
+ * Password-style storage for bearer secrets (MCP API keys, approval
+ * capabilities). scrypt with a per-secret random salt; stored as
+ * `scrypt$N$r$p$salthex$derivedhex` so parameters travel with the verifier.
+ *
+ * Indexed fast hashes are deliberately NOT used here: a database/table leak
+ * must not hand out offline-testable hashes. Fast SHA-256 remains only for
+ * non-sensitive canonical request hashing (idempotency), never for secrets.
+ */
+const scryptAsync = (
+  secret: string,
+  salt: Buffer,
+  keyLengthBytes: number,
+  options: { N: number; r: number; p: number; maxmem: number },
+): Promise<Buffer> =>
+  new Promise((resolve, reject) => {
+    scryptCallback(secret, salt, keyLengthBytes, options, (error, derived) => {
+      if (error || !Buffer.isBuffer(derived)) {
+        reject(error ?? new Error('scrypt failed'));
+      } else {
+        resolve(derived);
+      }
+    });
+  });
+
+const SECRET_KDF = {
+  N: 16384,
+  r: 8,
+  p: 1,
+  keyLengthBytes: 32,
+  saltBytes: 16,
+  maxMemoryBytes: 32 * 1024 * 1024,
+} as const;
+
+export async function hashSecret(secret: string): Promise<string> {
+  const salt = randomBytes(SECRET_KDF.saltBytes);
+  const derived = (await scryptAsync(secret, salt, SECRET_KDF.keyLengthBytes, {
+    N: SECRET_KDF.N,
+    r: SECRET_KDF.r,
+    p: SECRET_KDF.p,
+    maxmem: SECRET_KDF.maxMemoryBytes,
+  })) as Buffer;
+  return [
+    'scrypt',
+    SECRET_KDF.N,
+    SECRET_KDF.r,
+    SECRET_KDF.p,
+    salt.toString('hex'),
+    derived.toString('hex'),
+  ].join('$');
+}
+
+export async function verifySecret(
+  secret: string,
+  stored: string | null | undefined,
+): Promise<boolean> {
+  const parts = stored?.split('$') ?? [];
+  if (parts.length !== 6 || parts[0] !== 'scrypt') {
+    return false;
+  }
+  const [, nRaw, rRaw, pRaw, saltHex, expectedHex] = parts as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  const N = Number(nRaw);
+  const r = Number(rRaw);
+  const p = Number(pRaw);
+  if (
+    !Number.isInteger(N) ||
+    !Number.isInteger(r) ||
+    !Number.isInteger(p) ||
+    N <= 0 ||
+    r <= 0 ||
+    p <= 0
+  ) {
+    return false;
+  }
+  const salt = Buffer.from(saltHex, 'hex');
+  const expected = Buffer.from(expectedHex, 'hex');
+  if (salt.length === 0 || expected.length === 0) {
+    return false;
+  }
+  try {
+    const derived = (await scryptAsync(secret, salt, expected.length, {
+      N,
+      r,
+      p,
+      maxmem: SECRET_KDF.maxMemoryBytes,
+    })) as Buffer;
+    return (
+      derived.length === expected.length &&
+      timingSafeEqual(derived, expected)
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function buildWwwAuthenticateChallenge({
@@ -136,35 +236,33 @@ export async function authenticateMcpRequest(
 }
 
 /**
- * Static API-key authentication path (Preferences > MCP API keys).
- * The presented token is sha256-hashed and looked up directly; no signature,
- * issuer, or expiry validation applies because the key itself is the secret.
- * Compromise response: revoke from the UI (immediate, checked every request).
+ * Static API-key authentication path (Settings > MCP API keys).
+ * The presented key is routed by its 16-char prefix (a non-secret lookup id
+ * displayed in the UI) and verified with scrypt against the stored verifier;
+ * no signature, issuer, or expiry validation applies because the key itself
+ * is the secret. Compromise response: revoke from the UI (immediate, checked
+ * every request).
  *
- * Timing-attack resistance: the expensive, variable part of a guess is the
- * sha256 of the token, which every request performs exactly once up front.
- * Each failure path then burns one additional same-input-size sha256 and one
- * timing-safe compare before throwing, so response latency cannot distinguish
- * unknown key from revoked key. The DB read is an indexed unique-key point
- * read with the same cost whether or not a row matches. Network jitter far
- * exceeds the residual differences.
+ * Timing posture: a prefix miss fails fast with no KDF work, so
+ * unauthenticated garbage cannot burn scrypt CPU. The prefix is a routing id,
+ * not a secret, so a prefix-existence oracle is harmless. A valid prefix
+ * with a wrong secret costs exactly one verification.
  */
 async function authenticateApiKey(token: string): Promise<McpAuthContext> {
-  const hash = sha256Hex(token);
-  const candidate = await db
+  const candidates = await db
     .select()
     .from(mcpConnections)
-    .where(eq(mcpConnections.keyHash, hash))
-    .limit(1)
-    .then((rows) => rows[0]);
+    .where(eq(mcpConnections.keyPrefix, token.slice(0, 16)))
+    .limit(10);
 
-  let connection: typeof candidate | undefined;
-  if (candidate?.keyHash && timingSafeEqualStr(candidate.keyHash, hash)) {
-    connection = candidate;
+  let connection: (typeof candidates)[number] | undefined;
+  for (const candidate of candidates) {
+    if (await verifySecret(token, candidate.keyVerifier)) {
+      connection = candidate;
+      break;
+    }
   }
   if (!connection) {
-    // Failure padding: same sha256 + compare work as the success path.
-    timingSafeEqualStr(sha256Hex(hash), hash);
     throw new McpAuthError({
       status: 401,
       code: 'invalid_token',
@@ -172,7 +270,6 @@ async function authenticateApiKey(token: string): Promise<McpAuthContext> {
     });
   }
   if (connection.revokedAt) {
-    timingSafeEqualStr(sha256Hex(hash), hash);
     throw new McpAuthError({
       status: 401,
       code: 'connection_revoked',

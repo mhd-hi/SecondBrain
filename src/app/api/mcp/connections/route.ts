@@ -8,7 +8,7 @@ import { requireSameOrigin } from '@/lib/auth/origin';
 
 /**
  * Browser-authenticated connection management (plan 19.1): list and revoke
- * the signed-in user's MCP connections from the Preferences UI. Revocation
+ * the signed-in user's MCP connections from the Settings UI. Revocation
  * takes effect immediately: the next MCP request fails the local
  * `mcp_connections` check even with an unexpired access token.
  */

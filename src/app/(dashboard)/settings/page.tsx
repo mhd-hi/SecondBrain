@@ -2,10 +2,10 @@
 
 import { Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { PreferencesContainer } from '@/components/Preferences/PreferencesContainer';
+import { SettingsContainer } from '@/components/Settings/SettingsContainer';
 import { CapybaraLoader } from '@/components/shared/CapybaraLoader';
 
-export default function PreferencesPage() {
+export default function SettingsPage() {
   const { status } = useSession();
 
   if (status === 'loading') {
@@ -21,14 +21,14 @@ export default function PreferencesPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Settings className="size-8" />
-          Preferences
+          Settings
         </h1>
         <p className="text-muted-foreground mt-2">
-          Manage your account settings and preferences
+          Manage your account settings
         </p>
       </div>
 
-      <PreferencesContainer />
+      <SettingsContainer />
     </main>
   );
 }

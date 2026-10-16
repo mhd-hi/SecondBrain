@@ -7,7 +7,7 @@ import { PomodoroTab } from './PomodoroTab';
 import { McpTab } from './McpTab';
 import { ProfileTab } from './ProfileTab';
 
-export function PreferencesContainer() {
+export function SettingsContainer() {
   const searchParams = useSearchParams();
   const viewParam = searchParams?.get('view') ?? undefined;
 

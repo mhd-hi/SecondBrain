@@ -8,7 +8,7 @@ import {
   rejectDraft,
 } from '@/lib/ai/chat/executor';
 import { plannerOutputSchema } from '@/lib/ai/chat/types';
-import { sha256Hex } from '@/lib/auth/mcp';
+import { hashSecret, sha256Hex } from '@/lib/auth/mcp';
 import { db, dbClient } from '@/server/db';
 import {
   aiActionDrafts,
@@ -146,7 +146,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex(capabilityRaw),
+            approvalCapabilityVerifier: await hashSecret(capabilityRaw),
         approvalCapabilityExpiresAt: new Date(now.getTime() + 600_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -154,7 +154,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     const result = await executeDraft(owner.userId, draft.id, {
       channel: 'mcp_app',
       connectionId: owner.connectionId,
-      capabilityHash: sha256Hex(capabilityRaw),
+      capability: capabilityRaw,
     });
 
     expect(result.draft.status).toBe('executed');
@@ -186,7 +186,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        capabilityHash: sha256Hex(capabilityRaw),
+        capability: capabilityRaw,
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CONFLICT' });
   });
@@ -207,7 +207,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex('correct-capability-0123456789'),
+            approvalCapabilityVerifier: await hashSecret('correct-capability-0123456789'),
         approvalCapabilityExpiresAt: new Date(Date.now() + 600_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -216,7 +216,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        capabilityHash: sha256Hex('wrong-capability-9876543210'),
+        capability: 'wrong-capability-9876543210',
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CAPABILITY_MISMATCH' });
 
@@ -252,7 +252,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex('expired-capability-0123456789'),
+            approvalCapabilityVerifier: await hashSecret('expired-capability-0123456789'),
         approvalCapabilityExpiresAt: new Date(Date.now() - 1_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -261,7 +261,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        capabilityHash: sha256Hex('expired-capability-0123456789'),
+        capability: 'expired-capability-0123456789',
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CAPABILITY_EXPIRED' });
   });
@@ -283,7 +283,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex('capability-abc-0123456789def'),
+            approvalCapabilityVerifier: await hashSecret('capability-abc-0123456789def'),
         approvalCapabilityExpiresAt: new Date(Date.now() + 600_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -292,7 +292,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: other.connectionId,
-        capabilityHash: sha256Hex('capability-abc-0123456789def'),
+        capability: 'capability-abc-0123456789def',
       }),
     ).rejects.toBeInstanceOf(DraftExecutionError);
   });
@@ -314,7 +314,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex(capabilityRaw),
+            approvalCapabilityVerifier: await hashSecret(capabilityRaw),
         approvalCapabilityExpiresAt: new Date(Date.now() + 600_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -322,7 +322,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     const rejected = await rejectDraft(owner.userId, draft.id, {
       channel: 'mcp_app',
       connectionId: owner.connectionId,
-      capabilityHash: sha256Hex(capabilityRaw),
+      capability: capabilityRaw,
     });
 
     expect(rejected.status).toBe('rejected');
@@ -341,7 +341,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       rejectDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        capabilityHash: sha256Hex(capabilityRaw),
+        capability: capabilityRaw,
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_CAPABILITY_CONSUMED' });
   });
@@ -423,7 +423,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex(capabilityRaw),
+            approvalCapabilityVerifier: await hashSecret(capabilityRaw),
         approvalCapabilityExpiresAt: new Date(Date.now() + 600_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -438,7 +438,7 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
       executeDraft(owner.userId, draft.id, {
         channel: 'mcp_app',
         connectionId: owner.connectionId,
-        capabilityHash: sha256Hex(capabilityRaw),
+        capability: capabilityRaw,
       }),
     ).rejects.toMatchObject({ code: 'DRAFT_STALE' });
 

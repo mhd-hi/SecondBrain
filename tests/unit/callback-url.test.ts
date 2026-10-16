@@ -53,8 +53,8 @@ describe('callback URL normalization', () => {
   });
 
   it('resolves redirects against the trusted auth base URL', () => {
-    expect(resolveCallbackUrl('/preferences?view=profile', 'https://app.example.com')).toBe(
-      'https://app.example.com/preferences?view=profile',
+    expect(resolveCallbackUrl('/settings?view=profile', 'https://app.example.com')).toBe(
+      'https://app.example.com/settings?view=profile',
     );
   });
 

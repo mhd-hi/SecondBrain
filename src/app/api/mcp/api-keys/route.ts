@@ -5,17 +5,17 @@ import { z } from 'zod';
 import { db } from '@/server/db';
 import { mcpConnections } from '@/server/db/schema';
 import { withAuthSimple } from '@/lib/auth/api';
-import { MCP_API_KEY_PREFIX, MCP_SCOPES, sha256Hex } from '@/lib/auth/mcp';
+import { hashSecret, MCP_API_KEY_PREFIX, MCP_SCOPES } from '@/lib/auth/mcp';
 import { requireSameOrigin } from '@/lib/auth/origin';
 
 /**
- * Browser-authenticated API key management (Preferences > MCP API keys).
+ * Browser-authenticated API key management (Settings > MCP API keys).
  * Creates static API keys that authenticate to /api/mcp as the signed-in
- * user. The full key is returned exactly once; only its sha256 hash is
- * stored (safe for high-entropy secrets). Revocation reuses the existing
- * /api/mcp/connections DELETE — every key is an mcp_connections row, so
- * the allowlist, rate limits, audit events, and immediate revocation all
- * apply without extra code.
+ * user. The full key is returned exactly once; only a salted scrypt verifier
+ * is stored, so a database leak does not hand out offline-testable hashes.
+ * Revocation reuses the existing /api/mcp/connections DELETE — every key is
+ * an mcp_connections row, so rate limits, audit events, and immediate
+ * revocation all apply without extra code.
  */
 
 const MAX_ACTIVE_KEYS_PER_USER = 10;
@@ -55,6 +55,7 @@ export const POST = withAuthSimple(async (request, user) => {
   const scopes = readOnly === true ? [MCP_SCOPES[0]] : [...MCP_SCOPES];
 
   const key = `${MCP_API_KEY_PREFIX}${randomBytes(KEY_RANDOM_BYTES).toString('base64url')}`;
+  const keyVerifier = await hashSecret(key);
   const created = await db.transaction(async (tx) => {
     // Serialize key creation per user; count + insert must share this lock.
     await tx.execute(
@@ -67,7 +68,7 @@ export const POST = withAuthSimple(async (request, user) => {
         and(
           eq(mcpConnections.userId, user.id),
           isNull(mcpConnections.revokedAt),
-          isNotNull(mcpConnections.keyHash),
+          isNotNull(mcpConnections.keyVerifier),
         ),
       );
     if (Number(active?.value ?? 0) >= MAX_ACTIVE_KEYS_PER_USER) {
@@ -83,7 +84,7 @@ export const POST = withAuthSimple(async (request, user) => {
         oauthGrantId: `api-key:${crypto.randomUUID()}`,
         clientName: label,
         scopes,
-        keyHash: sha256Hex(key),
+        keyVerifier,
         keyPrefix: key.slice(0, 16),
       })
       .returning({

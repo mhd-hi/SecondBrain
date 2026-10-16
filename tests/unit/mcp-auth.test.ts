@@ -7,7 +7,8 @@ const connectionRow = {
   oauthSubject: 'user-1',
   oauthClientId: 'api-key',
   oauthGrantId: 'api-key:conn-1',
-  keyHash: null as string | null,
+  keyPrefix: null as string | null,
+  keyVerifier: null as string | null,
   scopes: ['secondbrain:read', 'secondbrain:write'],
   revokedAt: null as Date | null,
 };
@@ -37,7 +38,7 @@ vi.mock('@/server/db', () => ({
   },
 }));
 
-const { authenticateMcpRequest, requireScopes, McpAuthError, sha256Hex } =
+const { authenticateMcpRequest, requireScopes, McpAuthError, sha256Hex, hashSecret } =
   await import('@/lib/auth/mcp');
 type McpAuthErrorType = import('@/lib/auth/mcp').McpAuthError;
 
@@ -52,8 +53,9 @@ function requestWith(token: string | null): Request {
 describe('MCP API key boundary', () => {
   const KEY = 'sb_mcp_3knWq9tP2vXhF8mQeZ1rJcYbA7dUsKoLgNiMwTxE5Ra';
 
-  beforeEach(() => {
-    connectionRow.keyHash = sha256Hex(KEY);
+  beforeEach(async () => {
+    connectionRow.keyPrefix = KEY.slice(0, 16);
+    connectionRow.keyVerifier = await hashSecret(KEY);
     connectionRow.userId = 'user-1';
     connectionRow.scopes = ['secondbrain:read', 'secondbrain:write'];
     connectionRow.revokedAt = null;
@@ -100,6 +102,20 @@ describe('MCP API key boundary', () => {
     await expect(authenticateMcpRequest(requestWith(KEY))).rejects.toMatchObject(
       { status: 401, code: 'connection_revoked' },
     );
+  });
+
+  it('rejects a valid prefix with the wrong secret', async () => {
+    await expect(
+      authenticateMcpRequest(requestWith(`${KEY.slice(0, 16)}wrong-secret-value`)),
+    ).rejects.toMatchObject({ status: 401, code: 'invalid_token' });
+  });
+
+  it('fails closed when the row has no scrypt verifier (legacy/dev row)', async () => {
+    connectionRow.keyVerifier = null;
+
+    await expect(
+      authenticateMcpRequest(requestWith(KEY)),
+    ).rejects.toMatchObject({ status: 401, code: 'invalid_token' });
   });
 
   it('read-only key cannot pass requireScopes for write tools', async () => {

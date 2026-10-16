@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { and, eq, gt } from 'drizzle-orm';
-import { sha256Hex } from '@/lib/auth/mcp';
+import { hashSecret, sha256Hex } from '@/lib/auth/mcp';
 import { db } from '@/server/db';
 import { aiActionDrafts } from '@/server/db/schema';
 import type { DraftAction } from '@/lib/ai/chat/types';
@@ -8,12 +8,13 @@ import type { DraftAction } from '@/lib/ai/chat/types';
 /**
  * Approval capability lifecycle (plan sections 10 and 13).
  *
- * A capability is a cryptographically random 32-byte value. Only its SHA-256
- * hash is persisted on the draft row. The raw value travels only in tool
- * result `_meta` (never in content or structuredContent) and lives only in
- * MCP App component memory. Rendering a review again rotates the hash, which
- * invalidates every previously rendered card (latest write wins). A consumed
- * capability authorizes receipt replay only.
+ * A capability is a cryptographically random 32-byte value. Only a salted
+ * scrypt verifier is persisted on the draft row, so a database/table leak
+ * does not hand out offline-testable hashes. The raw value travels only in
+ * tool result `_meta` (never in content or structuredContent) and lives only
+ * in MCP App component memory. Rendering a review again rotates the verifier,
+ * which invalidates every previously rendered card (latest write wins).
+ * A consumed capability authorizes receipt replay only.
  */
 
 export const APPROVAL_CAPABILITY_TTL_MS = 10 * 60 * 1_000;
@@ -36,15 +37,15 @@ export class ApprovalCapabilityError extends Error {
   }
 }
 
-export function generateApprovalCapability(): {
+export async function generateApprovalCapability(): Promise<{
   raw: string;
-  hash: string;
+  verifier: string;
   expiresAt: Date;
-} {
+}> {
   const raw = randomBytes(32).toString('base64url');
   return {
     raw,
-    hash: sha256Hex(raw),
+    verifier: await hashSecret(raw),
     expiresAt: new Date(Date.now() + APPROVAL_CAPABILITY_TTL_MS),
   };
 }
@@ -82,14 +83,14 @@ export function canonicalRequestHash(input: {
 }
 
 /**
- * Rotate (set) the capability hash on a pending, unexpired, MCP-created draft.
+ * Rotate (set) the capability verifier on a pending, unexpired, MCP-created draft.
  * Concurrent renders: latest write wins, conditioned on the previous hash.
  */
 export async function rotateApprovalCapability(
   draftId: string,
   connectionId: string,
 ): Promise<{ raw: string; expiresAt: Date }> {
-  const capability = generateApprovalCapability();
+  const capability = await generateApprovalCapability();
   const now = new Date();
 
   const current = await db
@@ -121,7 +122,7 @@ export async function rotateApprovalCapability(
   const rotated = await db
     .update(aiActionDrafts)
     .set({
-      approvalCapabilityHash: capability.hash,
+      approvalCapabilityVerifier: capability.verifier,
       approvalCapabilityExpiresAt: capability.expiresAt,
       approvalCapabilityConsumedAt: null,
     })

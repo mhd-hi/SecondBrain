@@ -149,7 +149,7 @@ export const mcpConnections = pgTable(
     oauthGrantId: text('oauth_grant_id').notNull(),
     clientName: text('client_name').notNull().default('MCP client'),
     scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
-    keyHash: text('key_hash'),
+    keyVerifier: text('key_verifier'),
     keyPrefix: text('key_prefix'),
     keyLastUsedAt: timestamp('key_last_used_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -161,7 +161,7 @@ export const mcpConnections = pgTable(
       table.oauthIssuer,
       table.oauthGrantId,
     ),
-    uniqueIndex('uq_mcp_connections_key_hash').on(table.keyHash),
+    index('idx_mcp_connections_key_prefix').on(table.keyPrefix),
     index('idx_mcp_connections_user_id').on(table.userId),
   ],
 );
@@ -240,7 +240,7 @@ export const aiActionDrafts = pgTable(
     ),
     requestNamespace: text('request_namespace').notNull().default('chat'),
     requestHash: text('request_hash'),
-    approvalCapabilityHash: text('approval_capability_hash'),
+    approvalCapabilityVerifier: text('approval_capability_verifier'),
     approvalCapabilityExpiresAt: timestamp('approval_capability_expires_at'),
     approvalCapabilityConsumedAt: timestamp(
       'approval_capability_consumed_at',

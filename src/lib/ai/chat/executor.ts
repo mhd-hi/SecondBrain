@@ -5,7 +5,7 @@ import {
   deleteUserTaskWithExecutor,
   updateUserTaskWithExecutor,
 } from '@/lib/auth/db';
-import { recordMcpAuditEvent } from '@/lib/auth/mcp';
+import { recordMcpAuditEvent, verifySecret } from '@/lib/auth/mcp';
 import { ensureTermExistsWithExecutor } from '@/lib/courses/create-course-pipeline';
 import { generateRandomCourseColor } from '@/lib/utils/colors-util';
 import { buildPlanETSUrl } from '@/lib/utils/url-util';
@@ -43,8 +43,10 @@ export type DraftApprovalContext =
   | {
       channel: 'mcp_app';
       connectionId: string;
-      capabilityHash: string;
+      capability: string;
     };
+
+type McpApproval = Extract<DraftApprovalContext, { channel: 'mcp_app' }>;
 
 function audit(
   userId: string,
@@ -77,7 +79,7 @@ export async function classifyDraftState(
 export async function rejectDraft(
   userId: string,
   draftId: string,
-  approval?: Extract<DraftApprovalContext, { channel: 'mcp_app' }>,
+  approval?: McpApproval,
 ) {
   if (approval) {
     return rejectDraftWithCapability(userId, draftId, approval);
@@ -121,11 +123,21 @@ export async function rejectDraft(
 async function rejectDraftWithCapability(
   userId: string,
   draftId: string,
-  approval: Extract<DraftApprovalContext, { channel: 'mcp_app' }>,
+  approval: McpApproval,
 ) {
   const now = new Date();
   const correlationId = crypto.randomUUID();
   const claimed = await db.transaction(async (tx) => {
+    const claimable = await loadClaimableDraft(
+      tx,
+      draftId,
+      userId,
+      approval,
+      now,
+    );
+    if (!claimable) {
+      return undefined;
+    }
     const rows = await tx
       .update(aiActionDrafts)
       .set({
@@ -134,7 +146,13 @@ async function rejectDraftWithCapability(
         approvalChannel: 'mcp_app',
         terminalAt: now,
       })
-      .where(capabilityClaimPredicate(draftId, userId, approval, now))
+      .where(
+        and(
+          eq(aiActionDrafts.id, draftId),
+          eq(aiActionDrafts.userId, userId),
+          eq(aiActionDrafts.status, 'pending'),
+        ),
+      )
       .returning();
     if (rows[0]) {
       await recordMcpAuditEvent({
@@ -157,32 +175,97 @@ async function rejectDraftWithCapability(
   return claimed;
 }
 
-function capabilityClaimPredicate(
+/**
+ * Load the draft row a capability claim may consume. Salted verifiers cannot
+ * be compared in SQL, so the claim runs in two steps under one row lock:
+ * SELECT FOR UPDATE serializes concurrent commits, then the app-side scrypt
+ * check runs before the lock releases. Returns undefined for every
+ * non-claimable state (missing, non-pending, expired, wrong connection,
+ * consumed, bad/expired capability, unknown payload version).
+ */
+async function loadClaimableDraft(
+  tx: Pick<typeof db, 'select'>,
   draftId: string,
   userId: string,
-  approval: Extract<DraftApprovalContext, { channel: 'mcp_app' }>,
+  approval: McpApproval,
   now: Date,
 ) {
-  return and(
-    eq(aiActionDrafts.id, draftId),
-    eq(aiActionDrafts.userId, userId),
-    eq(aiActionDrafts.status, 'pending'),
-    gt(aiActionDrafts.expiresAt, now),
-    eq(aiActionDrafts.source, 'mcp'),
-    eq(aiActionDrafts.sourceConnectionId, approval.connectionId),
-    eq(aiActionDrafts.approvalCapabilityHash, approval.capabilityHash),
-    gt(aiActionDrafts.approvalCapabilityExpiresAt, now),
-    isNull(aiActionDrafts.approvalCapabilityConsumedAt),
-    // v1 (task-only) and v2 (task + create_course) payloads both execute;
-    // getOwnedDraft already rejects unknown versions by marking failed.
-    sql`${aiActionDrafts.payload}->>'payloadVersion' IN ('1', ${String(AI_DRAFT_PAYLOAD_VERSION)})`,
+  const rows = await tx
+    .select()
+    .from(aiActionDrafts)
+    .where(
+      and(
+        eq(aiActionDrafts.id, draftId),
+        eq(aiActionDrafts.userId, userId),
+        eq(aiActionDrafts.status, 'pending'),
+        gt(aiActionDrafts.expiresAt, now),
+        eq(aiActionDrafts.source, 'mcp'),
+        eq(aiActionDrafts.sourceConnectionId, approval.connectionId),
+        isNull(aiActionDrafts.approvalCapabilityConsumedAt),
+        // v1 (task-only) and v2 (task + create_course) payloads both execute;
+        // getOwnedDraft already rejects unknown versions by marking failed.
+        sql`${aiActionDrafts.payload}->>'payloadVersion' IN ('1', ${String(AI_DRAFT_PAYLOAD_VERSION)})`,
+      ),
+    )
+    .limit(1)
+    .for('update');
+  const draft = rows[0];
+  if (!draft) {
+    return undefined;
+  }
+  if (
+    !draft.approvalCapabilityVerifier ||
+    !draft.approvalCapabilityExpiresAt ||
+    draft.approvalCapabilityExpiresAt.getTime() <= now.getTime() ||
+    !(await verifySecret(
+      approval.capability,
+      draft.approvalCapabilityVerifier,
+    ))
+  ) {
+    return undefined;
+  }
+  return draft;
+}
+
+async function claimMcpDraft(
+  tx: Pick<typeof db, 'select' | 'update'>,
+  draftId: string,
+  userId: string,
+  approval: McpApproval,
+  now: Date,
+) {
+  const claimable = await loadClaimableDraft(
+    tx,
+    draftId,
+    userId,
+    approval,
+    now,
   );
+  if (!claimable) {
+    return [];
+  }
+  return tx
+    .update(aiActionDrafts)
+    .set({
+      status: 'executing' as const,
+      approvalCapabilityConsumedAt: now,
+      approvedAt: now,
+      approvalChannel: 'mcp_app' as const,
+    })
+    .where(
+      and(
+        eq(aiActionDrafts.id, draftId),
+        eq(aiActionDrafts.userId, userId),
+        eq(aiActionDrafts.status, 'pending'),
+      ),
+    )
+    .returning();
 }
 
 async function classifyCapabilityFailure(
   userId: string,
   draftId: string,
-  approval: Extract<DraftApprovalContext, { channel: 'mcp_app' }>,
+  approval: McpApproval,
 ): Promise<never> {
   const draft = await getOwnedDraft(userId, draftId);
   if (!draft) {
@@ -194,7 +277,9 @@ async function classifyCapabilityFailure(
   if (draft.status !== 'pending') {
     throw new DraftExecutionError('DRAFT_CONFLICT');
   }
-  if (draft.approvalCapabilityHash !== approval.capabilityHash) {
+  if (
+    !(await verifySecret(approval.capability, draft.approvalCapabilityVerifier))
+  ) {
     throw new DraftExecutionError('DRAFT_CAPABILITY_MISMATCH');
   }
   if (
@@ -383,38 +468,30 @@ export async function executeDraft(
   try {
     const result = await db.transaction(async (tx) => {
       const now = new Date();
-      // Claim: for MCP the capability check is part of the claim predicate, so
-      // owner, connection, hash, and both expirations are verified atomically
-      // with the pending -> executing transition. One row lock serializes
-      // concurrent commits: exactly one claim wins.
-      const claimed = await tx
-        .update(aiActionDrafts)
-        .set(
-          isMcp
-            ? {
-                status: 'executing' as const,
-                approvalCapabilityConsumedAt: now,
-                approvedAt: now,
-                approvalChannel: 'mcp_app' as const,
-              }
-            : {
-                status: 'executing' as const,
-                approvedAt: now,
-                approvalChannel: 'web' as const,
-              },
-        )
-        .where(
-          isMcp
-            ? capabilityClaimPredicate(draftId, userId, approval, now)
-            : and(
+      // Claim: for MCP the capability check runs under a row lock
+      // (SELECT FOR UPDATE + app-side scrypt), so owner, connection, verifier,
+      // and both expirations are verified atomically with the pending ->
+      // executing transition. One row lock serializes concurrent commits:
+      // exactly one claim wins.
+      const claimed = isMcp
+        ? await claimMcpDraft(tx, draftId, userId, approval, now)
+        : await tx
+            .update(aiActionDrafts)
+            .set({
+              status: 'executing' as const,
+              approvedAt: now,
+              approvalChannel: 'web' as const,
+            })
+            .where(
+              and(
                 eq(aiActionDrafts.id, draftId),
                 eq(aiActionDrafts.userId, userId),
                 eq(aiActionDrafts.status, 'pending'),
                 gt(aiActionDrafts.expiresAt, now),
                 sql`${aiActionDrafts.payload}->>'payloadVersion' IN ('1', ${String(AI_DRAFT_PAYLOAD_VERSION)})`,
               ),
-        )
-        .returning();
+            )
+            .returning();
       if (!claimed[0]) {
         if (isMcp) {
           throw new DraftExecutionError('DRAFT_CAPABILITY_MISMATCH');
@@ -625,7 +702,7 @@ export async function executeDraft(
         await classifyCapabilityFailure(
           userId,
           draftId,
-          approval as Extract<DraftApprovalContext, { channel: 'mcp_app' }>,
+          approval as McpApproval,
         );
       }
     }

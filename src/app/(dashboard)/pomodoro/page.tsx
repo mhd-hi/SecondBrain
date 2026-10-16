@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { PomodoroContainer } from '@/components/Pomodoro/PomodoroContainer';
 import { PomodoroHistoryGraph } from '@/components/Pomodoro/PomodoroHistoryGraph';
 import { Button } from '@/components/ui/button';
-import { getPreferencesPath } from '@/lib/page-routes';
+import { getSettingsPath } from '@/lib/page-routes';
 import { startOfPomodoroDay } from '@/lib/pomodoro/date';
 import { db } from '@/server/db';
 import { pomodoroDaily } from '@/server/db/schema';
@@ -48,7 +48,7 @@ export default async function PomodoroPage() {
           </p>
         </div>
         <div>
-          <Link href={getPreferencesPath('pomodoro')}>
+          <Link href={getSettingsPath('pomodoro')}>
             <Button variant="ghost" size="icon" aria-label="Pomodoro settings">
               <Settings className="h-5 w-5" />
             </Button>

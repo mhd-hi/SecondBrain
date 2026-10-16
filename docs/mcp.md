@@ -56,14 +56,14 @@ Drafts expire after 24 hours.
 ## Connecting a client
 
 Step-by-step instructions (server URL and a copyable example config) are
-shown in the app under **Preferences > MCP & AI Clients**.
+shown in the app under **Settings > MCP & AI Clients**.
 
 ### API keys (personal use)
 
-Create a static API key under **Preferences > MCP & AI Clients**
+Create a static API key under **Settings > MCP & AI Clients**
 (read-only, or read + write to allow proposing task changes). The key is
-shown exactly once and stored only as a sha256 hash; it authenticates as
-your account. Point the client at `https://<app-origin>/api/mcp`:
+shown exactly once and stored only as a salted scrypt verifier; it
+authenticates as your account. Point the client at `https://<app-origin>/api/mcp`:
 
 ```yaml
 mcp_servers:
@@ -73,7 +73,7 @@ mcp_servers:
       Authorization: "Bearer sb_mcp_<your-api-key>"
 ```
 
-Revoking an MCP API key from **Preferences > MCP & AI Clients** takes effect
+Revoking an MCP API key from **Settings > MCP & AI Clients** takes effect
 immediately.
 
 ## What is sent to the AI provider
@@ -94,6 +94,6 @@ Disconnecting a client stops all future access immediately.
   connection, tool, draft, outcome, correlation ID, duration).
 - Rate limits: 60 requests/minute per connection, 300 per 10 minutes per
   user; responses include `Retry-After`.
-- API keys are 256-bit random secrets, shown once, stored only as sha256
-  hashes, and capped at 10 active per user.
+- API keys are 256-bit random secrets, shown once, stored only as salted
+  scrypt verifiers, and capped at 10 active per user.
 - Revocation is local and immediate; revoked API keys fail even if unexpired.

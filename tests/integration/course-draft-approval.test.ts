@@ -7,7 +7,7 @@ import {
   DraftExecutionError,
   executeDraft,
 } from '@/lib/ai/chat/executor';
-import { sha256Hex } from '@/lib/auth/mcp';
+import { hashSecret, sha256Hex } from '@/lib/auth/mcp';
 import { db, dbClient } from '@/server/db';
 import {
   aiActionDrafts,
@@ -234,7 +234,7 @@ describe('course draft execution (plan M3)', () => {
     await db
       .update(aiActionDrafts)
       .set({
-        approvalCapabilityHash: sha256Hex(capabilityRaw),
+        approvalCapabilityVerifier: await hashSecret(capabilityRaw),
         approvalCapabilityExpiresAt: new Date(Date.now() + 600_000),
       })
       .where(eq(aiActionDrafts.id, draft.id));
@@ -242,7 +242,7 @@ describe('course draft execution (plan M3)', () => {
     const result = await executeDraft(userId, draft.id, {
       channel: 'mcp_app',
       connectionId,
-      capabilityHash: sha256Hex(capabilityRaw),
+      capability: capabilityRaw,
     });
 
     expect(result.draft.status).toBe('executed');
@@ -267,7 +267,7 @@ describe('course draft execution (plan M3)', () => {
       executeDraft(userId, draft.id, {
         channel: 'mcp_app',
         connectionId: otherConnection,
-        capabilityHash: sha256Hex(capabilityRaw),
+        capability: capabilityRaw,
       }),
     ).rejects.toBeInstanceOf(DraftExecutionError);
   });

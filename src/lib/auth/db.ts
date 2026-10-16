@@ -38,9 +38,11 @@ export async function updateUserTaskWithExecutor(
   userId: string,
   updates: Partial<typeof tasks.$inferInsert>,
 ) {
+  // Never let callers overwrite identity/ownership/audit columns
+  const { id: _ignoredId, userId: _ignoredUserId, createdAt: _ignoredCreatedAt, ...writableUpdates } = updates;
   const result = await executor
     .update(tasks)
-    .set({ ...updates, updatedAt: new Date() })
+    .set({ ...writableUpdates, updatedAt: new Date() })
     .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
     .returning();
   if (!result[0]) {
@@ -160,11 +162,15 @@ export async function updateUserTask(
           updatedAt: new Date(),
         } as typeof subtasks.$inferInsert);
       } else {
-        // update
-        await db.update(subtasks).set({
+        // update — scope by parent task so a client-supplied id can never
+        // mutate a subtask belonging to another task (or another user).
+        const updated = await db.update(subtasks).set({
           ...subToUpsert,
           updatedAt: new Date(),
-        }).where(eq(subtasks.id, s.id));
+        }).where(and(eq(subtasks.id, s.id), eq(subtasks.taskId, taskId))).returning();
+        if (!updated.length) {
+          throw new AuthorizationError('Subtask not found or access denied');
+        }
         existingIds.delete(s.id);
       }
     }
@@ -239,6 +245,31 @@ export async function deleteUserCourse(courseId: string, userId: string) {
   }
 
   return result[0];
+}
+
+/**
+ * Create course inside a caller-owned transaction (draft executor). The
+ * non-transactional createUserCourse below must never be used inside
+ * executeDraft — it would break atomicity (course persists when task insert
+ * fails).
+ */
+export async function createUserCourseWithExecutor(
+  executor: TaskMutationExecutor,
+  userId: string,
+  courseData: Omit<typeof courses.$inferInsert, 'userId' | 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  const result = await executor
+    .insert(courses)
+    .values({
+      ...courseData,
+      userId,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  return result[0]!;
 }
 
 /**

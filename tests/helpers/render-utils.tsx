@@ -15,6 +15,11 @@ export function renderComponent(ui: React.ReactElement) {
         root.render(ui);
       });
     },
+    async rerender(nextUi: React.ReactElement) {
+      await act(async () => {
+        root.render(nextUi);
+      });
+    },
     async unmount() {
       await act(async () => {
         root.unmount();

@@ -13,6 +13,7 @@ import {
   History,
   Info,
   SquarePen,
+  Trash2,
   X,
 } from 'lucide-react';
 import * as React from 'react';
@@ -39,6 +40,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { invalidateCalendarEvents } from '@/lib/stores/calendar-view-store';
+import { useCourseStore } from '@/lib/stores/course-store';
 import { useTaskStore } from '@/lib/stores/task-store';
 import type { Task } from '@/types/task';
 
@@ -102,6 +104,10 @@ function assistantStatusText(status: unknown) {
         return 'Loading course tasks…';
       case 'resolve_course_week':
         return 'Checking course dates…';
+      case 'list_supported_schools':
+        return 'Checking supported schools…';
+      case 'list_terms':
+        return 'Checking academic terms…';
       default:
         return 'Checking your data…';
     }
@@ -125,6 +131,8 @@ const ASSISTANT_STATUS_TEXTS = new Set([
   'Loading task details…',
   'Loading course tasks…',
   'Checking course dates…',
+  'Checking supported schools…',
+  'Checking academic terms…',
   'Checking your data…',
   'Reviewing what I found…',
   'Preparing changes for review…',
@@ -207,6 +215,7 @@ function ReviewDialog({
     type: ReviewPayload['items'][number]['type'];
     label: string;
   }> = [
+    { type: 'create_course', label: 'New course' },
     { type: 'add', label: 'Added tasks' },
     { type: 'update', label: 'Updated tasks' },
     { type: 'delete', label: 'Deleted tasks' },
@@ -231,7 +240,7 @@ function ReviewDialog({
                     <h3 className="font-semibold">{group.label}</h3>
                     {items.map((item, index) => (
                       <details
-                        key={item.taskId ?? `${item.courseId}-${index}`}
+                        key={item.taskId ?? `${item.courseCode ?? item.courseId}-${index}`}
                         className={
                           item.type === 'delete'
                             ? 'group rounded-md border border-red-500/50 p-3'
@@ -403,6 +412,27 @@ export function AIChatAssistant() {
     setReviewOpen(false);
   };
 
+  const deleteConversation = (conversationId: string) => {
+    if (busy) {
+      return;
+    }
+    const remaining = conversations.filter(
+      (item) => item.id !== conversationId,
+    );
+    const next =
+      remaining.length === 0 ? [createConversation()] : remaining;
+    const fallback = next[0]!;
+    setConversations(next);
+    if (conversationId === activeConversationId) {
+      setActiveConversationId(fallback.id);
+      setMessages(fallback.messages);
+    }
+    setInput('');
+    setDraft(null);
+    setReviewOpen(false);
+    toast.success('Conversation deleted');
+  };
+
   const startConversation = () => {
     if (busy) {
       return;
@@ -433,6 +463,20 @@ export function AIChatAssistant() {
       setBusy(false);
     }
   };
+
+  React.useEffect(() => {
+    // ?draft= deep link (MCP web fallback, plan section 15): load the owned
+    // draft through the existing authenticated endpoint, open the review
+    // dialog, then strip the parameter from the URL.
+    const url = new URL(window.location.href);
+    const draftId = url.searchParams.get('draft');
+    if (!draftId || !open) {
+      return;
+    }
+    url.searchParams.delete('draft');
+    window.history.replaceState(null, '', url.toString());
+    void openReview(draftId);
+  }, [open]);
 
   const handleDraft = async (action: 'approve' | 'reject') => {
     if (!draft) {
@@ -467,7 +511,12 @@ export function AIChatAssistant() {
         action === 'approve' ? 'Changes applied' : 'Draft rejected',
       );
       if (action === 'approve') {
-        reconcileDraftTasks(body.tasks ?? [], body.draft ?? draft);
+        const applied = body.draft ?? draft;
+        reconcileDraftTasks(body.tasks ?? [], applied);
+        if (applied.reviewPayload.counts.courses > 0) {
+          // New course row: refresh the course list (errors handled inside).
+          void useCourseStore.getState().refreshCourses();
+        }
         setMessages((current) =>
           current.map((message) =>
             message.draftId === draft.id
@@ -737,8 +786,29 @@ export function AIChatAssistant() {
                       <DropdownMenuRadioItem
                         key={conversation.id}
                         value={conversation.id}
+                        className="pr-8"
                       >
                         <span className="truncate">{conversation.title}</span>
+                        <span
+                          role="button"
+                          aria-label={`Delete conversation ${conversation.title}`}
+                          title="Delete conversation"
+                          className="text-muted-foreground hover:text-destructive absolute right-2 flex size-5 items-center justify-center rounded-sm outline-hidden hover:bg-accent focus-visible:bg-accent"
+                          tabIndex={0}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            deleteConversation(conversation.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              deleteConversation(conversation.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </span>
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
@@ -760,7 +830,8 @@ export function AIChatAssistant() {
             <div className="space-y-3">
               {messages.length === 0 && (
                 <p className="text-muted-foreground text-sm">
-                  Ask Lucy to add, update, reschedule, or delete tasks.
+                  Ask Lucy to add, update, reschedule, or delete tasks — or to
+                  create a course (e.g. “Add PHY335 at ÉTS”).
                 </p>
               )}
               {messages.map((message) => (

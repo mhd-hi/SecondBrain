@@ -20,6 +20,7 @@ export type ProviderHealthAttempt =
 
 // Change models here — nowhere else. Order matters within each provider.
 const PROVIDER_MODELS = {
+  bai: ['glm-5.3-flash'],
   groq: ['openai/gpt-oss-120b'],
   'google-ai-studio': ['gemini-3.5-flash', 'gemini-3.5-flash-lite'],
   nvidia: ['meta/llama-3.3-70b-instruct', 'nvidia/nemotron-3-super-120b-a12b'],
@@ -32,6 +33,7 @@ const PROVIDER_MODELS = {
 } as const;
 
 const CHAT_PROVIDER_MODELS = {
+  bai: ['glm-5.3-flash'],
   'google-ai-studio': ['gemini-3.5-flash', 'gemini-3.5-flash-lite'],
   groq: ['openai/gpt-oss-120b'],
   nvidia: ['nvidia/nemotron-3-super-120b-a12b', 'meta/llama-3.3-70b-instruct'],
@@ -45,6 +47,15 @@ const CHAT_PROVIDER_MODELS = {
 
 export function buildProviders(): ProviderConfig[] {
   const providers: ProviderConfig[] = [];
+
+  if (env.BAI_API_KEY) {
+    providers.push({
+      name: 'bai',
+      apiKey: env.BAI_API_KEY,
+      baseURL: 'https://api.b.ai/v1',
+      models: PROVIDER_MODELS.bai,
+    });
+  }
 
   if (env.GROQ_API_KEY) {
     providers.push({

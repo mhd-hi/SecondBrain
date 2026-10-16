@@ -48,7 +48,7 @@ export const GET = withAuth<{ courseId: string }>(
       if (error instanceof AuthenticationError) {
         return statusResponse({ error: error.message }, 401);
       }
-      return statusResponse({ error: (error as Error).message ?? 'Internal server error' }, 500);
+      return statusResponse({ error: 'Database is currently unavailable, please try again later' }, 500);
     }
   },
 );
@@ -124,7 +124,10 @@ export const PATCH = withAuth<{ courseId: string }>(
       if (error instanceof AuthenticationError) {
         return statusResponse({ error: error.message }, 401);
       }
-      return statusResponse({ error: (error as Error).message ?? 'Internal server error' }, 500);
+      if (error instanceof SyntaxError) {
+        return statusResponse({ error: 'Invalid request body' }, 400);
+      }
+      return statusResponse({ error: 'Database is currently unavailable, please try again later' }, 500);
     }
   },
 );
@@ -161,7 +164,7 @@ export const DELETE = withAuth<{ courseId: string }>(
       if (error instanceof AuthenticationError) {
         return statusResponse({ error: error.message }, 401);
       }
-      return statusResponse({ error: (error as Error).message ?? 'Internal server error' }, 500);
+      return statusResponse({ error: 'Database is currently unavailable, please try again later' }, 500);
     }
   },
 );

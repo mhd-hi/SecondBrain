@@ -4,7 +4,7 @@ import type { CustomLinkItem } from '@/types/custom-link';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { getDefaultImageFor } from '@/lib/utils/url-util';
+import { getDefaultImageFor, isSafeHttpUrl, normalizeUrl } from '@/lib/utils/url-util';
 
 type CustomLinkTileProps = {
   item: CustomLinkItem;
@@ -16,10 +16,14 @@ export default function CustomLinkTile({ item }: CustomLinkTileProps) {
 
   const finalImageUrl = getDefaultImageFor(item.type);
   const isLocalImage = finalImageUrl.startsWith('/');
+  // Defense in depth: never render legacy javascript:/data: URLs stored before
+  // validation. Normalize first so pre-fix bare domains ("example.com") keep working.
+  const normalizedHref = normalizeUrl(item.url);
+  const safeHref = isSafeHttpUrl(normalizedHref) ? normalizedHref : '#';
 
   return (
     <Link
-      href={item.url}
+      href={safeHref}
       target="_blank"
       rel="noopener noreferrer"
       className="group relative inline-flex items-center justify-center w-8 h-8"

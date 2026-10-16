@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
+import * as React from 'react';
 import { GlobalConfirmDialogProvider } from '@/components/shared/dialogs/ConfirmDialogProvider';
+import { NavigationProgress } from '@/components/shared/Navigation/NavigationProgress';
 import { VersionLogger } from '@/components/shared/VersionLogger';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/ui/theme-provider';
@@ -25,6 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${geist.variable}`} data-scroll-behavior="smooth">
       <body className="min-h-screen bg-background font-sans">
+        <React.Suspense fallback={null}>
+          <NavigationProgress />
+        </React.Suspense>
         <VersionLogger />
         <GlobalConfirmDialogProvider>
           <ThemeProvider

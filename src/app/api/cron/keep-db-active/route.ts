@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
+import { isValidCronAuth } from '@/lib/auth/cron';
 import { db } from '@/server/db';
 
 export const runtime = 'nodejs';
@@ -26,9 +27,8 @@ export const runtime = 'nodejs';
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
-    const cronSecret = env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!isValidCronAuth(authHeader, env.CRON_SECRET)) {
       return NextResponse.json(
         {
           success: false,

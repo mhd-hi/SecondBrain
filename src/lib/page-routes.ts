@@ -1,5 +1,6 @@
 export const ROUTES = {
-  DASHBOARD: '/',
+  LANDING: '/',
+  DASHBOARD: '/dashboard',
   COURSES: '/courses',
   ADD_COURSE: '/courses/add',
   POMODORO: '/pomodoro',
@@ -8,6 +9,8 @@ export const ROUTES = {
   ROADMAP: '/roadmap',
   PREFERENCES: '/preferences',
   SIGNIN: '/auth/signin',
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
 } as const;
 
 // Route builder helpers

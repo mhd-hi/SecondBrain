@@ -95,13 +95,14 @@ export async function handleTaskUpdatePost(req: NextRequest, user: { id: string 
       return NextResponse.json({ success: true, taskId, input, value, updated: result });
     } catch (dbErr) {
       console.error('DB update error:', dbErr);
-      const dbErrMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      return NextResponse.json({ success: false, error: dbErrMsg || 'Unknown DB error' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
     }
   } catch (err) {
     console.error('API error:', err);
-    const errMsg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: errMsg || 'Unknown error' }, { status: 400 });
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ success: false, error: 'Invalid request payload' }, { status: 400 });
+    }
+    return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
   }
 }
 

@@ -4,8 +4,7 @@ import { signIn } from 'next-auth/react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ROUTES } from '@/lib/page-routes';
-import { normalizeCallbackUrl } from '@/lib/utils/auth/callback-url';
+import { ROUTES } from '@/lib/page-routes';import { normalizeCallbackUrl } from '@/lib/utils/auth/callback-url';
 
 type SignInCardProps = {
   title?: string;
@@ -81,6 +80,13 @@ export function SignInCard({
           </svg>
           <span className="font-medium">Continue with Discord</span>
         </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          By continuing, you agree to our{' '}
+          <a href={ROUTES.TERMS} className="underline hover:text-foreground">Terms of Service</a>
+          {' '}and{' '}
+          <a href={ROUTES.PRIVACY} className="underline hover:text-foreground">Privacy Policy</a>
+        </p>
       </CardContent>
     </Card>
   );

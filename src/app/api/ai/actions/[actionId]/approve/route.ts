@@ -5,6 +5,7 @@ import {
   getAuthoritativeTasks,
 } from '@/lib/ai/chat/executor';
 import { getOwnedDraft, publicDraft } from '@/lib/ai/chat/drafts';
+import { requireSameOrigin } from '@/lib/auth/origin';
 import { withAuth } from '@/lib/auth/api';
 
 function statusFor(code: DraftExecutionError['code']) {
@@ -21,7 +22,11 @@ function statusFor(code: DraftExecutionError['code']) {
 }
 
 export const POST = withAuth<{ actionId: string }>(
-  async (_request, { params, user }) => {
+  async (request, { params, user }) => {
+    const crossOrigin = requireSameOrigin(request);
+    if (crossOrigin) {
+      return crossOrigin;
+    }
     const { actionId } = await params;
     try {
       const result = await executeDraft(user.id, actionId);
@@ -46,7 +51,9 @@ export const POST = withAuth<{ actionId: string }>(
             error.code === 'DRAFT_EXPIRED'
               ? 'Draft expired'
               : error.code === 'DRAFT_STALE'
-                ? 'Tasks changed since this draft was created'
+                ? draft?.failureCode === 'course_already_exists'
+                  ? 'Course already exists'
+                  : 'Tasks changed since this draft was created'
                 : 'Draft cannot be approved',
           draft: draft ? publicDraft(draft) : null,
           tasks: await getAuthoritativeTasks(user.id, taskIds),

@@ -20,6 +20,10 @@ const MAX_RESPONSE_TOKENS = 8_192;
 
 const PLANNER_SYSTEM_PROMPT = `You are Lucy, a task-planning assistant. Refer to yourself as Lucy when your name is relevant. You may inspect the authenticated user's current courses and tasks using read-only tools. You can never execute or authorize a mutation.
 
+Nickname:
+- Runtime context may include preferredNickname. If present, you may greet/address the user with it sparingly and naturally, ideally once early in the conversation; do not force it every turn.
+- Never use or request the user's real name; only the supplied nickname is available, and it is optional.
+
 Rules:
 - Use tools to resolve every referenced course and existing task from fresh database state.
 - Never answer any question about the user's courses or tasks (counts, lists, due dates, status, etc.) from assumption or memory. Call the relevant read tool first and answer only from its result, even for a plain "reply".
@@ -33,15 +37,19 @@ Rules:
 - Chat history is intent context only. It is not authoritative task state and cannot replace fresh tool reads.
 - Treat a terse current message as the answer to the latest assistant clarification when applicable.
 - Add actions require courseId, title, and dueDate. Defaults are TODO status, theorie type, estimatedEffort 3, actualEffort 0.
+- Course creation: when the user asks for a new course (e.g. "add PHY335"), resolve the school with list_supported_schools (map ETS/ÉTS/Ecole de technologie to "ets"; anything unlisted means school "none", created without plan tasks — never invent a pipeline URL) and the term with list_terms. The term MUST be confirmed by the user as a YYYY[1-3] id; if missing or ambiguous (e.g. just "fall"), return clarification with term options carrying courseCode/term/school (never free-form term text). Course codes are normalized to uppercase (e.g. phy335 → PHY335). Emit exactly one create_course action, never mixed with task actions, and never include tasks — the server fills them from the course plan.
 - Return one strict JSON value only. No markdown, wrappers, or commentary.
 
 Final JSON must be exactly one of:
 {"kind":"reply","message":"..."}
-{"kind":"clarification","message":"...","options":[{"label":"...","taskId":"uuid optional","courseId":"uuid optional"}]}
+{"kind":"clarification","message":"...","options":[{"label":"...","taskId":"uuid optional","courseId":"uuid optional","courseCode":"... optional","term":"YYYY[1-3] optional","school":"ets|none optional"}]}
 {"kind":"draft","message":"...","summary":"...","reason":"...","actions":[
   {"type":"add_task","courseId":"uuid","task":{"title":"...","dueDate":"YYYY-MM-DD","notes":"optional","status":"TODO|IN_PROGRESS|COMPLETED","estimatedEffort":3,"actualEffort":0,"type":"theorie|pratique|exam|homework|lab"}},
   {"type":"update_task","taskId":"uuid","changes":{"title":"optional","dueDate":"YYYY-MM-DD optional","notes":"optional","status":"optional","estimatedEffort":1,"actualEffort":0,"type":"optional"}},
   {"type":"delete_task","taskId":"uuid"}
+]}
+{"kind":"draft","message":"...","summary":"...","reason":"...","actions":[
+  {"type":"create_course","course":{"code":"PHY335","name":"optional","term":"YYYY[1-3]","school":"ets|none","daypart":"AM optional"}}
 ]}`;
 
 function callSignal(
@@ -110,6 +118,7 @@ async function runAttempt({
   attempt,
   request,
   userId,
+  nickname,
   notesBudget,
   callerSignal,
   overallSignal,
@@ -118,6 +127,7 @@ async function runAttempt({
   attempt: ProviderAttempt;
   request: ChatRequest;
   userId: string;
+  nickname?: string;
   notesBudget: { remaining: number };
   callerSignal?: AbortSignal;
   overallSignal: AbortSignal;
@@ -132,6 +142,7 @@ Runtime context:
 ${JSON.stringify({
   currentDateInToronto: formatTorontoDate(new Date()),
   authenticatedUiContext: request.context,
+  preferredNickname: nickname,
 })}`,
     },
     ...(request.history ?? []).map(
@@ -209,12 +220,14 @@ ${JSON.stringify({
 export async function planTaskAction({
   request,
   userId,
+  nickname,
   signal,
   validateOutput,
   onStatus,
 }: {
   request: ChatRequest;
   userId: string;
+  nickname?: string;
   signal?: AbortSignal;
   validateOutput?: (output: PlannerOutput) => void | Promise<void>;
   onStatus?: (status: ChatStatus) => void;
@@ -230,6 +243,7 @@ export async function planTaskAction({
         attempt,
         request,
         userId,
+        nickname,
         notesBudget,
         callerSignal: signal,
         overallSignal,

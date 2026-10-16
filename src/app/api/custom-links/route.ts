@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { AuthorizationError, withAuth } from '@/lib/auth/api';
 import { assertUserOwnsCourse } from '@/lib/auth/db';
 import { statusResponse } from '@/lib/utils/api/api-server-util';
-import { validateUrl } from '@/lib/utils/url-util';
+import { normalizeUrl, validateUrl } from '@/lib/utils/url-util';
 import { db } from '@/server/db';
 import { customLinks } from '@/server/db/schema';
 import { LINK_TYPES } from '@/types/custom-link';
@@ -39,10 +39,15 @@ function validateAndNormalizeUrl(raw: unknown) {
   }
 
   if (!validateUrl(s)) {
-    throw new TypeError('Invalid url format, should contain at least one dot');
+    throw new TypeError('Invalid url format, only http(s) URLs are allowed');
   }
 
-  return s;
+  const normalized = normalizeUrl(s);
+  if (!validateUrl(normalized) || (!normalized.startsWith('http://') && !normalized.startsWith('https://'))) {
+    throw new TypeError('Invalid url format, only http(s) URLs are allowed');
+  }
+
+  return normalized;
 }
 
 /**
@@ -77,8 +82,8 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     return response;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: msg }, { status: 400 });
+    console.error('Error in GET /api/custom-links:', err);
+    return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
   }
 });
 
@@ -142,9 +147,12 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     if (err instanceof AuthorizationError) {
       throw err;
     }
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 });
+    }
 
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: msg }, { status: 400 });
+    console.error('Error in POST /api/custom-links:', err);
+    return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
   }
 });
 
@@ -185,7 +193,7 @@ export const DELETE = withAuth(async (req: NextRequest, { user }) => {
       message: `Deleted ${deletedLinks.length} link${deletedLinks.length !== 1 ? 's' : ''}`,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: msg }, { status: 400 });
+    console.error('Error in DELETE /api/custom-links:', err);
+    return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
   }
 });

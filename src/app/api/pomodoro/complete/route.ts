@@ -36,7 +36,7 @@ export const POST = withAuthSimple(
       const body = await request.json() as CompleteSessionRequest;
       const { durationHours } = body;
 
-      if (typeof durationHours !== 'number' || durationHours <= 0) {
+      if (typeof durationHours !== 'number' || durationHours <= 0 || durationHours > 24) {
         return NextResponse.json(
           { error: 'Valid durationHours is required' },
           { status: 400 },
@@ -65,7 +65,7 @@ export const POST = withAuthSimple(
     } catch (error) {
       console.error('Failed to complete Pomodoro session:', error);
       return NextResponse.json(
-        { error: 'Failed to complete Pomodoro session' },
+        { error: 'Database is currently unavailable, please try again later' },
         { status: 500 },
       );
     }

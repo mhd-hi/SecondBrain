@@ -7,18 +7,19 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    AUTH_SECRET: z.string(),
+    AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
     AUTH_DISCORD_ID: z.string(),
     AUTH_DISCORD_SECRET: z.string(),
     AUTH_GOOGLE_ID: z.string(),
     AUTH_GOOGLE_SECRET: z.string(),
+    BAI_API_KEY: z.string().optional(),
     GROQ_API_KEY: z.string().optional(),
     GOOGLE_AI_STUDIO_API_KEY: z.string().optional(),
     NVIDIA_API_KEY: z.string().optional(),
     OPENROUTER_API_KEY: z.string().optional(),
     XAI_API_KEY: z.string().optional(),
-    DATABASE_URL: z.string().url(),
-    CRON_SECRET: z.string(),
+    DATABASE_URL: z.url(),
+    CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters'),
     SENTRY_DSN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
@@ -34,7 +35,7 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_APP_URL: z.string().optional(),
+    NEXT_PUBLIC_APP_URL: z.url().optional(),
     NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: z.string().optional(),
     NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: z.string().optional(),
   },
@@ -49,6 +50,7 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
     AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
     AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
+    BAI_API_KEY: process.env.BAI_API_KEY,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: process.env.GOOGLE_AI_STUDIO_API_KEY,
     NVIDIA_API_KEY: process.env.NVIDIA_API_KEY,

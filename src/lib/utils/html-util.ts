@@ -1,20 +1,37 @@
+import * as cheerio from 'cheerio';
+
 /**
  * Normalizes HTML content by removing styling, decorative elements, and navigation
  * Useful for preparing HTML content for AI processing or clean text extraction
  */
 export function normalizeHtml(html: string): string {
-  let normalized = html;
+  const $ = cheerio.load(html, {}, false);
 
-  // Remove style blocks repeatedly to handle nested/recursive cases
-  const styleBlockPattern = /<style[^>]*>[\s\S]*?<\/style>/gi;
-  let previous: string;
-  do {
-    previous = normalized;
-    normalized = normalized.replace(styleBlockPattern, '');
-  } while (normalized !== previous);
+  // Strip active content at the parser level: never trust fetched HTML
+  // (prompt-injection / stored-XSS source if ever rendered). A real parser
+  // handles every tag/attribute spelling (weird casing, whitespace, unclosed
+  // tags) that regex filtering cannot. Output goes to the AI pipeline, not
+  // the DOM.
+  $(
+    'script, iframe, object, embed, style, link, meta, base, nav, footer, header',
+  ).remove();
 
-  normalized = normalized.replaceAll(/\s+style="[^"]*"/gi, '');
-  normalized = normalized.replaceAll(/\s+style='[^']*'/gi, '');
+  $('*').each((_, node) => {
+    if (node.type !== 'tag') return;
+    for (const [name, value] of Object.entries(node.attribs)) {
+      if (/^on/i.test(name) || name === 'style') {
+        $(node).removeAttr(name);
+      } else if (
+        (name === 'href' || name === 'src') &&
+        /^\s*(?:javascript|data):/i.test(value)
+      ) {
+        $(node).attr(name, '#');
+      }
+    }
+  });
+
+  let normalized = $.html();
+
   normalized = normalized.replaceAll(/<\/?span[^>]*>/gi, '');
   normalized = normalized.replaceAll(/<\/?font[^>]*>/gi, '');
 
@@ -31,9 +48,6 @@ export function normalizeHtml(html: string): string {
     normalized = normalized.replaceAll(pattern, '');
   });
 
-  normalized = normalized.replaceAll(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '');
-  normalized = normalized.replaceAll(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '');
-  normalized = normalized.replaceAll(/<header[^>]*>[\s\S]*?<\/header>/gi, '');
   normalized = normalized.replaceAll(/Tous droits réservés[\s\S]*$/gi, '');
   normalized = normalized.replaceAll(/<br\s*\/?>/gi, '\n');
   normalized = normalized.replaceAll(/<li[^>]*>/gi, '• ');

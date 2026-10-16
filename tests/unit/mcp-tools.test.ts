@@ -56,7 +56,7 @@ describe('MCP tool surface metadata (plan 19.1 / 21.4)', () => {
   const server = createMcpServer(context);
   const tools = extractRegisteredTools(server);
 
-  it('registers all thirteen planned tools', () => {
+  it('registers read, prepare, and review tools only', () => {
     const names = new Set(tools.keys());
     for (const name of [
       'search_courses',
@@ -70,37 +70,11 @@ describe('MCP tool surface metadata (plan 19.1 / 21.4)', () => {
       'prepare_course_creation',
       'render_task_review',
       'get_task_draft',
-      'commit_task_changes',
-      'reject_task_changes',
     ]) {
       expect(names.has(name), name).toBe(true);
     }
-  });
-
-  it('marks commit and reject as app-only via _meta.ui.visibility (plan 21.4)', () => {
-    for (const name of ['commit_task_changes', 'reject_task_changes']) {
-      const meta = tools.get(name)?._meta as
-        | { ui?: { visibility?: string[] } }
-        | undefined;
-
-      expect(meta?.ui?.visibility, name).toEqual(['app']);
-    }
-  });
-
-  it('keeps model-visible tools free of app-only visibility metadata', () => {
-    for (const [name, def] of tools) {
-      if (
-        name === 'commit_task_changes' ||
-        name === 'reject_task_changes'
-      ) {
-        continue;
-      }
-      const meta = def._meta as
-        | { ui?: { visibility?: string[] } }
-        | undefined;
-
-      expect(meta?.ui?.visibility, name).toBeUndefined();
-    }
+    expect(names.has('commit_task_changes')).toBe(false);
+    expect(names.has('reject_task_changes')).toBe(false);
   });
 
   it('gives prepare_task_changes a self-describing discriminated action schema', () => {
@@ -140,11 +114,4 @@ describe('MCP tool surface metadata (plan 19.1 / 21.4)', () => {
     expect(tools.get('prepare_course_creation')?.annotations?.idempotentHint).toBe(true);
   });
 
-  it('marks commit_task_changes conservatively destructive (plan 11.3)', () => {
-    const annotations = tools.get('commit_task_changes')?.annotations;
-
-    expect(annotations?.readOnlyHint).toBe(false);
-    expect(annotations?.destructiveHint).toBe(true);
-    expect(annotations?.idempotentHint).toBe(true);
-  });
 });

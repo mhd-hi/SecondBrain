@@ -17,18 +17,13 @@ import {
   errorResult,
   handleError,
 } from './task-tools';
-import type { ToolExtra, ToolResult } from './task-tools';
+import type { ToolResult } from './task-tools';
 
 /**
  * Course-creation tools (MCP surface for the shared pipeline).
  *
- * Only ONE new model-visible tool is needed: `prepare_course_creation`.
- * The existing `render_task_review`, `get_task_draft`, `commit_task_changes`,
- * and `reject_task_changes` are draft-generic (they parse any review payload
- * and execute any payload version the executor accepts), so they serve
- * course drafts unchanged — no duplicated approval plumbing. Read tools
- * `list_supported_schools` / `list_terms` come from `read-tools.ts`, which
- * delegates to the same `executeReadTool()` Lucy uses.
+ * `prepare_course_creation` creates a reviewable draft. The shared web UI
+ * performs approval; MCP calls cannot prove human consent.
  */
 
 const prepareCourseInputSchema = z.strictObject({
@@ -64,14 +59,14 @@ function handleCourseError(error: unknown): ToolResult {
 }
 
 export function registerCourseTools(server: McpServer, context: McpAuthContext) {
-  const reviewBase = createDraftReviewer(context);
+  const reviewBase = createDraftReviewer();
 
   server.registerTool(
     'prepare_course_creation',
     {
       title: 'Prepare course creation',
       description:
-        'Validate a new course request and persist it as an immutable review draft with the parsed course-plan tasks as preview. Nothing is created until the user approves. The term must be a confirmed YYYY[1-3] id (use list_terms); the school must be one of list_supported_schools ("none" creates an empty course). Returns the review payload and, when the host supports MCP Apps, an approval capability for the app-only commit tool. Re-render with render_task_review, inspect with get_task_draft, approve with commit_task_changes.',
+        'Validate a new course request and persist it as an immutable review draft with parsed plan tasks as preview. Nothing is created until the user approves through the authenticated web review page. Use list_terms for confirmed YYYY[1-3] IDs and list_supported_schools for supported schools ("none" creates an empty course). Reopen with render_task_review or inspect with get_task_draft.',
       inputSchema: {
         requestId: z
           .uuid()
@@ -125,7 +120,7 @@ export function registerCourseTools(server: McpServer, context: McpAuthContext) 
         openWorldHint: false,
       },
     },
-    async (rawArgs: Record<string, unknown>, extra?: ToolExtra) => {
+    async (rawArgs: Record<string, unknown>) => {
       try {
         requireScopes(context, ['secondbrain:write']);
         const input = prepareCourseInputSchema.parse(rawArgs);
@@ -189,7 +184,7 @@ export function registerCourseTools(server: McpServer, context: McpAuthContext) 
               requestHash,
             },
           }));
-        return await reviewBase(draft, extra);
+        return await reviewBase(draft);
       } catch (error) {
         return handleCourseError(error);
       }

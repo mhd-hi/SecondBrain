@@ -371,6 +371,37 @@ describe('MCP draft approval lifecycle (plan 21.5/21.6)', () => {
 
     expect(receipt.approvalChannel).toBe('web');
     expect(receipt.connectionId).toBeNull();
+
+    const auditRows = await db
+      .select()
+      .from(mcpAuditEvents)
+      .where(eq(mcpAuditEvents.draftId, draft.id));
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0]!.toolName).toBe('web_approve_draft');
+  });
+
+  it('records web rejection of an MCP draft in the durable audit log', async () => {
+    const owner = await seedOwner();
+    const draft = await makeMcpDraft({
+      userId: owner.userId,
+      connectionId: owner.connectionId,
+      actions: [
+        {
+          type: 'update_task',
+          taskId: owner.taskId,
+          changes: { title: 'Reject this change' },
+        },
+      ],
+    });
+
+    await rejectDraft(owner.userId, draft.id);
+
+    const auditRows = await db
+      .select()
+      .from(mcpAuditEvents)
+      .where(eq(mcpAuditEvents.draftId, draft.id));
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0]!.toolName).toBe('web_reject_draft');
   });
 
   it('marks stale drafts terminal without mutating tasks (mcp channel)', async () => {

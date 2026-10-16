@@ -122,6 +122,17 @@ describe('prepare_course_creation handler', () => {
     expect(body.webReviewUrl).toContain(`/mcp/review/${ownedDraft.id}`);
   });
 
+  it('does not issue an approval capability when a client self-asserts MCP Apps', async () => {
+    const handler = handlerFor(createMcpServer(context));
+    const result = await handler(
+      { ...validArgs },
+      { _meta: { extensions: { 'io.modelcontextprotocol/ui': {} } } },
+    );
+
+    expect(result._meta).toBeUndefined();
+    expect(result.content[0]?.text).toContain('webReviewUrl');
+  });
+
   it('rejects bad terms and schools before touching the database', async () => {
     const handler = handlerFor(createMcpServer(context));
 

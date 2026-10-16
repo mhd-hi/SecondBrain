@@ -1,6 +1,4 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { ServerNotification, ServerRequest } from '@modelcontextprotocol/sdk/types.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { z } from 'zod';
 import {
   createDraft,
@@ -8,51 +6,22 @@ import {
   getOwnedDraft,
   prepareDraft,
 } from '@/lib/ai/chat/drafts';
-import { executeDraft, rejectDraft } from '@/lib/ai/chat/executor';
 import { plannerOutputSchema, reviewPayloadSchema } from '@/lib/ai/chat/types';
-import { requireScopes, sha256Hex } from '@/lib/auth/mcp';
+import { requireScopes } from '@/lib/auth/mcp';
 import type { McpAuthContext } from '@/lib/auth/mcp';
-import {
-  ApprovalCapabilityError,
-  canonicalRequestHash,
-  CAPABILITY_META_KEY,
-  rotateApprovalCapability,
-} from './approval';
+import { canonicalRequestHash } from './approval';
 
 /**
  * Draft tools (plan sections 11.2, 11.3):
  * - prepare_task_changes / render_task_review / get_task_draft: model-visible.
- * - commit_task_changes / reject_task_changes: app-only (_meta.ui.visibility).
- *
- * The approval capability is issued only when the current request carries the
- * MCP Apps UI extension in its `_meta` (verified per request, never from
- * client name heuristics or prior requests). Hosts without the extension
- * fail closed to a text review plus an authenticated web review URL.
- *
- * Trust boundary (accepted, plan 11.3): `_meta` is caller-asserted, so a
- * model in a misbehaving host can self-assert the extension flag and receive
- * a capability. The server cannot distinguish "UI requested" from "model
- * requested" on a stateless bearer transport; containment comes from the
- * capability being single-use, TTL-bound, and scoped to one connection and
- * draft, and from app-only tool visibility in hosts that implement MCP Apps.
+ * Mutations require approval through the authenticated web UI. MCP client
+ * metadata cannot prove that a human saw or approved a review card.
  */
-
-const UI_EXTENSION_ID = 'io.modelcontextprotocol/ui';
-
-function hasUiExtension(meta: unknown): boolean {
-  if (!meta || typeof meta !== 'object') {
-    return false;
-  }
-  const extensions = (meta as { extensions?: Record<string, unknown> })
-    .extensions;
-  return Boolean(extensions?.[UI_EXTENSION_ID]);
-}
 
 export type ToolResult = {
   content: { type: 'text'; text: string }[];
   structuredContent?: Record<string, unknown>;
   isError?: boolean;
-  _meta?: Record<string, unknown>;
 };
 
 export function textResult(payload: unknown): ToolResult {
@@ -68,15 +37,10 @@ export function errorResult(code: string, message: string): ToolResult {
   };
 }
 
-function webReviewUrlFromExtra(
-  _extra: ToolExtra | undefined,
-  draftId: string,
-): string {
+function webReviewUrl(draftId: string): string {
   const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   return `${origin}/mcp/review/${draftId}`;
 }
-
-export type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 
 const prepareInputSchema = z.strictObject({
   requestId: z.uuid(),
@@ -86,11 +50,6 @@ const prepareInputSchema = z.strictObject({
 });
 
 const draftIdInputSchema = z.strictObject({ draftId: z.uuid() });
-
-const commitInputSchema = z.strictObject({
-  draftId: z.uuid(),
-  approvalCapability: z.string().min(16).max(128),
-});
 
 const draftActionSchemaLoose = z.discriminatedUnion('type', [
   z.strictObject({
@@ -135,16 +94,12 @@ const READ_ANNOTATIONS = {
 } as const;
 
 /**
- * Shared review renderer for task AND course drafts (course-tools.ts reuses
- * this; no duplicated approval plumbing). Returns the text review plus —
- * only for hosts negotiating the MCP Apps UI extension — a rotated approval
- * capability in `_meta`. Hosts without the extension fail closed to text +
- * web review URL.
+ * Shared review formatter for task AND course drafts (course-tools.ts reuses
+ * this). The authenticated web UI is the only approval path.
  */
-export function createDraftReviewer(context: McpAuthContext) {
+export function createDraftReviewer() {
   return async (
     draft: NonNullable<Awaited<ReturnType<typeof reviewDraftForConnection>>>,
-    extra: ToolExtra | undefined,
   ) => {
     const base = {
       draftId: draft.id,
@@ -153,27 +108,9 @@ export function createDraftReviewer(context: McpAuthContext) {
       reason: draft.reason,
       reviewPayload: reviewPayloadSchema.parse(draft.reviewPayload),
       expiresAt: draft.expiresAt.toISOString(),
-      webReviewUrl: webReviewUrlFromExtra(extra, draft.id),
+      webReviewUrl: webReviewUrl(draft.id),
     };
-    if (!hasUiExtension(extra?._meta)) {
-      // Fail closed: no capability for hosts without MCP Apps. The
-      // connection stays read-and-prepare with web review.
-      return { ...textResult(base), structuredContent: base } as ToolResult;
-    }
-    const capability = await rotateApprovalCapability(
-      draft.id,
-      context.connectionId,
-    );
-    return {
-      ...textResult(base),
-      structuredContent: base,
-      _meta: {
-        [CAPABILITY_META_KEY]: {
-          capability: capability.raw,
-          expiresAt: capability.expiresAt.toISOString(),
-        },
-      },
-    } satisfies ToolResult;
+    return { ...textResult(base), structuredContent: base } satisfies ToolResult;
   };
 }
 
@@ -181,14 +118,14 @@ export function registerTaskTools(
   server: McpServer,
   context: McpAuthContext,
 ) {
-  const reviewBase = createDraftReviewer(context);
+  const reviewBase = createDraftReviewer();
 
   server.registerTool(
     'prepare_task_changes',
     {
       title: 'Prepare task changes',
       description:
-        'Validate and persist proposed task changes as an immutable review draft. Nothing changes until the user approves the review card. Returns the review payload and, when the host supports MCP Apps, an approval capability for the app-only commit tool.',
+        'Validate and persist proposed task changes as an immutable review draft. Nothing changes until the user approves through the authenticated web review page.',
       inputSchema: {
         requestId: z
           .uuid()
@@ -262,7 +199,7 @@ export function registerTaskTools(
       },
       annotations: READ_ANNOTATIONS,
     },
-    async (rawArgs: Record<string, unknown>, extra?: ToolExtra) => {
+    async (rawArgs: Record<string, unknown>) => {
       try {
         requireScopes(context, ['secondbrain:write']);
         const input = prepareInputSchema.parse(rawArgs);
@@ -313,7 +250,7 @@ export function registerTaskTools(
               requestHash,
             },
           }));
-        return await reviewBase(draft, extra);
+        return await reviewBase(draft);
       } catch (error) {
         return handleError(error);
       }
@@ -324,7 +261,7 @@ export function registerTaskTools(
     'render_task_review',
     {
       description:
-        'Reopen an owned pending task-change draft and render a fresh review card. Rotates the previous approval capability.',
+        'Reopen an owned pending task-change draft and return its authenticated web review link.',
       inputSchema: { draftId: z.uuid() },
       annotations: {
         readOnlyHint: false,
@@ -333,7 +270,7 @@ export function registerTaskTools(
         openWorldHint: false,
       },
     },
-    async (rawArgs: Record<string, unknown>, extra?: ToolExtra) => {
+    async (rawArgs: Record<string, unknown>) => {
       try {
         requireScopes(context, ['secondbrain:write']);
         const { draftId } = draftIdInputSchema.parse(rawArgs);
@@ -344,7 +281,7 @@ export function registerTaskTools(
         if (draft.status !== 'pending') {
           return errorResult('DRAFT_NOT_PENDING', `Draft is ${draft.status}`);
         }
-        return await reviewBase(draft, extra);
+        return await reviewBase(draft);
       } catch (error) {
         return handleError(error);
       }
@@ -355,7 +292,7 @@ export function registerTaskTools(
     'get_task_draft',
     {
       description:
-        'Read the status of an owned task-change draft without issuing an approval capability. Returns the persisted execution receipt after execution.',
+        'Read the status of an owned task-change draft. Returns the persisted execution receipt after execution.',
       inputSchema: { draftId: z.uuid() },
       annotations: {
         readOnlyHint: true,
@@ -364,7 +301,7 @@ export function registerTaskTools(
         openWorldHint: false,
       },
     },
-    async (rawArgs: Record<string, unknown>, extra?: ToolExtra) => {
+    async (rawArgs: Record<string, unknown>) => {
       try {
         requireScopes(context, ['secondbrain:read']);
         const { draftId } = draftIdInputSchema.parse(rawArgs);
@@ -372,7 +309,6 @@ export function registerTaskTools(
         if (!draft) {
           return errorResult('DRAFT_NOT_FOUND', 'Draft not found');
         }
-        void extra;
         return textResult({
           draftId: draft.id,
           status: draft.status,
@@ -387,88 +323,11 @@ export function registerTaskTools(
       }
     },
   );
-
-  // App-only tools: visibility ['app'] keeps them out of the model tool list
-  // in hosts that implement MCP Apps. Server-side capability verification is
-  // still mandatory; visibility is model isolation, not authorization.
-  const appOnlyMeta = { ui: { visibility: ['app'] as const } };
-
-  server.registerTool(
-    'commit_task_changes',
-    {
-      description:
-        'App-only: commit an approved task-change or course-creation draft using the approval capability held by the review component.',
-      inputSchema: {
-        draftId: z.uuid(),
-        approvalCapability: z.string().min(16).max(128),
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-      _meta: appOnlyMeta,
-    },
-    async (rawArgs: Record<string, unknown>) => {
-      try {
-        requireScopes(context, ['secondbrain:write']);
-        const { draftId, approvalCapability } = commitInputSchema.parse(rawArgs);
-        const result = await executeDraft(context.userId, draftId, {
-          channel: 'mcp_app',
-          connectionId: context.connectionId,
-          capabilityHash: sha256Hex(approvalCapability),
-        });
-        return textResult({
-          status: 'executed',
-          receipt: result.draft?.executionReceipt ?? null,
-        });
-      } catch (error) {
-        return handleError(error);
-      }
-    },
-  );
-
-  server.registerTool(
-    'reject_task_changes',
-    {
-      description:
-        'App-only: reject a pending task-change or course-creation draft using the approval capability held by the review component.',
-      inputSchema: {
-        draftId: z.uuid(),
-        approvalCapability: z.string().min(16).max(128),
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-      _meta: appOnlyMeta,
-    },
-    async (rawArgs: Record<string, unknown>) => {
-      try {
-        requireScopes(context, ['secondbrain:write']);
-        const { draftId, approvalCapability } = commitInputSchema.parse(rawArgs);
-        await rejectDraft(context.userId, draftId, {
-          channel: 'mcp_app',
-          connectionId: context.connectionId,
-          capabilityHash: sha256Hex(approvalCapability),
-        });
-        return textResult({ status: 'rejected' });
-      } catch (error) {
-        return handleError(error);
-      }
-    },
-  );
 }
 
 export function handleError(error: unknown): ToolResult {
   if (error instanceof z.ZodError) {
     return errorResult('INVALID_INPUT', 'Invalid tool input');
-  }
-  if (error instanceof ApprovalCapabilityError) {
-    return errorResult(error.code, 'Approval capability check failed');
   }
   const message = error instanceof Error ? error.message : String(error);
   if (message.startsWith('DRAFT_')) {

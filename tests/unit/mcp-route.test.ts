@@ -63,7 +63,7 @@ vi.mock('@/server/db', () => ({
   },
 }));
 
-const { POST, GET } = await import('@/app/api/mcp/route');
+const { POST, GET, DELETE } = await import('@/app/api/mcp/route');
 const { authenticateMcpRequest } = await import('@/lib/auth/mcp');
 
 function jsonRequest(
@@ -242,6 +242,13 @@ describe('MCP endpoint wire validation (plan 21.2/16)', () => {
 
     expect(response.status).toBe(405);
     expect(response.headers.get('Allow')).toContain('POST');
+  });
+
+  it('DELETE is not allowed when the endpoint has no sessions', async () => {
+    const response = await DELETE();
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get('Allow')).toBe('POST');
   });
 
   it('does not accept the Auth.js cookie as authentication', async () => {

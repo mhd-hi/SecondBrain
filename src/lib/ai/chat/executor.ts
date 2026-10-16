@@ -82,18 +82,32 @@ export async function rejectDraft(
   if (approval) {
     return rejectDraftWithCapability(userId, draftId, approval);
   }
-  const rejected = await db
-    .update(aiActionDrafts)
-    .set({ status: 'rejected', terminalAt: new Date() })
-    .where(
-      and(
-        eq(aiActionDrafts.id, draftId),
-        eq(aiActionDrafts.userId, userId),
-        eq(aiActionDrafts.status, 'pending'),
-        gt(aiActionDrafts.expiresAt, new Date()),
-      ),
-    )
-    .returning();
+  const rejected = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(aiActionDrafts)
+      .set({ status: 'rejected', terminalAt: new Date() })
+      .where(
+        and(
+          eq(aiActionDrafts.id, draftId),
+          eq(aiActionDrafts.userId, userId),
+          eq(aiActionDrafts.status, 'pending'),
+          gt(aiActionDrafts.expiresAt, new Date()),
+        ),
+      )
+      .returning();
+    if (rows[0]?.source === 'mcp') {
+      await recordMcpAuditEvent({
+        userId,
+        connectionId: rows[0].sourceConnectionId,
+        toolName: 'web_reject_draft',
+        draftId,
+        outcome: 'rejected',
+        correlationId: crypto.randomUUID(),
+        tx,
+      });
+    }
+    return rows;
+  });
   if (!rejected[0]) {
     return classifyDraftState(userId, draftId);
   }
@@ -551,13 +565,13 @@ export async function executeDraft(
         throw new DraftExecutionError('DRAFT_CONFLICT');
       }
 
-      if (isMcp) {
+      if (claimed[0].source === 'mcp') {
         // Durable audit event in the same transaction: a mutation must not
         // commit without its audit event (plan section 18).
         await recordMcpAuditEvent({
           userId,
-          connectionId: approval.connectionId,
-          toolName: 'commit_task_changes',
+          connectionId: isMcp ? approval.connectionId : claimed[0].sourceConnectionId,
+          toolName: isMcp ? 'commit_task_changes' : 'web_approve_draft',
           draftId,
           outcome: 'executed',
           correlationId: crypto.randomUUID(),

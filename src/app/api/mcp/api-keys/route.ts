@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
-import { and, count, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, count, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { mcpConnections } from '@/server/db/schema';
 import { withAuthSimple } from '@/lib/auth/api';
@@ -38,44 +38,51 @@ export const POST = withAuthSimple(async (request, user) => {
   const readOnly = body.readOnly === true;
   const scopes = readOnly ? [MCP_SCOPES[0]] : [...MCP_SCOPES];
 
-  const [active] = await db
-    .select({ value: count() })
-    .from(mcpConnections)
-    .where(
-      and(
-        eq(mcpConnections.userId, user.id),
-        isNull(mcpConnections.revokedAt),
-        isNotNull(mcpConnections.keyHash),
-      ),
-    );
-  if (Number(active?.value ?? 0) >= MAX_ACTIVE_KEYS_PER_USER) {
-    return NextResponse.json(
-      { error: `Maximum ${MAX_ACTIVE_KEYS_PER_USER} active keys reached. Revoke one first.` },
-      { status: 409 },
-    );
-  }
-
   const key = `${MCP_API_KEY_PREFIX}${randomBytes(KEY_RANDOM_BYTES).toString('base64url')}`;
-  const inserted = await db
-    .insert(mcpConnections)
-    .values({
-      userId: user.id,
-      oauthIssuer: 'local',
-      oauthSubject: user.id,
-      oauthClientId: 'api-key',
-      oauthGrantId: `api-key:${crypto.randomUUID()}`,
-      clientName: label,
-      scopes,
-      keyHash: sha256Hex(key),
-      keyPrefix: key.slice(0, 16),
-    })
-    .returning({ id: mcpConnections.id, keyPrefix: mcpConnections.keyPrefix });
+  const created = await db.transaction(async (tx) => {
+    // Serialize key creation per user; count + insert must share this lock.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${user.id}, 0))`,
+    );
+    const [active] = await tx
+      .select({ value: count() })
+      .from(mcpConnections)
+      .where(
+        and(
+          eq(mcpConnections.userId, user.id),
+          isNull(mcpConnections.revokedAt),
+          isNotNull(mcpConnections.keyHash),
+        ),
+      );
+    if (Number(active?.value ?? 0) >= MAX_ACTIVE_KEYS_PER_USER) {
+      return null;
+    }
+    const inserted = await tx
+      .insert(mcpConnections)
+      .values({
+        userId: user.id,
+        oauthIssuer: 'local',
+        oauthSubject: user.id,
+        oauthClientId: 'api-key',
+        oauthGrantId: `api-key:${crypto.randomUUID()}`,
+        clientName: label,
+        scopes,
+        keyHash: sha256Hex(key),
+        keyPrefix: key.slice(0, 16),
+      })
+      .returning({
+        id: mcpConnections.id,
+        keyPrefix: mcpConnections.keyPrefix,
+      });
+    return inserted[0] ?? null;
+  });
 
-  const created = inserted[0];
   if (!created) {
     return NextResponse.json(
-      { error: 'Could not create API key' },
-      { status: 500 },
+      {
+        error: `Maximum ${MAX_ACTIVE_KEYS_PER_USER} active keys reached. Revoke one first.`,
+      },
+      { status: 409 },
     );
   }
 

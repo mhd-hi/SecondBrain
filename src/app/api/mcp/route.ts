@@ -337,10 +337,10 @@ export async function POST(request: Request): Promise<Response> {
 export async function GET(): Promise<Response> {
   // Server-initiated SSE streams are not offered in the stateless first
   // release (plan section 7.1).
-  return httpError(405, { Allow: 'POST, DELETE' });
+  return httpError(405, { Allow: 'POST' });
 }
 
 export async function DELETE(): Promise<Response> {
-  // Stateless mode has no session to terminate; acknowledge cleanup requests.
-  return new Response(null, { status: 200 });
+  // Stateless mode has no session to terminate.
+  return httpError(405, { Allow: 'POST' });
 }

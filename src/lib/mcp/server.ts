@@ -1,15 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { registerAppResource } from '@modelcontextprotocol/ext-apps/server';
 import type { McpAuthContext } from '@/lib/auth/mcp';
 import { registerCourseTools } from './course-tools';
 import { registerReadTools } from './read-tools';
 import { registerTaskTools } from './task-tools';
-import {
-  buildTaskReviewHtml,
-  TASK_REVIEW_RESOURCE_MIME_TYPE
-  
-} from './task-review-app';
-import type {TaskReviewBoot} from './task-review-app';
 
 /**
  * Stateless MCP server assembly (plan section 5).
@@ -37,39 +30,5 @@ export function createMcpServer(context: {
   registerTaskTools(server, context as McpAuthContext);
   registerCourseTools(server, context as McpAuthContext);
 
-  registerAppResource(
-    server,
-    'Task change review',
-    'ui://second-brain/task-review/v1',
-    { mimeType: TASK_REVIEW_RESOURCE_MIME_TYPE },
-    async (uri, extra) => {
-      void uri;
-      void extra;
-      // The static shell renders an empty review until the preparing tool
-      // call's result is linked by the host. Per-draft content is carried in
-      // tool results; hosts render this resource inside the tool call frame.
-      const html = buildTaskReviewHtml({
-        review: {
-          draftId: '',
-          summary: 'Task review',
-          reason: '',
-          status: 'pending',
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          reviewPayload: {
-            summary: 'Task review',
-            counts: { adds: 0, updates: 0, deletes: 0, courses: 0 },
-            items: [],
-          },
-        },
-        capability: null,
-        capabilityExpiresAt: null,
-      });
-      return { contents: [{ uri: 'ui://second-brain/task-review/v1', mimeType: TASK_REVIEW_RESOURCE_MIME_TYPE, text: html }] };
-    },
-  );
-
   return server;
 }
-
-export { buildTaskReviewHtml };
-export type { TaskReviewBoot };

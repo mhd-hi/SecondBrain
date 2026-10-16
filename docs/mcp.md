@@ -27,15 +27,12 @@ accepted on this endpoint.
 | `list_terms`              | read  | yes           | Previous, current, and next terms                               |
 | `prepare_task_changes`    | write | yes           | Validate and store a review draft                               |
 | `prepare_course_creation` | write | yes           | Validate a new course, preview plan tasks, store a review draft |
-| `render_task_review`      | write | yes           | Re-render a pending draft (task or course), rotate capability   |
+| `render_task_review`      | write | yes           | Reopen a pending draft and return its web review link           |
 | `get_task_draft`          | read  | yes           | Draft status + execution receipt (task or course)               |
-| `commit_task_changes`     | write | app-only      | Execute an approved draft (task or course)                      |
-| `reject_task_changes`     | write | app-only      | Reject a pending draft (task or course)                         |
 
-The model never sees the approval capability. In hosts that implement MCP
-Apps the commit/reject tools are hidden from the model tool list and called
-only by the review card component. Clients without MCP Apps support receive
-a web review URL instead of a capability (fail closed).
+MCP prepares drafts but cannot approve them. Review and approve or reject each
+draft in the authenticated Second Brain web app. MCP client metadata cannot
+prove that a human saw or approved a review card.
 
 ## Task-change and course-creation flow
 
@@ -46,16 +43,15 @@ a web review URL instead of a capability (fail closed).
    the PlanETS pipeline, `none` creates an empty course). Nothing changes
    yet; an immutable draft is stored with before/after review data. Course
    drafts freeze the server-parsed plan tasks at prepare time.
-2. A review card (in the host) or the web review page
-   (`/mcp/review/<draftId>`) shows exactly what will change, with warnings
+2. The authenticated web review page (`/mcp/review/<draftId>`) shows exactly
+   what will change, with warnings
    and risk levels. Deletions are styled destructively.
-3. Approval consumes a one-time capability and executes the stored payload
-   atomically. Duplicate, stale, expired, cross-user, cross-grant, and
-   cross-client commits all fail.
+3. Web approval executes the stored payload atomically. Duplicate, stale,
+   expired, and cross-user commits fail.
 4. `get_task_draft` returns the persisted receipt after execution, so a lost
    response never leaves the outcome unknown.
 
-Drafts expire after 24 hours; approval capabilities expire after 10 minutes.
+Drafts expire after 24 hours.
 
 ## Connecting a client
 
@@ -85,23 +81,19 @@ immediately.
 When an MCP client using your API key works with your account, your course and task data
 returned by the read tools (titles, notes, dates, statuses) is processed by
 that client's AI model. Second Brain never invokes a model itself and never
-sends data to an AI provider on its own. Approval capabilities are never
-part of model-visible tool output. Disconnecting a client stops all future
-access immediately.
+sends data to an AI provider on its own. MCP tools cannot approve drafts.
+Disconnecting a client stops all future access immediately.
 
 ## Privacy and security summary
 
 - Reads are automatic and user-scoped; the token subject is the only
   identity source.
-- Task changes always require explicit approval; the model cannot commit.
-- Approval capabilities are single-use, 10-minute, hashed at rest, and
-  bound to one draft, connection, and grant.
+- Task changes always require approval in the authenticated web app; MCP
+  clients cannot commit or reject drafts.
 - Every mutation and rejection writes a durable audit event (user,
   connection, tool, draft, outcome, correlation ID, duration).
 - Rate limits: 60 requests/minute per connection, 300 per 10 minutes per
   user; responses include `Retry-After`.
 - API keys are 256-bit random secrets, shown once, stored only as sha256
-  hashes, and capped at 10 active per user. The `sb_mcp_` prefix never
-  collides with JWT validation.
-- Revocation is local and immediate; tokens from a revoked grant and
-  revoked API keys fail even if unexpired.
+  hashes, and capped at 10 active per user.
+- Revocation is local and immediate; revoked API keys fail even if unexpired.

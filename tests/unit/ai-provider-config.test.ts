@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/env', () => ({
   env: {
+    BAI_API_KEY: 'bai',
     GROQ_API_KEY: 'groq',
     GOOGLE_AI_STUDIO_API_KEY: 'google',
     NVIDIA_API_KEY: 'nvidia',
@@ -21,6 +22,7 @@ describe('AI provider configuration', () => {
     expect(
       buildProviderAttempts().map(({ name, model }) => [name, model]),
     ).toEqual([
+      ['bai', 'glm-5.3-flash'],
       ['groq', 'openai/gpt-oss-120b'],
       ['google-ai-studio', 'gemini-3.5-flash'],
       ['google-ai-studio', 'gemini-3.5-flash-lite'],
@@ -37,6 +39,7 @@ describe('AI provider configuration', () => {
     expect(
       buildChatProviderAttempts().map(({ name, model }) => [name, model]),
     ).toEqual([
+      ['bai', 'glm-5.3-flash'],
       ['google-ai-studio', 'gemini-3.5-flash'],
       ['google-ai-studio', 'gemini-3.5-flash-lite'],
       ['groq', 'openai/gpt-oss-120b'],
@@ -57,6 +60,7 @@ describe('AI provider configuration', () => {
         configured,
       ]),
     ).toEqual([
+      ['bai', 'glm-5.3-flash', true],
       ['groq', 'openai/gpt-oss-120b', true],
       ['google-ai-studio', 'gemini-3.5-flash', true],
       ['google-ai-studio', 'gemini-3.5-flash-lite', true],

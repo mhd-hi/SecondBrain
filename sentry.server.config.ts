@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs';
+import { redactMcpSecrets } from '@/lib/mcp/redact';
 
 // Only initialize Sentry in production
 if (process.env.NODE_ENV === 'production') {
@@ -10,6 +11,7 @@ if (process.env.NODE_ENV === 'production') {
     dsn: process.env.SENTRY_DSN || undefined,
 
     integrations: [
+      Sentry.captureConsoleIntegration({ levels: ['error'] }),
       Sentry.consoleLoggingIntegration({
         levels: ['log', 'warn', 'error'],
       }),
@@ -17,6 +19,19 @@ if (process.env.NODE_ENV === 'production') {
       // uv_default_loop, which Bun doesn't support (crashes process on init, bun#18546).
       // Re-add once Bun supports the libuv function, or switch runtime off Bun.
     ],
+
+    beforeSend(event) {
+      return redactMcpSecrets(event) as typeof event;
+    },
+    beforeSendTransaction(event) {
+      return redactMcpSecrets(event) as typeof event;
+    },
+    beforeSendLog(log) {
+      return redactMcpSecrets(log) as typeof log;
+    },
+    beforeBreadcrumb(breadcrumb) {
+      return redactMcpSecrets(breadcrumb) as typeof breadcrumb;
+    },
 
     // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
     tracesSampleRate: 0.1,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
+import { isValidCronAuth } from '@/lib/auth/cron';
 import { cleanupOldCourses } from '@/server/db/queries';
 
 export const runtime = 'nodejs';
@@ -26,9 +27,8 @@ export async function GET(request: Request) {
   try {
     // Basic API key authentication for cron jobs
     const authHeader = request.headers.get('authorization');
-    const cronSecret = env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!isValidCronAuth(authHeader, env.CRON_SECRET)) {
       return NextResponse.json(
         {
           success: false,

@@ -1,0 +1,698 @@
+/* SecondBrain ETS — landing page.
+   Scoped under .landing and built on the app's own CSS variables from
+   globals.css, so light/dark themes follow the user automatically. */
+
+.landing {
+  --landing-grid-line: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --landing-shadow:
+    0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent),
+    0 16px 40px -20px color-mix(in oklab, var(--foreground) 28%, transparent);
+
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing *,
+.landing *::before,
+.landing *::after {
+  box-sizing: border-box;
+}
+
+.landing p {
+  margin: 0;
+}
+
+.landing h1,
+.landing h2,
+.landing h3 {
+  margin: 0;
+}
+
+.landing-container {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 5vw, 2.5rem);
+}
+
+/* ---------- Top bar ---------- */
+
+.landing-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--background) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.landing-topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4rem;
+}
+
+.landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--landing-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+/* ---------- Buttons ---------- */
+
+.landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  padding: 0.72rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.landing-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.landing-btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid var(--primary);
+}
+
+.landing-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -10px color-mix(in oklab, var(--primary) 75%, transparent);
+}
+
+.landing-btn-ghost {
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  background: transparent;
+}
+
+.landing-btn-ghost:hover {
+  background: var(--accent);
+}
+
+.landing-btn-sm {
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* ---------- Hero ---------- */
+
+.landing-hero {
+  position: relative;
+  padding-block: clamp(4rem, 9vw, 6.5rem) clamp(4rem, 8vw, 6rem);
+  overflow: hidden;
+}
+
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
+  background-size: 36px 36px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 75% at 50% 20%, black 25%, transparent 78%);
+  mask-image: radial-gradient(ellipse 90% 75% at 50% 20%, black 25%, transparent 78%);
+  pointer-events: none;
+}
+
+.landing-hero-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2.5rem, 5vw, 4.5rem);
+  align-items: center;
+}
+
+.landing-h1 {
+  font-family: var(--landing-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(2.6rem, 5.4vw, 4.1rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.landing-hl {
+  position: relative;
+  white-space: nowrap;
+}
+
+.landing-hl::after {
+  content: '';
+  position: absolute;
+  left: -0.08em;
+  right: -0.08em;
+  bottom: 0.02em;
+  height: 0.22em;
+  background: color-mix(in oklab, var(--primary) 32%, transparent);
+  border-radius: 3px;
+  z-index: -1;
+}
+
+.landing-hero-sub {
+  margin-top: 1.5rem;
+  max-width: 34rem;
+  font-size: 1.075rem;
+  line-height: 1.65;
+  color: var(--muted-foreground);
+}
+
+.landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+/* ---------- Hero artifact: plan de cours → tasks ---------- */
+
+.landing-artifact {
+  justify-self: center;
+  width: min(22rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.landing-plan-card {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--landing-shadow);
+  padding: 1.1rem 1.2rem 0.9rem;
+  transform: rotate(-1.4deg);
+}
+
+.landing-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.landing-plan-title {
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted-foreground);
+}
+
+.landing-course-badge {
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  border-radius: 5px;
+  padding: 0.2rem 0.45rem;
+}
+
+.landing-plan-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.55rem;
+}
+
+.landing-plan-row + .landing-plan-row {
+  border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+.landing-plan-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.landing-plan-meta {
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.landing-plan-more {
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.landing-connector {
+  position: relative;
+  align-self: center;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+}
+
+.landing-connector::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px dashed color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+}
+
+.landing-connector-badge {
+  position: relative;
+  z-index: 1;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--landing-shadow);
+}
+
+.landing-task-card {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--landing-shadow);
+  padding: 1rem 1.2rem 0.9rem;
+  transform: rotate(0.9deg) translateX(0.9rem);
+}
+
+.landing-task-label {
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--primary);
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.landing-task-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding-block: 0.65rem;
+}
+
+.landing-task-row + .landing-task-row {
+  border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+.landing-feature-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.landing-task-check {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  border-radius: 5px;
+}
+
+.landing-task-row.is-done .landing-task-check {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.landing-task-check svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.landing-task-row.is-done .landing-task-check svg {
+  fill: none;
+  stroke: var(--primary-foreground);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+
+.landing-task-name {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.landing-task-row.is-done .landing-task-name {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+}
+
+.landing-task-due {
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-radius: 5px;
+  padding: 0.18rem 0.4rem;
+  white-space: nowrap;
+}
+
+.landing-task-foot {
+  padding-top: 0.6rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+}
+
+/* ---------- Sections ---------- */
+
+.landing-section {
+  border-top: 1px solid var(--border);
+  padding-block: clamp(4rem, 7vw, 5.5rem);
+}
+
+.landing-section-head {
+  max-width: 44rem;
+}
+
+.landing-h2 {
+  font-family: var(--landing-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+/* Steps — a real sequence, so numbers are earned */
+
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  margin-top: 3rem;
+}
+
+.landing-step-label {
+  font-family: var(--landing-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.landing-step h3 {
+  margin-top: 0.8rem;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.landing-step p {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+/* Features */
+
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 56rem;
+  margin-top: 3rem;
+}
+
+.landing-feature {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.4rem 1.5rem;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.landing-feature:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--border));
+  box-shadow: var(--landing-shadow);
+}
+
+.landing-feature-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 11%, transparent);
+}
+
+.landing-feature h3 {
+  margin-top: 1rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.landing-feature p {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+/* ---------- Final CTA ---------- */
+
+.landing-cta {
+  text-align: center;
+}
+
+.landing-cta p {
+  max-width: 32rem;
+  margin: 1rem auto 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+.landing-cta .landing-btn {
+  margin-top: 2rem;
+}
+
+/* ---------- Footer ---------- */
+
+.landing-footer {
+  border-top: 1px solid var(--border);
+  padding-block: 2.5rem;
+}
+
+.landing-footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.landing-footer-copy {
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+.landing-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.landing-footer a {
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.landing-footer a:hover {
+  color: var(--foreground);
+}
+
+.landing-footer a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.landing .landing-anim {
+  animation: landing-rise 0.55s ease-out both;
+}
+
+.landing .landing-delay-1 {
+  animation-delay: 0.05s;
+}
+
+.landing .landing-delay-2 {
+  animation-delay: 0.15s;
+}
+
+.landing .landing-delay-3 {
+  animation-delay: 0.25s;
+}
+
+.landing .landing-delay-4 {
+  animation-delay: 0.4s;
+}
+
+.landing .landing-delay-5 {
+  animation-delay: 0.55s;
+}
+
+.landing .landing-delay-6 {
+  animation-delay: 0.7s;
+}
+
+.landing .landing-delay-7 {
+  animation-delay: 0.85s;
+}
+
+/* Rotated artifact pieces keep their rotation after the rise ends */
+.landing .landing-plan-card.landing-anim {
+  animation-name: landing-rise-rot-neg;
+}
+
+.landing .landing-task-card.landing-anim {
+  animation-name: landing-rise-rot-pos;
+}
+
+@keyframes landing-rise-rot-neg {
+  from {
+    opacity: 0;
+    transform: rotate(-1.4deg) translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotate(-1.4deg) translateY(0);
+  }
+}
+
+@keyframes landing-rise-rot-pos {
+  from {
+    opacity: 0;
+    transform: rotate(0.9deg) translateX(0.9rem) translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotate(0.9deg) translateX(0.9rem) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .landing-anim {
+    animation: none;
+  }
+
+  .landing .landing-task-row.is-done .landing-task-check svg {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .landing-btn:hover,
+  .landing-feature:hover {
+    transform: none;
+  }
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .landing-hero-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero-sub {
+    max-width: 40rem;
+  }
+}
+
+@media (max-width: 800px) {
+  .landing-steps {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-features {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-task-card {
+    transform: none;
+  }
+
+  .landing .landing-task-card.landing-anim {
+    animation-name: landing-rise;
+  }
+}

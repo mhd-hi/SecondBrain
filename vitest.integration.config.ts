@@ -11,6 +11,7 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/integration/**/*.test.ts'],
     fileParallelism: false,
+    globalSetup: ['./tests/integration/global-setup.ts'],
   },
   resolve: {
     alias: {

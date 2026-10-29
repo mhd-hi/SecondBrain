@@ -380,4 +380,49 @@ describe('AIChatAssistant', () => {
       await view.unmount();
     }
   });
+
+  it('opens the owned draft review from the ?draft= deep link and strips the parameter (plan 21.8)', async () => {
+    // Web fallback (plan section 15): /mcp/review/<id> redirects signed-in
+    // users to /?draft=<id>; the assistant must load that owned draft
+    // through the authenticated endpoint and clean the URL afterwards.
+    storeDraftConversation();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(pendingDraft));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const originalHistory = window.history;
+    const historySpy = vi.spyOn(window.history, 'replaceState');
+    window.history.replaceState(null, '', '/?draft=draft-1');
+
+    const view = renderComponent(<AIChatAssistant />);
+    await view.render();
+
+    try {
+      await act(async () => button(view.container, 'Open Lucy').click());
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      // The draft endpoint was called for the deep-linked draft.
+      expect(fetchMock).toHaveBeenCalledWith('/api/ai/actions/draft-1', {
+        cache: 'no-store',
+      });
+      // The review dialog is open with the loaded draft.
+      expect(
+        document.querySelector('[role="dialog"]')?.textContent,
+      ).toContain('Add one task');
+
+      // The query parameter was removed from the URL after loading.
+      const [calledUrl] = historySpy.mock.calls.at(-1) ?? [];
+
+      expect(String(calledUrl)).not.toContain('draft=');
+    } finally {
+      window.history.replaceState(null, '', '/');
+      historySpy.mockRestore();
+      void originalHistory;
+      await view.unmount();
+    }
+  });
 });
+

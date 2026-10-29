@@ -90,7 +90,7 @@ export async function createAppFixture({
   return {
     dashboard: {
       goto: async () => {
-        await page.goto('/');
+        await page.goto('/dashboard');
 
         await expect(page.getByTestId(TEST_IDS.dashboard.page)).toBeVisible();
       },
@@ -236,7 +236,14 @@ export async function createAppFixture({
         await taskCard.getByTestId(TEST_IDS.task.statusTrigger).click();
         await page.getByRole('menuitem', { name: statusLabel, exact: true }).click();
 
-        await expect(taskCard.getByTestId(TEST_IDS.task.statusTrigger)).toContainText(statusLabel);
+        // Radix restores focus to the trigger only after the menu's exit
+        // animation; waiting here prevents that restore from stealing focus
+        // from a popover the next step opens.
+        const statusTrigger = taskCard.getByTestId(TEST_IDS.task.statusTrigger);
+
+        await expect(statusTrigger).toContainText(statusLabel);
+
+        await expect(statusTrigger).toBeFocused();
       },
     },
     taskPage: {

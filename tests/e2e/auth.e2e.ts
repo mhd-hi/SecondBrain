@@ -5,8 +5,8 @@ test('should allow a user to log in and view the dashboard', async ({ app, page 
   // The login is handled by the app fixture, so we just need to go to the dashboard.
   await app.dashboard.goto();
 
-  // Verify that the user is redirected to the dashboard.
-  await expect(page).toHaveURL('/');
+  // Verify that the user is on the dashboard.
+  await expect(page).toHaveURL('/dashboard');
 
   // Assert that the dashboard contains expected elements.
   await expect(page.getByTestId(TEST_IDS.dashboard.page)).toBeVisible();

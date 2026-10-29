@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import {
   createDraft,
   findDraftByRequest,
@@ -9,6 +10,9 @@ import {  chatRequestSchema } from '@/lib/ai/chat/types';
 import type {ChatEvent} from '@/lib/ai/chat/types';
 import { AIError } from '@/lib/ai/error';
 import { withAuthSimple } from '@/lib/auth/api';
+import { checkUserRateLimit } from '@/lib/auth/rate-limit';
+import { db } from '@/server/db';
+import { users } from '@/server/db/schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +25,13 @@ function serializeEvent(event: ChatEvent) {
 }
 
 export const POST = withAuthSimple(async (request, user) => {
+  const limit = checkUserRateLimit(`ai-chat:${user.id}`, 10 * 60_000, 20);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests, please try again later' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    );
+  }
   const parsed = chatRequestSchema.safeParse(
     await request.json().catch(() => null),
   );
@@ -66,10 +77,21 @@ export const POST = withAuthSimple(async (request, user) => {
           }
 
           send({ type: 'status', data: { status: 'searching' } });
+          let nickname: string | undefined;
+          try {
+            const [profile] = await db
+              .select({ nickname: users.nickname })
+              .from(users)
+              .where(eq(users.id, user.id));
+            nickname = profile?.nickname ?? undefined;
+          } catch {
+            nickname = undefined;
+          }
           let prepared: Awaited<ReturnType<typeof prepareDraft>> | undefined;
           const output = await planTaskAction({
             request: parsed.data,
             userId: user.id,
+            nickname,
             signal: request.signal,
             onStatus: (status) => {
               send({ type: 'status', data: status });

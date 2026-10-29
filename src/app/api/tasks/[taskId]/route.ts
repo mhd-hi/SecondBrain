@@ -3,7 +3,7 @@ import type { AuthenticatedUser } from '@/lib/auth/api';
 import type { Task } from '@/types/task';
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/api';
-import { deleteUserTask, getUserTask, updateUserTask } from '@/lib/auth/db';
+import { assertUserOwnsCourse, deleteUserTask, getUserTask, updateUserTask } from '@/lib/auth/db';
 import { statusResponse } from '@/lib/utils/api/api-server-util';
 
 async function handlePatchTask(
@@ -29,6 +29,13 @@ async function handlePatchTask(
       ...subtask,
       id: subtask.id || crypto.randomUUID(),
     }));
+  }
+
+  // Tenant invariant (plan 17.1): a task's course must belong to the same
+  // user. Validate before writing when the update moves the task to another
+  // course.
+  if (processedUpdates.courseId) {
+    await assertUserOwnsCourse(processedUpdates.courseId, context.user.id);
   }
 
   // Use secure update function with automatic ownership verification

@@ -7,7 +7,7 @@ import { StatusTask } from '@/types/status-task';
 import { TASK_TYPES } from '@/types/task';
 import { parseTorontoDueDate } from './date';
 
-export const AI_DRAFT_PAYLOAD_VERSION = 1;
+export const AI_DRAFT_PAYLOAD_VERSION = 2;
 
 const titleSchema = z.string().trim().min(1).max(300);
 const notesSchema = z.string().max(2_000).optional();
@@ -39,6 +39,37 @@ export const taskChangesSchema = z
     message: 'Task updates cannot be empty',
   });
 
+const courseIdentitySchema = z.strictObject({
+  code: z.string().trim().min(1).max(20),
+  name: z.string().trim().min(1).max(300).optional(),
+  term: z.string().regex(/^\d{4}[1-3]$/),
+  school: z.enum(['ets', 'none']),
+  daypart: z.enum(['EVEN', 'AM', 'PM']).default('AM'),
+  firstDayOfClass: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  userContext: z.string().max(3_000).optional(),
+});
+
+const resolvedCourseTaskSchema = z.strictObject({
+  title: titleSchema,
+  notes: notesSchema,
+  dueDate: dueDateSchema,
+  status: z.enum(StatusTask).default(StatusTask.TODO),
+  estimatedEffort: effortSchema.default(DEFAULT_TASK_ESTIMATED_EFFORT),
+  actualEffort: actualEffortSchema.default(0),
+  type: z.enum(TASK_TYPES).default(TASK_TYPES.THEORIE),
+});
+
+export const courseCreateActionSchema = z.strictObject({
+  type: z.literal('create_course'),
+  course: courseIdentitySchema,
+  // Server-filled at prepare time via the shared PlanETS pipeline; the model
+  // omits it. Ignored when present in model output — prepare regenerates.
+  tasks: z.array(resolvedCourseTaskSchema).max(100).default([]),
+});
+
 export const draftActionSchema = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('add_task'),
@@ -62,6 +93,7 @@ export const draftActionSchema = z.discriminatedUnion('type', [
     type: z.literal('delete_task'),
     taskId: z.uuid(),
   }),
+  courseCreateActionSchema,
 ]);
 
 export const draftActionsSchema = z
@@ -69,9 +101,27 @@ export const draftActionsSchema = z
   .min(1)
   .max(20)
   .superRefine((actions, context) => {
+    // create_course is exclusive: exactly one per draft, never mixed with
+    // task actions (the course has no ID yet, so task actions cannot target
+    // it). Keeps prepare/execute single-purpose.
+    const creates = actions.filter((action) => action.type === 'create_course');
+    if (creates.length > 0 && actions.length > 1) {
+      context.addIssue({
+        code: 'custom',
+        message: 'create_course actions cannot be mixed with other actions',
+      });
+      return;
+    }
+    if (creates.length > 1) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Only one create_course action per draft',
+      });
+      return;
+    }
     const taskIds = new Set<string>();
     for (const action of actions) {
-      if (action.type === 'add_task') {
+      if (action.type === 'add_task' || action.type === 'create_course') {
         continue;
       }
       if (taskIds.has(action.taskId)) {
@@ -88,6 +138,12 @@ export const clarificationOptionSchema = z.strictObject({
   label: z.string().trim().min(1).max(300),
   taskId: z.uuid().optional(),
   courseId: z.uuid().optional(),
+  courseCode: z.string().trim().min(1).max(20).optional(),
+  term: z
+    .string()
+    .regex(/^\d{4}[1-3]$/)
+    .optional(),
+  school: z.enum(['ets', 'none']).optional(),
 });
 
 export const plannerOutputSchema = z.discriminatedUnion('kind', [
@@ -129,15 +185,59 @@ export const chatRequestSchema = z.strictObject({
     .optional(),
 });
 
-export const draftPayloadSchema = z.strictObject({
+const taskOnlyActionsSchema = z
+  .array(
+    z.discriminatedUnion('type', [
+      z.strictObject({
+        type: z.literal('add_task'),
+        courseId: z.uuid(),
+        task: z.strictObject({
+          title: titleSchema,
+          notes: notesSchema,
+          dueDate: dueDateSchema,
+          status: z.enum(StatusTask).default(StatusTask.TODO),
+          estimatedEffort: effortSchema.default(DEFAULT_TASK_ESTIMATED_EFFORT),
+          actualEffort: actualEffortSchema.default(0),
+          type: z.enum(TASK_TYPES).default(TASK_TYPES.THEORIE),
+        }),
+      }),
+      z.strictObject({
+        type: z.literal('update_task'),
+        taskId: z.uuid(),
+        changes: taskChangesSchema,
+      }),
+      z.strictObject({
+        type: z.literal('delete_task'),
+        taskId: z.uuid(),
+      }),
+    ]),
+  )
+  .min(1)
+  .max(20);
+
+// v1 rows stay readable after the v2 rollout: pending v1 drafts are NOT
+// failed by getOwnedDraft, and the executor accepts both versions.
+const draftPayloadV1Schema = z.strictObject({
+  payloadVersion: z.literal(1),
+  actions: taskOnlyActionsSchema,
+});
+
+const draftPayloadV2Schema = z.strictObject({
   payloadVersion: z.literal(AI_DRAFT_PAYLOAD_VERSION),
   actions: draftActionsSchema,
 });
 
+export const draftPayloadSchema = z.union([
+  draftPayloadV1Schema,
+  draftPayloadV2Schema,
+]);
+
 export const reviewItemSchema = z.strictObject({
-  type: z.enum(['add', 'update', 'delete']),
+  type: z.enum(['add', 'update', 'delete', 'create_course']),
   taskId: z.uuid().optional(),
   courseId: z.uuid().optional(),
+  courseCode: z.string().max(20).optional(),
+  courseName: z.string().max(300).optional(),
   title: titleSchema,
   before: z.record(z.string(), z.unknown()).optional(),
   after: z.record(z.string(), z.unknown()).optional(),
@@ -158,6 +258,7 @@ export const reviewPayloadSchema = z.strictObject({
     adds: z.number().int().nonnegative(),
     updates: z.number().int().nonnegative(),
     deletes: z.number().int().nonnegative(),
+    courses: z.number().int().nonnegative().default(0),
   }),
   items: z.array(reviewItemSchema),
 });

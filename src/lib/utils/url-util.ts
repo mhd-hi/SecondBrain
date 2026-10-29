@@ -23,8 +23,22 @@ export function getDefaultImageFor(value: unknown): string {
 }
 
 export function buildPlanETSUrl(courseCode: string, term: string): string {
-  return `https://planets.etsmtl.ca/public/Contenu.aspx?session=${term}&sigle=${courseCode}&groupe=00`;
+  return `https://planets.etsmtl.ca/public/Contenu.aspx?session=${encodeURIComponent(term)}&sigle=${encodeURIComponent(courseCode)}&groupe=00`;
 }
+
+const DANGEROUS_SCHEME_PATTERN = /^[a-z][a-z\d+\-.]*:/i;
+
+export const isSafeHttpUrl = (url: string): boolean => {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return false;
+  }
+  // Reject any non-http(s) scheme (javascript:, data:, vbscript:, blob:, file:, …).
+  if (DANGEROUS_SCHEME_PATTERN.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
+    return false;
+  }
+  return /^https?:\/\//i.test(trimmed);
+};
 
 export const validateUrl = (url: string): boolean => {
   const trimmed = url.trim();
@@ -32,23 +46,35 @@ export const validateUrl = (url: string): boolean => {
     return false;
   }
 
+  // Reject dangerous schemes outright — even "javascript:alert(1).foo" contains a dot.
+  if (DANGEROUS_SCHEME_PATTERN.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
+    return false;
+  }
+
   // Check if it already has a protocol
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  if (/^https?:\/\//i.test(trimmed)) {
     try {
-      const _url = new URL(trimmed);
-      return true;
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
     } catch {
       return false;
     }
   }
 
-  // For URLs without protocol, check basic pattern
-  return trimmed.includes('.');
+  // For URLs without protocol, validate as https://<input> with a real hostname.
+  try {
+    const parsed = new URL(`https://${trimmed}`);
+    return parsed.hostname.includes('.');
+  } catch {
+    return false;
+  }
 };
 
 /**
  * Normalizes a URL by ensuring it has a proper protocol
  * If no protocol is provided, defaults to https://
+ * Dangerous schemes (javascript:, data:, …) are returned unchanged so that
+ * validateUrl/isSafeHttpUrl reject them — never rendered as clickable links.
  */
 export const normalizeUrl = (url: string): string => {
   const trimmed = url.trim();
@@ -58,6 +84,11 @@ export const normalizeUrl = (url: string): string => {
 
   // If already has protocol, return as is
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  // Refuse to normalize dangerous schemes into clickable URLs.
+  if (DANGEROUS_SCHEME_PATTERN.test(trimmed)) {
     return trimmed;
   }
 

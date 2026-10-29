@@ -50,8 +50,7 @@ export function PomodoroContainer() {
     return () => {
       document.title = 'Pomodoro - SecondBrain';
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPomodoroActive, timeLeftSec, pomodoroStage]);
+  }, [formatTime, isPomodoroActive, timeLeftSec, pomodoroStage]);
 
   const getProgress = () => {
     return ((totalTimeSec - timeLeftSec) / totalTimeSec) * 100;

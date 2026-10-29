@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { withAuthSimple } from '@/lib/auth/api';
 import { getUserCourseSummaries } from '@/lib/auth/course-summaries';
 import { createUserCourse } from '@/lib/auth/db';
+import { ensureTermExists } from '@/lib/courses/create-course-pipeline';
 import { generateRandomCourseColor } from '@/lib/utils/colors-util';
 import { db } from '@/server/db';
 import { courses } from '@/server/db/schema';
@@ -88,6 +89,17 @@ export const POST = withAuthSimple(async (request, user) => {
   if (existingCourse) {
     // Return conflict with existing course info
     return NextResponse.json({ error: 'Course already exists', course: existingCourse }, { status: 409 });
+  }
+
+  // FK guard: courses.term references terms.id — upsert the term row first
+  // (previously only the UI did this via GET /api/terms/exists).
+  try {
+    await ensureTermExists(term);
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid term format', code: 'INVALID_TERM' },
+      { status: 400 },
+    );
   }
 
   // Use secure function to create course with automatic user assignment

@@ -1,0 +1,1 @@
+DROP INDEX "uq_ai_action_drafts_user_request";

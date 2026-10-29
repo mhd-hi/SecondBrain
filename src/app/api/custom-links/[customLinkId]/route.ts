@@ -61,8 +61,8 @@ export const DELETE = withAuth<{ customLinkId: string }>(async (req: NextRequest
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: msg }, { status: 400 });
+    console.error('Error in DELETE /api/custom-links/[customLinkId]:', err);
+    return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
   }
 });
 
@@ -114,9 +114,13 @@ export const PATCH = withAuth<{ customLinkId: string }>(async (req: NextRequest,
     if (url !== undefined) {
       try {
         if (!validateUrl(url)) {
-          throw new TypeError('Invalid url format');
+          throw new TypeError('Invalid url format, only http(s) URLs are allowed');
         }
-        updates.url = normalizeUrl(url);
+        const normalized = normalizeUrl(url);
+        if (!validateUrl(normalized) || (!normalized.startsWith('http://') && !normalized.startsWith('https://'))) {
+          throw new TypeError('Invalid url format, only http(s) URLs are allowed');
+        }
+        updates.url = normalized;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Invalid url';
         return NextResponse.json({ success: false, error: msg }, { status: 400 });
@@ -137,7 +141,10 @@ export const PATCH = withAuth<{ customLinkId: string }>(async (req: NextRequest,
 
     return NextResponse.json({ success: true, customLink: updated[0] });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: msg }, { status: 400 });
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 });
+    }
+    console.error('Error in PATCH /api/custom-links/[customLinkId]:', err);
+    return NextResponse.json({ success: false, error: 'Database is currently unavailable, please try again later' }, { status: 500 });
   }
 });

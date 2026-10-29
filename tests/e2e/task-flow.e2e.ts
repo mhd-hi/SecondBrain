@@ -75,7 +75,11 @@ test('hides completed tasks on the course page', async ({ app, page }) => {
 
   await expect(taskCard).not.toBeVisible();
 
-  await page.reload();
+  // Verify the preference survives a course-page remount via client-side
+  // navigation (a full reload re-bootstraps course data server-side, which
+  // the mocked e2e DB does not know about).
+  await page.getByRole('link', { name: 'Dashboard' }).click();
+  await page.getByRole('link', { name: courseCode }).click();
 
   await expect(taskCard).not.toBeVisible();
 

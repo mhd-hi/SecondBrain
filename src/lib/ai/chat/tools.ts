@@ -1,8 +1,10 @@
 import type { ChatCompletionTool } from 'openai/resources/chat/completions';
-import { and, asc, eq, gte, ilike, lt, or } from 'drizzle-orm';
+import { and, asc, eq, gte, ilike, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { buildTerm, getCurrentTerm, getNextTerm, getPrevTerm, nextTerm } from '@/lib/utils/term-util';
 import { db } from '@/server/db';
 import { courses, tasks } from '@/server/db/schema';
+import { SCHOOL_INFO } from '@/types/school';
 import { StatusTask } from '@/types/status-task';
 import {
   addDateOnlyDays,
@@ -121,6 +123,34 @@ export const CHAT_READ_TOOLS: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'list_supported_schools',
+      description:
+        'List the universities with a built-in course-plan pipeline (id + label). Never guess a pipeline URL; if the user\'s school is not listed, create the course without plan tasks.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        required: [],
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_terms',
+      description:
+        'List the previous, current, and next academic terms (id YYYY[1-3] + label). Use only these options when asking the user to confirm a term for course creation.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        required: [],
+        properties: {},
+      },
+    },
+  },
 ];
 
 export type NotesBudget = { remaining: number };
@@ -135,8 +165,8 @@ function taskProjection() {
   return {
     id: tasks.id,
     courseId: tasks.courseId,
-    courseCode: courses.code,
-    courseName: courses.name,
+    courseCode: sql<string | null>`case when ${courses.userId} = ${tasks.userId} then ${courses.code} else null end`,
+    courseName: sql<string | null>`case when ${courses.userId} = ${tasks.userId} then ${courses.name} else null end`,
     title: tasks.title,
     notes: tasks.notes,
     dueDate: tasks.dueDate,
@@ -261,6 +291,25 @@ async function listCourseTasks(
   return compactNotes(rows);
 }
 
+function listSupportedSchools() {
+  return Object.entries(SCHOOL_INFO).map(([id, info]) => ({
+    id,
+    label: info.label,
+  }));
+}
+
+function listTerms() {
+  const year = new Date().getFullYear();
+  const current = getCurrentTerm() ?? getNextTerm();
+  const prev = getPrevTerm(current, year);
+  const next = nextTerm(current, year);
+  return [
+    buildTerm(prev),
+    buildTerm({ trimester: current, year }),
+    buildTerm(next),
+  ];
+}
+
 async function resolveCourseWeek(userId: string, input: unknown) {
   const { courseId, week } = courseWeekSchema.parse(input);
   const course = await db
@@ -313,6 +362,14 @@ export async function executeReadTool({
       break;
     case 'resolve_course_week':
       result = await resolveCourseWeek(userId, input);
+      break;
+    case 'list_supported_schools':
+      z.strictObject({}).parse(input);
+      result = listSupportedSchools();
+      break;
+    case 'list_terms':
+      z.strictObject({}).parse(input);
+      result = listTerms();
       break;
     default:
       throw new Error('Unknown tool');

@@ -18,6 +18,10 @@ const SECRET_VALUE_PATTERN =
   /((?:authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|approval[_-]?capability|capability|token|api[_-]?key|app[_-]?key|client[_-]?secret|secret|password|passwd|cookie)\s*[=:]\s*(?:(?:Bearer|Basic)\s+)?)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s&,;"']+)/gi;
 
 export function redactMcpSecrets(value: unknown): unknown {
+  return redact(value, new WeakSet());
+}
+
+function redact(value: unknown, ancestors: WeakSet<object>): unknown {
   if (typeof value === 'string') {
     return value
       .replace(BEARER_PATTERN, `$1 ${REDACTED}`)
@@ -30,15 +34,23 @@ export function redactMcpSecrets(value: unknown): unknown {
       .replace(/(https?:\/\/)[^\s/:@]+:[^\s/@]+@/gi, `$1${REDACTED}@`);
   }
   if (Array.isArray(value)) {
-    return value.map((item) => redactMcpSecrets(item));
+    if (ancestors.has(value)) return '[Circular]';
+    ancestors.add(value);
+    const result = value.map((item) => redact(item, ancestors));
+    ancestors.delete(value);
+    return result;
   }
   if (value && typeof value === 'object') {
-    return Object.fromEntries(
+    if (ancestors.has(value)) return '[Circular]';
+    ancestors.add(value);
+    const result = Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
         key,
-        SECRET_KEY_PATTERN.test(key) ? REDACTED : redactMcpSecrets(entry),
+        SECRET_KEY_PATTERN.test(key) ? REDACTED : redact(entry, ancestors),
       ]),
     );
+    ancestors.delete(value);
+    return result;
   }
   return value;
 }

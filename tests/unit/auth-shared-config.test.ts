@@ -37,6 +37,7 @@ describe('shared auth config', () => {
     expect(discordProviderMock).toHaveBeenCalledWith({
       clientId: 'discord-client-id',
       clientSecret: 'discord-client-secret',
+      issuer: 'https://discord.com',
     });
     expect(authProviders).toEqual([
       {
@@ -51,6 +52,7 @@ describe('shared auth config', () => {
         options: {
           clientId: 'discord-client-id',
           clientSecret: 'discord-client-secret',
+          issuer: 'https://discord.com',
         },
       },
     ]);

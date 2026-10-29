@@ -104,6 +104,18 @@ describe('MCP secret redaction (plan 21.10)', () => {
     expect((event.nested as Record<string, unknown>).arguments).toBe('raw');
   });
 
+  it('handles cyclic Sentry event objects without overflowing', () => {
+    const event: { context?: { parent?: unknown }; token: string } = {
+      token: 'sensitive',
+    };
+    event.context = { parent: event };
+
+    expect(redactMcpSecrets(event)).toEqual({
+      token: '[REDACTED]',
+      context: { parent: '[Circular]' },
+    });
+  });
+
   it('covers a realistic Sentry event shape end to end', () => {
     const event = {
       exception: { values: [{ value: 'Bearer eyJ.abc failed' }] },

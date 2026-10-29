@@ -28,6 +28,7 @@ export const authProviders = [
   DiscordProvider({
     clientId: env.AUTH_DISCORD_ID,
     clientSecret: env.AUTH_DISCORD_SECRET,
+    issuer: 'https://discord.com',
   }),
 ] satisfies NextAuthConfig['providers'];
 

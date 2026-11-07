@@ -38,7 +38,8 @@
     "test:unit:ui": "vitest --ui --api.host 127.0.0.1 --api.port 63315 --api.strictPort",
     "test:cov": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "bench:mcp-auth": "RUN_MCP_CPU_BENCHMARK=1 vitest run --api=false tests/unit/mcp-auth.test.ts -t 'reports local CPU'"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

@@ -96,4 +96,58 @@ Disconnecting a client stops all future access immediately.
   user; responses include `Retry-After`.
 - API keys are 256-bit random secrets, shown once, stored only as salted
   scrypt verifiers, and capped at 10 active per user.
-- Revocation is local and immediate; revoked API keys fail even if unexpired.
+- Revocation is checked against the current connection row on every request,
+  including requests that reuse a cached cryptographic verification.
+
+## Authentication CPU and local verification
+
+Successful scrypt verification is reused only inside the current warm process,
+for at most five minutes and 1,000 entries. The cache holds a SHA-256 lookup
+digest, connection ID and the exact stored salted verifier, never a raw key or
+authorization context. A fresh database lookup still supplies identity, scopes
+and revocation state for every request. Deleted rows, changed connection IDs,
+changed/missing/malformed verifiers and expiry require verification again or fail
+closed. Failed secret checks are not cached. Durable rate limits and per-request
+last-used writes are unchanged; approval capabilities still use uncached scrypt.
+There is no shared cache service or persistent fast-hash key verifier.
+
+Run the normal security regressions and the optional CPU measurement with the
+repository's Bun 1.3.6 toolchain:
+
+```sh
+bun run test:unit:run --api=false tests/unit/mcp-auth.test.ts
+bun run bench:mcp-auth
+```
+
+The authentication test uses the Node environment and real `node:crypto` scrypt.
+The benchmark makes 100 uncached authentications by advancing only the cache
+clock past its TTL between requests, then 100 warm authentications. Each mock
+query returns a fresh connection object. Assertions require 100 database
+lookups in each phase, 100 uncached KDF calls and zero warm KDF calls. CPU time
+uses `process.cpuUsage`; wall time is reported separately. The benchmark is
+opt-in and imposes no timing threshold on CI. `--api=false` disables Vitest's
+optional development control socket, preserving the test suite in offline
+sandboxes. It does not disable any authentication or test assertion.
+
+Measured November 7, 2026, Bun 1.3.6 with Node v24.22.1 in the isolated
+MHI-47 check workspace (fresh mocked database rows; no network):
+
+| Mode | Requests | Database lookups | scrypt calls | CPU | Wall time |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Uncached | 100 | 100 | 100 | 4,417.160 ms | 4,415.211 ms |
+| Warm | 100 | 100 | 0 | 15.081 ms | 9.295 ms |
+
+That is about 99.7% lower CPU for this measured warm authentication path. It is
+not a measurement of total function CPU or a production savings guarantee. It
+excludes real database/network cost, MCP transport/tool execution, rendering and
+cold-process startup. New instances still perform scrypt and do not share this
+cache. The supplied 30-day Vercel totals do not identify the responsible function
+or time interval, so they cannot establish MCP as the cause of the reported
+spike. Static inspection found the KDF per matching request and per-request
+last-used writes; the cron configuration is daily, monthly or every five days,
+and inspected interval timers are client UI timers rather than request polling.
+
+Before attributing production savings, compare a redacted per-function/time
+usage export over comparable traffic after an owner-approved rollout. No Vercel
+account connection, paid plan, credential change or production deployment is
+part of this local investigation.

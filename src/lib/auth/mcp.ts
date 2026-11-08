@@ -78,8 +78,10 @@ export function sha256Hex(value: string): string {
  * `scrypt$N$r$p$salthex$derivedhex` so parameters travel with the verifier.
  *
  * Indexed fast hashes are deliberately NOT used here: a database/table leak
- * must not hand out offline-testable hashes. Fast SHA-256 remains only for
- * non-sensitive canonical request hashing (idempotency), never for secrets.
+ * must not hand out offline-testable hashes. Fast SHA-256 is used for
+ * canonical request hashing and the bounded, process-local verification index
+ * below, never as a persisted bearer-secret verifier. The index stores no raw
+ * tokens and never replaces the fresh connection/revocation/scope checks.
  */
 const scryptAsync = (
   secret: string,
@@ -105,6 +107,15 @@ const SECRET_KDF = {
   saltBytes: 16,
   maxMemoryBytes: 32 * 1024 * 1024,
 } as const;
+
+// Reuse scrypt results within a warm process; the connection row is still read
+// on every request so revocation and scope changes take effect immediately.
+const API_KEY_VERIFICATION_TTL_MS = 5 * 60 * 1000;
+const API_KEY_VERIFICATION_CACHE_LIMIT = 1000;
+const apiKeyVerificationCache = new Map<
+  string,
+  { connectionId: string; keyVerifier: string; expiresAt: number }
+>();
 
 export async function hashSecret(secret: string): Promise<string> {
   const salt = randomBytes(SECRET_KDF.saltBytes);
@@ -166,8 +177,7 @@ export async function verifySecret(
       maxmem: SECRET_KDF.maxMemoryBytes,
     })) as Buffer;
     return (
-      derived.length === expected.length &&
-      timingSafeEqual(derived, expected)
+      derived.length === expected.length && timingSafeEqual(derived, expected)
     );
   } catch {
     return false;
@@ -255,11 +265,39 @@ async function authenticateApiKey(token: string): Promise<McpAuthContext> {
     .where(eq(mcpConnections.keyPrefix, token.slice(0, 16)))
     .limit(10);
 
-  let connection: (typeof candidates)[number] | undefined;
-  for (const candidate of candidates) {
-    if (await verifySecret(token, candidate.keyVerifier)) {
-      connection = candidate;
-      break;
+  const tokenHash = sha256Hex(token);
+  const cached = apiKeyVerificationCache.get(tokenHash);
+  let connection =
+    cached && cached.expiresAt > Date.now()
+      ? candidates.find(
+          (candidate) =>
+            candidate.id === cached.connectionId &&
+            candidate.keyVerifier === cached.keyVerifier,
+        )
+      : undefined;
+
+  if (!connection) {
+    if (cached) {
+      apiKeyVerificationCache.delete(tokenHash);
+    }
+    for (const candidate of candidates) {
+      if (await verifySecret(token, candidate.keyVerifier)) {
+        connection = candidate;
+        if (candidate.keyVerifier) {
+          apiKeyVerificationCache.set(tokenHash, {
+            connectionId: candidate.id,
+            keyVerifier: candidate.keyVerifier,
+            expiresAt: Date.now() + API_KEY_VERIFICATION_TTL_MS,
+          });
+          if (apiKeyVerificationCache.size > API_KEY_VERIFICATION_CACHE_LIMIT) {
+            const oldest = apiKeyVerificationCache.keys().next().value;
+            if (oldest) {
+              apiKeyVerificationCache.delete(oldest);
+            }
+          }
+        }
+        break;
+      }
     }
   }
   if (!connection) {
@@ -310,7 +348,11 @@ export async function touchConnectionLastUsed(
 ): Promise<void> {
   await db
     .update(mcpConnections)
-    .set(apiKey ? { lastUsedAt: new Date(), keyLastUsedAt: new Date() } : { lastUsedAt: new Date() })
+    .set(
+      apiKey
+        ? { lastUsedAt: new Date(), keyLastUsedAt: new Date() }
+        : { lastUsedAt: new Date() },
+    )
     .where(eq(mcpConnections.id, connectionId));
 }
 

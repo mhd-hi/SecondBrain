@@ -1,0 +1,23 @@
+# Setup: uv tool install pre-commit; development bun install enables .githooks.
+# Managed checkouts already use /etc/paperclip-git-hooks.
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: existing-eslint
+        name: Existing ESLint gate
+        entry: bun run ci:lint
+        language: system
+        pass_filenames: false
+        always_run: true

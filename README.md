@@ -45,6 +45,15 @@ SecondBrain uses AI to parse ETS course plans and break them down into manageabl
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Commit checks
+
+Install the hook runner once with `uv tool install pre-commit`. Development
+`bun install` enables the executable `.githooks` scripts when no hook path is
+already configured. Existing managed or custom hook paths are preserved.
+The pre-commit gate runs repository hygiene checks and the existing ESLint gate;
+pre-push retains the ESLint check. Run all configured checks manually with
+`pre-commit run --all-files`.
+
 ## Development Scripts
 
 ### Essential Commands

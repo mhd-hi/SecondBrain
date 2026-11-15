@@ -1,2 +1,3 @@
 #!/bin/sh
-bun run ci:lint
+set -eu
+exec pre-commit run --hook-stage pre-commit
